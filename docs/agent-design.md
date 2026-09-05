@@ -113,6 +113,12 @@ Two independent guards enforce this:
 
 Guard 2 means the rule holds even if a skill is invoked outside any framework.
 
+The request shown to the user, the request that authorises the call and the
+request recorded in the audit trail are one and the same object, carried across
+by a `ConfirmationLedger`. Entries are consumed once and scoped to their owner,
+and `ConfirmationGate` verifies that the request was issued for the caller and
+answered by them.
+
 ### Configurability
 
 The policy is data driven and resolved per user:

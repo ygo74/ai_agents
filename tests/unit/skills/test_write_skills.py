@@ -196,13 +196,14 @@ class TestSendMailSkill:
     async def test_reports_that_sending_requires_confirmation(self, send_skill, owner):
         assert send_skill.requires_confirmation(owner)
 
-    async def test_the_confirmation_request_shows_what_will_be_sent(self, send_skill):
-        request = send_skill.build_confirmation_request(draft())
+    async def test_the_confirmation_request_shows_what_will_be_sent(self, send_skill, owner):
+        request = send_skill.build_confirmation_request(draft(), owner)
 
         labels = {detail.label: detail.value for detail in request.details}
         assert labels["To"] == "john@example.com"
         assert labels["Subject"] == "Re: Project Alpha"
         assert request.operation.tool_name == MailToolName.SEND_MAIL.value
+        assert request.requested_for == owner.user_id
 
     @pytest.mark.security
     async def test_refuses_to_send_without_a_confirmation(self, send_skill, mail_tools, owner):
@@ -213,7 +214,7 @@ class TestSendMailSkill:
 
     @pytest.mark.security
     async def test_refuses_to_send_when_the_user_declines(self, send_skill, mail_tools, owner):
-        request = send_skill.build_confirmation_request(draft())
+        request = send_skill.build_confirmation_request(draft(), owner)
         decision = ConfirmationDecision(request_id=request.request_id, approved=False, decided_by="owner")
 
         with pytest.raises(ConfirmationRejectedError):
@@ -223,7 +224,7 @@ class TestSendMailSkill:
 
     @pytest.mark.security
     async def test_refuses_a_confirmation_issued_for_another_request(self, send_skill, mail_tools, owner):
-        request = send_skill.build_confirmation_request(draft())
+        request = send_skill.build_confirmation_request(draft(), owner)
         replayed = ConfirmationDecision(request_id="cfm-other", approved=True, decided_by="owner")
 
         with pytest.raises(ConfirmationMismatchError):
@@ -232,7 +233,7 @@ class TestSendMailSkill:
         assert mail_tools.mailbox_of(owner).sent == ()
 
     async def test_sends_exactly_once_after_an_approval(self, send_skill, mail_tools, owner):
-        request = send_skill.build_confirmation_request(draft())
+        request = send_skill.build_confirmation_request(draft(), owner)
         decision = ConfirmationDecision(request_id=request.request_id, approved=True, decided_by="owner")
 
         result = await send_skill.send(draft(), owner, request=request, decision=decision)
@@ -264,7 +265,7 @@ class TestSendMailSkill:
         assert mail_tools.mailbox_of(limited).sent == ()
 
     async def test_records_an_approved_delivery(self, send_skill, audit, owner):
-        request = send_skill.build_confirmation_request(draft())
+        request = send_skill.build_confirmation_request(draft(), owner)
         decision = ConfirmationDecision(request_id=request.request_id, approved=True, decided_by="owner")
 
         await send_skill.send(draft(), owner, request=request, decision=decision)
@@ -274,7 +275,7 @@ class TestSendMailSkill:
         assert entry.confirmation_request_id == request.request_id
 
     async def test_records_a_declined_delivery(self, send_skill, audit, owner):
-        request = send_skill.build_confirmation_request(draft())
+        request = send_skill.build_confirmation_request(draft(), owner)
         decision = ConfirmationDecision(request_id=request.request_id, approved=False, decided_by="owner")
 
         with pytest.raises(ConfirmationRejectedError):
@@ -284,7 +285,7 @@ class TestSendMailSkill:
 
     @pytest.mark.security
     async def test_the_audit_trail_never_holds_message_content(self, send_skill, audit, owner):
-        request = send_skill.build_confirmation_request(draft())
+        request = send_skill.build_confirmation_request(draft(), owner)
         decision = ConfirmationDecision(request_id=request.request_id, approved=True, decided_by="owner")
 
         await send_skill.send(draft(), owner, request=request, decision=decision)
@@ -325,7 +326,7 @@ class TestMailManagementSkill:
         assert (await mail_tools.get_message("m1", owner)).is_read
 
     async def test_archives_a_message_after_approval(self, management_skill, mail_tools, owner):
-        request = management_skill.build_confirmation_request(MailToolName.ARCHIVE_MAIL, "m1")
+        request = management_skill.build_confirmation_request(MailToolName.ARCHIVE_MAIL, "m1", owner)
         decision = ConfirmationDecision(request_id=request.request_id, approved=True, decided_by="owner")
 
         await management_skill.archive("m1", owner, request=request, decision=decision)
@@ -334,7 +335,7 @@ class TestMailManagementSkill:
 
     async def test_applies_and_removes_a_label_after_approval(self, management_skill, mail_tools, owner):
         apply_request = management_skill.build_confirmation_request(
-            MailToolName.APPLY_LABEL, "m1", label_id="PROJECT"
+            MailToolName.APPLY_LABEL, "m1", owner, label_id="PROJECT"
         )
         await management_skill.apply_label(
             "m1",
@@ -347,7 +348,7 @@ class TestMailManagementSkill:
         assert "PROJECT" in (await mail_tools.get_message("m1", owner)).label_ids
 
         remove_request = management_skill.build_confirmation_request(
-            MailToolName.REMOVE_LABEL, "m1", label_id="PROJECT"
+            MailToolName.REMOVE_LABEL, "m1", owner, label_id="PROJECT"
         )
         await management_skill.remove_label(
             "m1",
@@ -387,7 +388,7 @@ class TestMailManagementSkill:
     async def test_records_a_failed_operation(self, management_skill, audit, owner):
         from ai_agent_lab.mcp.mail.errors import MailNotFoundError
 
-        request = management_skill.build_confirmation_request(MailToolName.ARCHIVE_MAIL, "absent")
+        request = management_skill.build_confirmation_request(MailToolName.ARCHIVE_MAIL, "absent", owner)
         decision = ConfirmationDecision(request_id=request.request_id, approved=True, decided_by="owner")
 
         with pytest.raises(MailNotFoundError):
@@ -400,6 +401,6 @@ class TestMailManagementSkill:
     @staticmethod
     async def _approve(skill, tool, message_id, user, **kwargs):
         """Build a request, approve it and run the matching operation."""
-        request = skill.build_confirmation_request(tool, message_id, **kwargs)
+        request = skill.build_confirmation_request(tool, message_id, user, **kwargs)
         decision = ConfirmationDecision(request_id=request.request_id, approved=True, decided_by=user.user_id)
         await skill.set_read_state(message_id, kwargs["is_read"], user, request=request, decision=decision)

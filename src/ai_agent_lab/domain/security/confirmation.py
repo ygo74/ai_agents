@@ -130,19 +130,44 @@ class ConfirmationDetail(BaseModel):
     value: str
 
 
+class ConfirmationKey(BaseModel):
+    """Identifies the operation a confirmation is about.
+
+    Presenting a confirmation and executing the operation happen in two
+    different places. The key lets both name the same thing, so the request the
+    user actually saw is the one that authorises the call and the one recorded
+    in the audit trail.
+    """
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    tool_name: str = Field(min_length=1)
+    target: str = ""
+
+
 class ConfirmationRequest(BaseModel):
     """What the user is being asked to approve.
 
     The details are meant for a human decision and may contain recipients or a
     subject. They are never written to logs or traces.
+
+    ``requested_for`` binds the request to the user it was built for, so an
+    answer collected for one mailbox cannot authorise an operation on another.
     """
 
     model_config = ConfigDict(frozen=True, extra="forbid")
 
     request_id: str = Field(min_length=1)
     operation: ToolOperationDescriptor
+    requested_for: str = Field(min_length=1)
     title: str = Field(min_length=1)
+    target: str = ""
     details: tuple[ConfirmationDetail, ...] = ()
+
+    @property
+    def key(self) -> ConfirmationKey:
+        """Operation this request is about."""
+        return ConfirmationKey(tool_name=self.operation.tool_name, target=self.target)
 
 
 class ConfirmationDecision(BaseModel):
@@ -156,6 +181,15 @@ class ConfirmationDecision(BaseModel):
     decided_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
+class ConfirmationOutcome(BaseModel):
+    """A confirmation request together with the answer it received."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    request: ConfirmationRequest
+    decision: ConfirmationDecision
+
+
 @runtime_checkable
 class ConfirmationAuthority(Protocol):
     """Whoever is able to answer a confirmation request.
@@ -167,6 +201,32 @@ class ConfirmationAuthority(Protocol):
 
     async def obtain(self, request: ConfirmationRequest, user: UserContext) -> ConfirmationDecision:
         """Return the user's answer to a confirmation request."""
+        ...
+
+
+@runtime_checkable
+class ConfirmationLedger(Protocol):
+    """Holds the answers already collected from a user.
+
+    An agent framework may collect the approval before it invokes the tool
+    function. The ledger carries that answer, and the exact request the user was
+    shown, across to the moment the operation runs.
+    """
+
+    def record(self, outcome: ConfirmationOutcome, user: UserContext) -> None:
+        """Store one answered confirmation for a user."""
+        ...
+
+    def take(self, key: ConfirmationKey, user: UserContext) -> ConfirmationOutcome | None:
+        """Consume the answer recorded for an operation, if any.
+
+        An answer is consumed once, so a single approval can never authorise
+        two executions.
+        """
+        ...
+
+    def discard(self, user: UserContext) -> None:
+        """Drop every answer recorded for a user."""
         ...
 
 
@@ -192,9 +252,11 @@ class ConfirmationGate:
         """Raise unless the operation may proceed.
 
         Raises:
+            AuthorizationError: the user lacks the required permission.
             ConfirmationRequiredError: no decision was supplied for a gated operation.
             ConfirmationRejectedError: the user declined the operation.
-            ConfirmationMismatchError: the decision answers a different request.
+            ConfirmationMismatchError: the decision answers a different request,
+                or the approval was not granted by this user.
         """
         user.require_permission(operation.required_permission)
 
@@ -207,5 +269,23 @@ class ConfirmationGate:
         if decision.request_id != request.request_id:
             raise ConfirmationMismatchError(request.request_id, decision.request_id)
 
+        self._ensure_same_user(request, decision, user)
+
         if not decision.approved:
             raise ConfirmationRejectedError(operation.tool_name)
+
+    @staticmethod
+    def _ensure_same_user(
+        request: ConfirmationRequest,
+        decision: ConfirmationDecision,
+        user: UserContext,
+    ) -> None:
+        """Refuse an approval that belongs to somebody else.
+
+        Without this check the last line of defence would let one user's answer
+        authorise an operation on another user's mailbox.
+        """
+        if request.requested_for != user.user_id:
+            raise ConfirmationMismatchError(request.request_id, f"request issued for {request.requested_for!r}")
+        if decision.decided_by != user.user_id:
+            raise ConfirmationMismatchError(request.request_id, f"decision made by {decision.decided_by!r}")

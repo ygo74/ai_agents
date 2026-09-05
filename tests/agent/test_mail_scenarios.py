@@ -71,7 +71,7 @@ class ConsoleRecorder:
         return "\n".join(self.lines)
 
 
-def build_session(script, *, answers=None, settings=None, dataset_root=None):
+def build_session(script, *, answers=None, settings=None, dataset_root=None, max_approval_rounds=25):
     """Assemble a Mail Agent session driven by a scripted model."""
     from pathlib import Path
 
@@ -91,7 +91,13 @@ def build_session(script, *, answers=None, settings=None, dataset_root=None):
         reasoner=reasoner,
         base_path=dataset_root or Path(__file__).resolve().parents[2],
     ).build(session_id="scenario")
-    session = MailAgentSession(runtime, console, ConsoleConfirmationPrompt(console), MafApprovalTranslator())
+    session = MailAgentSession(
+        runtime,
+        console,
+        ConsoleConfirmationPrompt(console),
+        MafApprovalTranslator(),
+        max_approval_rounds=max_approval_rounds,
+    )
     return session, runtime, client, recorder
 
 
@@ -267,6 +273,90 @@ class TestMail006PromptInjection:
 
         message = await runtime.mail_tools.get_message("m-alpha-1", runtime.user)
         assert not message.is_archived
+
+
+@pytest.mark.scenario
+@pytest.mark.security
+class TestApprovalStateNeverLeaksAcrossTurns:
+    """An answer given for one request must not authorise a later, unrelated one.
+
+    The framework keeps queued approval requests in the session, so a turn that
+    walks away from them would let the next turn replay them. These tests pin
+    the two properties that prevent it: an abandoned turn declines everything it
+    left pending, and the audited confirmation is the one the user actually saw.
+    """
+
+    async def test_an_abandoned_turn_delivers_nothing_and_leaves_no_answer_behind(self):
+        session, runtime, client, _recorder = build_session(
+            [
+                calls(ToolCall(DRAFT_MAIL_REPLY, {"thread_id": "t-alpha", "intent": "I agree"})),
+                says("Here is the draft."),
+            ],
+            answers=["y"] * 40,
+            max_approval_rounds=1,
+        )
+        await session.ask("Draft a reply saying I agree.")
+        reference = _draft_reference(client)
+        client.append(
+            calls(
+                ToolCall(MailToolName.SEND_MAIL.value, {"draft_reference": reference}),
+                ToolCall(MailToolName.ARCHIVE_MAIL.value, {"message_id": "m-alpha-1"}),
+                ToolCall(MailToolName.ARCHIVE_MAIL.value, {"message_id": "m-alpha-2"}),
+            ),
+            says("Done."),
+        )
+
+        answer = await session.ask("Send my reply and archive those two.")
+
+        assert "interrupted" in answer
+        assert runtime.mail_tools.mailbox_of(runtime.user).sent == ()
+        assert runtime.confirmation_ledger.pending_count(runtime.user) == 0
+        executed = [entry for entry in runtime.audit.records if entry.outcome is AuditOutcome.EXECUTED]
+        assert executed == []
+
+    async def test_a_later_turn_cannot_replay_an_abandoned_approval(self):
+        session, runtime, client, _recorder = build_session(
+            [
+                calls(ToolCall(DRAFT_MAIL_REPLY, {"thread_id": "t-alpha", "intent": "I agree"})),
+                says("Here is the draft."),
+            ],
+            answers=["y"] * 40,
+            max_approval_rounds=1,
+        )
+        await session.ask("Draft a reply saying I agree.")
+        reference = _draft_reference(client)
+        client.append(
+            calls(
+                ToolCall(MailToolName.SEND_MAIL.value, {"draft_reference": reference}),
+                ToolCall(MailToolName.ARCHIVE_MAIL.value, {"message_id": "m-alpha-1"}),
+                ToolCall(MailToolName.ARCHIVE_MAIL.value, {"message_id": "m-alpha-2"}),
+            ),
+            says("Done."),
+        )
+        await session.ask("Send my reply and archive those two.")
+
+        await session.ask("What is the weather?")
+
+        assert runtime.mail_tools.mailbox_of(runtime.user).sent == ()
+        assert not (await runtime.mail_tools.get_message("m-alpha-1", runtime.user)).is_archived
+        assert not (await runtime.mail_tools.get_message("m-alpha-2", runtime.user)).is_archived
+
+    async def test_the_audited_confirmation_is_the_one_the_user_answered(self):
+        session, runtime, _client, recorder = await _prepare_send(answers=["y"])
+
+        await session.ask("Send it.")
+
+        entry = runtime.audit.records_for(MailToolName.SEND_MAIL.value)[0]
+        assert entry.confirmation_request_id is not None
+        assert entry.confirmation_request_id == _shown_request_id(recorder)
+
+
+def _shown_request_id(recorder: ConsoleRecorder) -> str | None:
+    """The identifier of the request rendered to the user."""
+    for line in recorder.lines:
+        if line.strip().startswith("reference: "):
+            return line.split("reference: ", 1)[1].strip()
+    return None
 
 
 async def _prepare_send(*, answers: list[str]):

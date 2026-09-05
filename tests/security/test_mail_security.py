@@ -96,7 +96,7 @@ class TestCrossMailboxAccess:
 
     async def test_a_user_cannot_alter_another_mailbox(self, mail_tools, runner):
         skill = MailManagementSkill(mail_tools, mail_tools, runner)
-        request = skill.build_confirmation_request(MailToolName.ARCHIVE_MAIL, "m-alpha-1")
+        request = skill.build_confirmation_request(MailToolName.ARCHIVE_MAIL, "m-alpha-1", OTHER_USER)
         decision = ConfirmationDecision(request_id=request.request_id, approved=True, decided_by="other-user")
 
         with pytest.raises(MailToolError):
@@ -126,17 +126,44 @@ class TestConfirmationBypass:
     async def test_a_confirmation_cannot_be_replayed_across_operations(self, mail_tools, runner):
         management = MailManagementSkill(mail_tools, mail_tools, runner)
         send = SendMailSkill(mail_tools, mail_tools, runner)
-        harmless = management.build_confirmation_request(MailToolName.MARK_READ, "m-alpha-1", is_read=True)
+        harmless = management.build_confirmation_request(
+            MailToolName.MARK_READ, "m-alpha-1", LOCAL_USER, is_read=True
+        )
         approval = ConfirmationDecision(request_id=harmless.request_id, approved=True, decided_by="local-user")
 
         with pytest.raises(ConfirmationMismatchError):
-            await send.send(_draft(), LOCAL_USER, request=send.build_confirmation_request(_draft()), decision=approval)
+            await send.send(
+                _draft(),
+                LOCAL_USER,
+                request=send.build_confirmation_request(_draft(), LOCAL_USER),
+                decision=approval,
+            )
+
+        assert mail_tools.mailbox_of(LOCAL_USER).sent == ()
+
+    async def test_an_approval_granted_by_another_user_is_refused(self, mail_tools, runner):
+        skill = SendMailSkill(mail_tools, mail_tools, runner)
+        request = skill.build_confirmation_request(_draft(), LOCAL_USER)
+        borrowed = ConfirmationDecision(request_id=request.request_id, approved=True, decided_by="other-user")
+
+        with pytest.raises(ConfirmationMismatchError):
+            await skill.send(_draft(), LOCAL_USER, request=request, decision=borrowed)
+
+        assert mail_tools.mailbox_of(LOCAL_USER).sent == ()
+
+    async def test_a_request_issued_for_another_user_is_refused(self, mail_tools, runner):
+        skill = SendMailSkill(mail_tools, mail_tools, runner)
+        foreign = skill.build_confirmation_request(_draft(), OTHER_USER)
+        decision = ConfirmationDecision(request_id=foreign.request_id, approved=True, decided_by="local-user")
+
+        with pytest.raises(ConfirmationMismatchError):
+            await skill.send(_draft(), LOCAL_USER, request=foreign, decision=decision)
 
         assert mail_tools.mailbox_of(LOCAL_USER).sent == ()
 
     async def test_a_refusal_cannot_be_reinterpreted_as_an_approval(self, mail_tools, runner):
         skill = SendMailSkill(mail_tools, mail_tools, runner)
-        request = skill.build_confirmation_request(_draft())
+        request = skill.build_confirmation_request(_draft(), LOCAL_USER)
         refusal = ConfirmationDecision(request_id=request.request_id, approved=False, decided_by="local-user")
 
         with pytest.raises(ConfirmationRejectedError):
@@ -180,7 +207,7 @@ class TestDataLeakage:
 
     async def test_the_audit_trail_holds_no_message_content(self, mail_tools, runner, audit):
         skill = SendMailSkill(mail_tools, mail_tools, runner)
-        request = skill.build_confirmation_request(_draft())
+        request = skill.build_confirmation_request(_draft(), LOCAL_USER)
         decision = ConfirmationDecision(request_id=request.request_id, approved=True, decided_by="local-user")
 
         await skill.send(_draft(), LOCAL_USER, request=request, decision=decision)
@@ -192,7 +219,7 @@ class TestDataLeakage:
 
     async def test_the_audit_log_holds_no_message_content(self, mail_tools, runner, caplog):
         skill = SendMailSkill(mail_tools, mail_tools, runner)
-        request = skill.build_confirmation_request(_draft())
+        request = skill.build_confirmation_request(_draft(), LOCAL_USER)
         decision = ConfirmationDecision(request_id=request.request_id, approved=True, decided_by="local-user")
 
         with caplog.at_level(logging.INFO, logger="ai_agent_lab.audit"):
@@ -205,7 +232,7 @@ class TestDataLeakage:
 
     async def test_an_audit_record_still_states_what_happened(self, mail_tools, runner, audit):
         skill = SendMailSkill(mail_tools, mail_tools, runner)
-        request = skill.build_confirmation_request(_draft())
+        request = skill.build_confirmation_request(_draft(), LOCAL_USER)
         decision = ConfirmationDecision(request_id=request.request_id, approved=True, decided_by="local-user")
 
         await skill.send(_draft(), LOCAL_USER, request=request, decision=decision)

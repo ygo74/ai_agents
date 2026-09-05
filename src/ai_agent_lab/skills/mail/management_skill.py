@@ -45,9 +45,11 @@ class MailManagementSkill:
         self,
         tool: MailToolName,
         message_id: str,
+        user: UserContext,
         *,
         label_id: str | None = None,
         is_read: bool | None = None,
+        target: str = "",
     ) -> ConfirmationRequest:
         """Describe a housekeeping operation so the user can approve it."""
         details = [ConfirmationDetail(label="Message", value=message_id)]
@@ -55,7 +57,13 @@ class MailManagementSkill:
             details.append(ConfirmationDetail(label="Label", value=label_id))
         if is_read is not None:
             details.append(ConfirmationDetail(label="New state", value="read" if is_read else "unread"))
-        return self._runner.build_confirmation_request(tool, title=_TITLES[tool], details=details)
+        return self._runner.build_confirmation_request(
+            tool,
+            user,
+            _TITLES[tool],
+            target=target or message_id,
+            details=details,
+        )
 
     async def set_read_state(
         self,

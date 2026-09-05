@@ -1,40 +1,32 @@
-"""Confirmation authority used when the framework already collected the answer.
+"""Confirmation authority for a framework that collects approvals up front.
 
-Microsoft Agent Framework invokes a gated tool function only after the user
-approved the call. By the time a skill asks its authority, the answer is
-therefore known.
+Microsoft Agent Framework suspends a gated tool call and asks the host before it
+invokes the tool function. The host records the answer, together with the exact
+request the user saw, in the confirmation ledger. By the time a skill runs, the
+broker finds that answer and never reaches an authority at all.
 
-The class stays explicit about that assumption rather than hiding it: it is
-built on the same confirmation policy the adapter used to decide which tools to
-register as gated, and refuses to vouch for anything that policy would not have
-suspended. A registration mistake fails loudly instead of silently turning into
-an unattended approval.
+Reaching this authority therefore means something went wrong: a capability was
+gated by the policy but was not suspended by the framework, or its confirmation
+was consumed by a different call. Rather than approve on the framework's behalf,
+it refuses. Failing closed keeps a registration mistake from turning into an
+unattended send.
 """
 
 from __future__ import annotations
 
-from ai_agent_lab.domain.security.confirmation import (
-    ConfirmationDecision,
-    ConfirmationPolicy,
-    ConfirmationRequest,
-)
+from ai_agent_lab.domain.security.confirmation import ConfirmationDecision, ConfirmationRequest
 from ai_agent_lab.domain.security.context import UserContext
 from ai_agent_lab.domain.security.errors import ConfirmationRequiredError
 
 
-class FrameworkApprovalAuthority:
-    """Reports the approval the agent framework already obtained."""
-
-    def __init__(self, policy: ConfirmationPolicy) -> None:
-        self._policy = policy
+class UnattendedApprovalAuthority:
+    """Refuses to answer on behalf of an absent user."""
 
     async def obtain(self, request: ConfirmationRequest, user: UserContext) -> ConfirmationDecision:
-        """Return the decision for a capability the framework gated."""
-        if not self._policy.requires_confirmation(request.operation, user):
-            raise ConfirmationRequiredError(request.operation.tool_name)
-        return ConfirmationDecision(
-            request_id=request.request_id,
-            approved=True,
-            decided_by=user.user_id,
-        )
+        """Never approve: no human answered this request.
 
+        Raises:
+            ConfirmationRequiredError: always.
+        """
+        del user
+        raise ConfirmationRequiredError(request.operation.tool_name)

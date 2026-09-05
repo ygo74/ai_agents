@@ -55,6 +55,7 @@ class ConsoleConfirmationPrompt:
         self._console.write()
         self._console.write(f"[confirmation] {request.title}")
         self._console.write(f"  operation: {request.operation.tool_name} ({request.operation.risk_level.value} risk)")
+        self._console.write(f"  reference: {request.request_id}")
         for detail in request.details:
             self._console.write(f"  {detail.label}: {self._indent(detail.value)}")
         answer = self._console.prompt("  approve? [y/N] ").strip().casefold()

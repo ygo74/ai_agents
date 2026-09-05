@@ -31,12 +31,13 @@ from ai_agent_lab.domain.security.confirmation import (
 )
 from ai_agent_lab.domain.security.context import Permission, UserContext
 from ai_agent_lab.frameworks.microsoft_agent_framework.agent_factory import MafAgentFactory
-from ai_agent_lab.frameworks.microsoft_agent_framework.authority import FrameworkApprovalAuthority
+from ai_agent_lab.frameworks.microsoft_agent_framework.authority import UnattendedApprovalAuthority
 from ai_agent_lab.frameworks.microsoft_agent_framework.reasoner import MafTextReasoner
 from ai_agent_lab.frameworks.microsoft_agent_framework.tool_adapter import SkillToolAdapter
 from ai_agent_lab.infrastructure.config.mail_tools_provider import MailToolsProvider
 from ai_agent_lab.infrastructure.config.mailbox_directory import ConfiguredMailboxOwnerDirectory
 from ai_agent_lab.infrastructure.config.settings import MailAgentSettings
+from ai_agent_lab.infrastructure.inmemory.confirmation_ledger import InMemoryConfirmationLedger
 from ai_agent_lab.infrastructure.inmemory.dataset import MailDatasetLoader
 from ai_agent_lab.infrastructure.inmemory.draft_store import InMemoryDraftStore
 from ai_agent_lab.infrastructure.observability.audit import InMemoryAuditTrail, LoggingAuditTrail
@@ -55,6 +56,7 @@ class MailAgentRuntime:
     agent: Agent
     skills: MailSkills
     presenter: MailConfirmationPresenter
+    confirmation_ledger: InMemoryConfirmationLedger
     audit: InMemoryAuditTrail
     mail_tools: MailTools
 
@@ -97,7 +99,8 @@ class MailAgentCompositionRoot:
         ).build()
 
         draft_store = InMemoryDraftStore()
-        definition = self._definition(catalog, skills, draft_store, policy)
+        ledger = InMemoryConfirmationLedger()
+        definition = self._definition(catalog, skills, draft_store, ledger)
         adapter = SkillToolAdapter(MailToolResultRenderer(), policy)
 
         return MailAgentRuntime(
@@ -106,6 +109,7 @@ class MailAgentCompositionRoot:
             agent=MafAgentFactory(self._chat_client, adapter).build(definition, user),
             skills=skills,
             presenter=MailConfirmationPresenter(skills, draft_store),
+            confirmation_ledger=ledger,
             audit=audit,
             mail_tools=mail_tools,
         )
@@ -115,10 +119,10 @@ class MailAgentCompositionRoot:
         catalog: MailToolCatalog,
         skills: MailSkills,
         draft_store: InMemoryDraftStore,
-        policy: ConfirmationPolicy,
+        ledger: InMemoryConfirmationLedger,
     ) -> AgentDefinition:
         """Build the framework-independent definition of the agent."""
-        broker = ConfirmationBroker(FrameworkApprovalAuthority(policy))
+        broker = ConfirmationBroker(UnattendedApprovalAuthority(), ledger)
         read_capabilities = MailReadCapabilities(
             catalog,
             skills.search,

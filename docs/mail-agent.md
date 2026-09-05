@@ -77,6 +77,43 @@ Two independent guards, so the rule survives a change of orchestration:
    `ConfirmationRequiredError` without a valid decision. A skill invoked from a
    script, a test or another framework is gated just the same.
 
+### One request, from the prompt to the audit trail
+
+The request the user reads is the request that authorises the call and the
+request recorded in the audit trail. It travels through a `ConfirmationLedger`,
+keyed by capability and target and scoped to its owner:
+
+```text
+framework suspends send_mail(draft_reference=X)
+        -> presenter builds request R (recipients, subject, body)
+        -> console shows R, user answers
+        -> ledger records (R, decision) for this user
+        -> framework resumes and invokes the tool
+        -> broker takes (R, decision) from the ledger
+        -> ConfirmationGate enforces R, audit records R.request_id
+```
+
+An entry is consumed once, so one approval can never authorise two executions,
+and it is scoped to a user, so it can never authorise an operation on another
+mailbox. When nothing was recorded, `UnattendedApprovalAuthority` refuses rather
+than approving on the framework's behalf.
+
+`ConfirmationGate` additionally checks that the request was issued for the
+calling user and that the decision was made by them. An answer collected for one
+mailbox cannot authorise anything in another.
+
+### Interrupted turns
+
+The framework does not run a batch of gated calls until every one of them has
+been answered, and it keeps the answers already given in the session. A turn
+that simply walked away from a long batch would let the next, unrelated turn
+complete it and execute calls the user approved under a different premise.
+
+When a turn exceeds its approval budget, the session therefore drops the
+recorded answers first and only then refuses what is left. The batch completes
+with no decision available, the domain gate refuses every call, and nothing is
+executed. This is covered by `tests/agent/test_mail_scenarios.py`.
+
 ### Configuring it
 
 The policy is data driven and resolved per user:

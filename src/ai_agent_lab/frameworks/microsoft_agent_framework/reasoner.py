@@ -59,8 +59,18 @@ class MafTextReasoner:
         response: ChatResponse[ReasoningOutputT],
         response_model: type[ReasoningOutputT],
     ) -> ReasoningOutputT:
-        """Validate the structured answer produced by the model."""
-        value = response.value
+        """Validate the structured answer produced by the model.
+
+        ``ChatResponse.value`` parses lazily and raises when the answer does not
+        match the requested shape, so reading it belongs inside the guarded
+        block. The failure is reported without echoing the offending text: it is
+        derived from mail content and would otherwise reach logs and traces
+        through the framework's error handling.
+        """
+        try:
+            value = response.value
+        except ValueError:
+            value = None
         if isinstance(value, response_model):
             return value
         if not response.text:

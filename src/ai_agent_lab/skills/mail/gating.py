@@ -51,14 +51,19 @@ class GatedMailOperationRunner:
     def build_confirmation_request(
         self,
         tool: MailToolName,
+        user: UserContext,
         title: str,
+        *,
+        target: str = "",
         details: Sequence[ConfirmationDetail] = (),
     ) -> ConfirmationRequest:
         """Build the request shown to the user before they decide."""
         return ConfirmationRequest(
             request_id=f"cfm-{uuid.uuid4().hex[:12]}",
             operation=self._catalog.descriptor(tool),
+            requested_for=user.user_id,
             title=title,
+            target=target,
             details=tuple(details),
         )
 

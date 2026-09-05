@@ -39,7 +39,13 @@ class SendMailSkill:
         """Whether delivering a message currently needs an approval."""
         return self._runner.requires_confirmation(MailToolName.SEND_MAIL, user)
 
-    def build_confirmation_request(self, draft: MailDraft) -> ConfirmationRequest:
+    def build_confirmation_request(
+        self,
+        draft: MailDraft,
+        user: UserContext,
+        *,
+        target: str = "",
+    ) -> ConfirmationRequest:
         """Describe the delivery so the user can decide with full knowledge.
 
         The details reach a human, never a log or a trace.
@@ -53,7 +59,9 @@ class SendMailSkill:
             details.insert(1, ConfirmationDetail(label="Cc", value=", ".join(str(a) for a in draft.cc)))
         return self._runner.build_confirmation_request(
             MailToolName.SEND_MAIL,
-            title="Send this email?",
+            user,
+            "Send this email?",
+            target=target,
             details=details,
         )
 

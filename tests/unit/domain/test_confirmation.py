@@ -123,9 +123,18 @@ class TestConfiguredConfirmationPolicy:
         assert policy.requires_confirmation(ARCHIVE_OP, owner)
 
 
-def request_for(operation: ToolOperationDescriptor, request_id: str = "req-1") -> ConfirmationRequest:
+def request_for(
+    operation: ToolOperationDescriptor,
+    request_id: str = "req-1",
+    requested_for: str = "owner",
+) -> ConfirmationRequest:
     """Build a confirmation request for an operation."""
-    return ConfirmationRequest(request_id=request_id, operation=operation, title="Confirm")
+    return ConfirmationRequest(
+        request_id=request_id,
+        operation=operation,
+        requested_for=requested_for,
+        title="Confirm",
+    )
 
 
 class TestConfirmationGate:
@@ -155,6 +164,22 @@ class TestConfirmationGate:
         with pytest.raises(ConfirmationMismatchError):
             ConfirmationGate(policy_with()).ensure_approved(SEND_OP, owner, request, replayed)
 
+    @pytest.mark.security
+    def test_rejects_an_approval_granted_by_another_user(self, owner):
+        request = request_for(SEND_OP)
+        borrowed = ConfirmationDecision(request_id="req-1", approved=True, decided_by="somebody-else")
+
+        with pytest.raises(ConfirmationMismatchError):
+            ConfirmationGate(policy_with()).ensure_approved(SEND_OP, owner, request, borrowed)
+
+    @pytest.mark.security
+    def test_rejects_a_request_issued_for_another_user(self, owner):
+        request = request_for(SEND_OP, requested_for="somebody-else")
+        decision = ConfirmationDecision(request_id="req-1", approved=True, decided_by="owner")
+
+        with pytest.raises(ConfirmationMismatchError):
+            ConfirmationGate(policy_with()).ensure_approved(SEND_OP, owner, request, decision)
+
     def test_allows_an_approved_operation(self, owner):
         request = request_for(SEND_OP)
         decision = ConfirmationDecision(request_id="req-1", approved=True, decided_by="owner")
@@ -163,7 +188,7 @@ class TestConfirmationGate:
 
     @pytest.mark.security
     def test_rejects_a_user_lacking_the_permission(self, reader):
-        request = request_for(SEND_OP)
+        request = request_for(SEND_OP, requested_for="reader")
         decision = ConfirmationDecision(request_id="req-1", approved=True, decided_by="reader")
 
         with pytest.raises(AuthorizationError):

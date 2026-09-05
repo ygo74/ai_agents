@@ -44,6 +44,16 @@ DRAFT_MAIL_REPLY = "draft_mail_reply"
 
 GatedCall = Callable[[ConfirmationRequest | None, ConfirmationDecision | None], Awaitable[None]]
 
+
+def housekeeping_target(message_id: str, label_id: str | None) -> str:
+    """Identify the object a housekeeping confirmation is about.
+
+    The presenter and the capability must name the same target, otherwise the
+    answer collected from the user could not be matched to the operation it was
+    given for.
+    """
+    return message_id if label_id is None else f"{message_id}:{label_id}"
+
 _DRAFT_REPLY_OPERATION = ToolOperationDescriptor(
     tool_name=DRAFT_MAIL_REPLY,
     operation_type=OperationType.READ,
@@ -119,7 +129,7 @@ class MailWriteCapabilities:
             draft = self._draft_store.get(reference, user)
             request, decision = await self._broker.resolve(
                 required=self._send_skill.requires_confirmation(user),
-                request=self._send_skill.build_confirmation_request(draft),
+                build_request=lambda: self._send_skill.build_confirmation_request(draft, user, target=reference),
                 user=user,
             )
             result = await self._send_skill.send(draft, user, request=request, decision=decision)
@@ -241,8 +251,13 @@ class MailWriteCapabilities:
         """Confirm if needed, run the operation, and acknowledge it."""
         request, decision = await self._broker.resolve(
             required=self._management_skill.requires_confirmation(tool, user),
-            request=self._management_skill.build_confirmation_request(
-                tool, message_id, label_id=label_id, is_read=is_read
+            build_request=lambda: self._management_skill.build_confirmation_request(
+                tool,
+                message_id,
+                user,
+                label_id=label_id,
+                is_read=is_read,
+                target=housekeeping_target(message_id, label_id),
             ),
             user=user,
         )

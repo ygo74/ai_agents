@@ -13,6 +13,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Any
 
+from ai_agent_lab.agents.mail.write_capabilities import housekeeping_target
 from ai_agent_lab.application.mail.skills_factory import MailSkills
 from ai_agent_lab.domain.errors import DomainError
 from ai_agent_lab.domain.mail.ports import DraftStore
@@ -53,6 +54,10 @@ class MailConfirmationPresenter:
     ) -> ConfirmationRequest:
         """Build the confirmation request shown for a suspended tool call.
 
+        The request returned here is the one that will authorise the operation
+        and appear in the audit trail, so what the user reads is exactly what
+        gets enforced and recorded.
+
         Raises:
             UnknownGatedToolError: the capability cannot be described. Failing
                 here is deliberate: approving an operation nobody can explain
@@ -62,23 +67,32 @@ class MailConfirmationPresenter:
         if tool is MailToolName.SEND_MAIL:
             return self._present_send(arguments, user)
         if tool in _HOUSEKEEPING:
-            return self._present_housekeeping(tool, arguments)
+            return self._present_housekeeping(tool, arguments, user)
         raise UnknownGatedToolError(tool_name)
 
     def _present_send(self, arguments: Mapping[str, Any], user: UserContext) -> ConfirmationRequest:
         """Resolve the draft so the user sees what would actually be delivered."""
         reference = str(arguments.get("draft_reference", ""))
         draft = self._draft_store.get(reference, user)
-        return self._skills.send.build_confirmation_request(draft)
+        return self._skills.send.build_confirmation_request(draft, user, target=reference)
 
-    def _present_housekeeping(self, tool: MailToolName, arguments: Mapping[str, Any]) -> ConfirmationRequest:
+    def _present_housekeeping(
+        self,
+        tool: MailToolName,
+        arguments: Mapping[str, Any],
+        user: UserContext,
+    ) -> ConfirmationRequest:
         """Describe a mailbox change in the user's terms."""
+        message_id = str(arguments.get("message_id", ""))
+        label_id = self._optional_str(arguments.get("label_id"))
         is_read = arguments.get("is_read")
         return self._skills.management.build_confirmation_request(
             tool,
-            str(arguments.get("message_id", "")),
-            label_id=self._optional_str(arguments.get("label_id")),
+            message_id,
+            user,
+            label_id=label_id,
             is_read=is_read if isinstance(is_read, bool) else None,
+            target=housekeeping_target(message_id, label_id),
         )
 
     @staticmethod
