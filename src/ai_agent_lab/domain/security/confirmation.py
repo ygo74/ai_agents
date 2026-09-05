@@ -156,6 +156,20 @@ class ConfirmationDecision(BaseModel):
     decided_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
+@runtime_checkable
+class ConfirmationAuthority(Protocol):
+    """Whoever is able to answer a confirmation request.
+
+    Implementations reach the human in whatever way the runtime allows: a
+    console prompt, an agent framework approval flow, a chat card. The decision
+    always comes from outside the language model.
+    """
+
+    async def obtain(self, request: ConfirmationRequest, user: UserContext) -> ConfirmationDecision:
+        """Return the user's answer to a confirmation request."""
+        ...
+
+
 class ConfirmationGate:
     """Second, framework-independent enforcement of the confirmation policy.
 
