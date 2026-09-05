@@ -97,7 +97,7 @@ class MailAgentCompositionRoot:
         ).build()
 
         draft_store = InMemoryDraftStore()
-        definition = self._definition(catalog, skills, draft_store, policy, user)
+        definition = self._definition(catalog, skills, draft_store, policy)
         adapter = SkillToolAdapter(MailToolResultRenderer(), policy)
 
         return MailAgentRuntime(
@@ -105,7 +105,7 @@ class MailAgentCompositionRoot:
             definition=definition,
             agent=MafAgentFactory(self._chat_client, adapter).build(definition, user),
             skills=skills,
-            presenter=MailConfirmationPresenter(skills, draft_store, catalog),
+            presenter=MailConfirmationPresenter(skills, draft_store),
             audit=audit,
             mail_tools=mail_tools,
         )
@@ -116,10 +116,9 @@ class MailAgentCompositionRoot:
         skills: MailSkills,
         draft_store: InMemoryDraftStore,
         policy: ConfirmationPolicy,
-        user: UserContext,
     ) -> AgentDefinition:
         """Build the framework-independent definition of the agent."""
-        broker = ConfirmationBroker(FrameworkApprovalAuthority(self._gated_tools(catalog, policy, user)))
+        broker = ConfirmationBroker(FrameworkApprovalAuthority(policy))
         read_capabilities = MailReadCapabilities(
             catalog,
             skills.search,
@@ -127,6 +126,7 @@ class MailAgentCompositionRoot:
             skills.summary,
             skills.classification,
             skills.actions,
+            skills.management,
             MailSearchRequestFactory(),
         )
         write_capabilities = MailWriteCapabilities(
@@ -138,17 +138,6 @@ class MailAgentCompositionRoot:
             broker,
         )
         return MailAgentDefinitionFactory(read_capabilities, write_capabilities).build()
-
-    @staticmethod
-    def _gated_tools(
-        catalog: MailToolCatalog,
-        policy: ConfirmationPolicy,
-        user: UserContext,
-    ) -> frozenset[str]:
-        """Capabilities the framework will suspend for this user."""
-        return frozenset(
-            name.value for name in catalog.write_tools() if policy.requires_confirmation(catalog.descriptor(name), user)
-        )
 
     def _policy(self) -> ConfirmationPolicy:
         """Build the confirmation policy from the configured preferences."""

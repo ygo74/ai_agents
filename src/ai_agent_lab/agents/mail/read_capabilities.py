@@ -6,12 +6,17 @@ from pydantic import BaseModel
 
 from ai_agent_lab.agents.definition import SkillDescriptor
 from ai_agent_lab.agents.mail.converters import MailSearchRequestFactory
-from ai_agent_lab.agents.mail.results import MailActionsResult, MailClassificationsResult
+from ai_agent_lab.agents.mail.results import (
+    MailActionsResult,
+    MailClassificationsResult,
+    MailLabelsResult,
+)
 from ai_agent_lab.agents.mail.tool_inputs import (
     ClassifyMailInput,
     ExtractActionsInput,
     MessageInput,
     MessageOrThreadInput,
+    NoInput,
     SearchMailInput,
     ThreadInput,
 )
@@ -26,6 +31,7 @@ from ai_agent_lab.mcp.mail.catalog import MailToolCatalog, MailToolName
 from ai_agent_lab.skills.mail.action_extraction_skill import MailActionExtractionSkill
 from ai_agent_lab.skills.mail.classification_skill import MailClassificationSkill
 from ai_agent_lab.skills.mail.errors import EmptyMailSelectionError
+from ai_agent_lab.skills.mail.management_skill import MailManagementSkill
 from ai_agent_lab.skills.mail.search_skill import MailReadSkill, MailSearchSkill
 from ai_agent_lab.skills.mail.summary_skill import MailSummarySkill
 
@@ -56,6 +62,7 @@ class MailReadCapabilities:
         summary_skill: MailSummarySkill,
         classification_skill: MailClassificationSkill,
         action_skill: MailActionExtractionSkill,
+        management_skill: MailManagementSkill,
         search_request_factory: MailSearchRequestFactory,
     ) -> None:
         self._catalog = catalog
@@ -64,6 +71,7 @@ class MailReadCapabilities:
         self._summary_skill = summary_skill
         self._classification_skill = classification_skill
         self._action_skill = action_skill
+        self._management_skill = management_skill
         self._search_request_factory = search_request_factory
 
     def descriptors(self) -> tuple[SkillDescriptor, ...]:
@@ -72,9 +80,29 @@ class MailReadCapabilities:
             self._search(),
             self._read_message(),
             self._read_thread(),
+            self._list_labels(),
             self._summarise(),
             self._classify(),
             self._extract_actions(),
+        )
+
+    def _list_labels(self) -> SkillDescriptor:
+        """List the labels available in the mailbox.
+
+        Applying or removing a label needs an identifier, so the model must be
+        able to discover them instead of guessing.
+        """
+
+        async def invoke(payload: BaseModel, user: UserContext) -> BaseModel:
+            NoInput.model_validate(payload)
+            return MailLabelsResult(labels=await self._management_skill.list_labels(user))
+
+        return SkillDescriptor(
+            tool_name=MailToolName.LIST_LABELS.value,
+            description=self._catalog.description(MailToolName.LIST_LABELS),
+            input_model=NoInput,
+            operation=self._catalog.descriptor(MailToolName.LIST_LABELS),
+            invoke=invoke,
         )
 
     def _search(self) -> SkillDescriptor:

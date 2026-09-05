@@ -62,6 +62,10 @@ class AgentDefinition:
                 return descriptor
         raise KeyError(f"agent {self.name!r} exposes no skill named {tool_name!r}")
 
-    def gated_skills(self) -> tuple[SkillDescriptor, ...]:
-        """Capabilities that change external state."""
+    def write_skills(self) -> tuple[SkillDescriptor, ...]:
+        """Capabilities that change external state.
+
+        Whether such a capability is actually gated depends on the confirmation
+        policy evaluated for a given user, which lives outside the definition.
+        """
         return tuple(descriptor for descriptor in self.skills if descriptor.operation.is_write)

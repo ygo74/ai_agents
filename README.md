@@ -1,29 +1,110 @@
-This repository is an enterprise AI agent laboratory.
+# AI Agent Lab
 
-Its purpose is to evaluate agentic AI frameworks and establish the technical foundations for a future enterprise agent platform.
+An enterprise AI agent laboratory.
 
-The first frameworks evaluated are:
+Its purpose is to evaluate agentic AI frameworks and to establish the technical
+foundations of a future enterprise agent platform.
 
-Microsoft Agent Framework
-LangChain
-CrewAI
+Frameworks under evaluation:
 
-The repository implements several enterprise agents, including:
+- Microsoft Agent Framework
+- LangChain
+- CrewAI
 
-Mail Agent
-Memory Agent
-Jira Agent
-Confluence Agent
-On-Prem RAG Agent
-Internet Research Agent
-IT Project Agent
+Agents planned: Mail, Memory, Jira, Confluence, On-Prem RAG, Internet Research,
+IT Project.
 
-Agents do not implement direct integrations with enterprise systems.
+## The rule that shapes everything
 
-All interactions with external systems must happen through tools exposed by MCP servers.
+Agents never integrate with enterprise systems. Every interaction goes through
+tools exposed by MCP servers:
 
-Agents may use reusable Skills to perform domain-specific reasoning and processing.
+```text
+User -> Agent -> Skill -> MCP Tool -> MCP Server -> Enterprise system
+```
 
-The same domain Skills and MCP tools must be reusable across the different agent frameworks wherever technically possible.
+Domain models, skills, MCP contracts, scenarios and security policies are shared
+across frameworks. Only orchestration adapters differ. The point is to compare
+frameworks, not to build the same business logic three times.
 
-The purpose is to compare frameworks rather than to create three independent implementations of the same business logic.
+## Status
+
+| Agent | Framework | State |
+|---|---|---|
+| Mail Agent | Microsoft Agent Framework 1.17 | Working in mock mode. See [docs/mail-agent.md](./docs/mail-agent.md). |
+| Mail MCP server (Gmail) | - | Next deliverable. |
+| Mail Agent | LangChain, CrewAI | Not started. The skills are ready to be reused. |
+
+## Layout
+
+```text
+src/ai_agent_lab/
+  domain/          typed models, security primitives, reasoning ports
+  mcp/             MCP tool contracts and catalogues
+  skills/          reusable domain capabilities
+  agents/          framework-independent agent definitions
+  frameworks/      framework adapters (the only place importing a framework)
+  infrastructure/  MCP clients, in-memory doubles, config, observability
+  application/     composition root, CLI
+tests/             unit, contract, integration, agent, security, architecture
+data/mail/         deterministic mailbox datasets
+scenarios/mail/    reproducible agent scenarios
+docs/              architecture and design documents
+```
+
+Layer boundaries are enforced by `tests/architecture/test_layer_boundaries.py`.
+
+## Getting started
+
+Python 3.12 or later. One virtual environment per agent and per framework, so
+framework dependencies never leak into a comparison.
+
+```powershell
+py -3.12 -m venv .venvs\mail-agent-maf
+.\.venvs\mail-agent-maf\Scripts\python.exe -m pip install -e ".[maf,dev]"
+Copy-Item .env.example .env
+```
+
+The core distribution is framework free; framework dependencies come from
+extras (`.[maf]`).
+
+Run the Mail Agent against the local dataset - no Gmail, no mail credentials:
+
+```powershell
+$env:MAIL_AGENT_MODE = "mock"
+$env:OPENAI_API_KEY  = "<your key>"
+.\.venvs\mail-agent-maf\Scripts\python.exe -m ai_agent_lab.application.mail
+```
+
+Run the checks:
+
+```powershell
+.\.venvs\mail-agent-maf\Scripts\python.exe -m pytest tests -q
+.\.venvs\mail-agent-maf\Scripts\python.exe -m ruff check src tests
+.\.venvs\mail-agent-maf\Scripts\python.exe -m mypy
+```
+
+No test needs a network, an API key or a mailbox.
+
+## Documentation
+
+| Document | Content |
+|---|---|
+| [docs/architecture.md](./docs/architecture.md) | Layers, dependency rule, runtime modes. |
+| [docs/agent-design.md](./docs/agent-design.md) | What an agent is, framework adapters, confirmation model. |
+| [docs/mcp-design.md](./docs/mcp-design.md) | Tool contracts, tool surface, error translation. |
+| [docs/mail-agent.md](./docs/mail-agent.md) | The Mail Agent: capabilities, skills, security, how to run it. |
+
+## Security
+
+Security is an architectural concern, not a prompt.
+
+- Credentials never leave the infrastructure layer and never reach a prompt, a
+  log or a `UserContext`.
+- Everything retrieved from an MCP server is untrusted data and is fenced before
+  a model sees it, in reasoning prompts and in tool results alike.
+- Write operations pass a deterministic confirmation policy. A model can propose
+  an action; it never authorises one.
+- Every state-changing attempt is audited with identifiers only.
+
+Never commit a `.env`, a token or a credentials file.

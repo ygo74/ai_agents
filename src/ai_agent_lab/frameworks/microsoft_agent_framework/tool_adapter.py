@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
 from typing import Any, Literal
 
 from agent_framework import FunctionTool
@@ -49,14 +48,6 @@ class SkillToolAdapter:
             func=invoke,
         )
 
-    def gated_tool_names(self, definition: AgentDefinition, user: UserContext) -> frozenset[str]:
-        """Names of the capabilities the user will be asked to approve."""
-        return frozenset(
-            descriptor.tool_name
-            for descriptor in definition.skills
-            if self._policy.requires_confirmation(descriptor.operation, user)
-        )
-
     def _approval_mode(self, descriptor: SkillDescriptor, user: UserContext) -> ApprovalMode:
         """Map the confirmation policy onto the framework approval mode."""
         if self._policy.requires_confirmation(descriptor.operation, user):
@@ -89,8 +80,3 @@ class SkillToolAdapter:
             f"Reason ({type(error).__name__}): {error}\n"
             "Report this to the user. Do not retry with different arguments unless the user asks."
         )
-
-
-def tool_names(tools: Sequence[FunctionTool]) -> tuple[str, ...]:
-    """Names of a sequence of framework tools, for logging and assertions."""
-    return tuple(tool.name for tool in tools)

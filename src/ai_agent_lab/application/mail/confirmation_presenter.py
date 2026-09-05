@@ -18,7 +18,7 @@ from ai_agent_lab.domain.errors import DomainError
 from ai_agent_lab.domain.mail.ports import DraftStore
 from ai_agent_lab.domain.security.confirmation import ConfirmationRequest
 from ai_agent_lab.domain.security.context import UserContext
-from ai_agent_lab.mcp.mail.catalog import MailToolCatalog, MailToolName
+from ai_agent_lab.mcp.mail.catalog import MailToolName
 
 _HOUSEKEEPING = frozenset(
     {
@@ -41,10 +41,9 @@ class UnknownGatedToolError(DomainError):
 class MailConfirmationPresenter:
     """Turns a pending tool approval into something a human can judge."""
 
-    def __init__(self, skills: MailSkills, draft_store: DraftStore, catalog: MailToolCatalog) -> None:
+    def __init__(self, skills: MailSkills, draft_store: DraftStore) -> None:
         self._skills = skills
         self._draft_store = draft_store
-        self._catalog = catalog
 
     def present(
         self,
