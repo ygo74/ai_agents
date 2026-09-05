@@ -11,6 +11,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 
 import pytest
+from tests.conftest import make_message
 
 from ai_agent_lab.domain.mail.enums import MailSortOrder
 from ai_agent_lab.domain.mail.models import (
@@ -24,7 +25,6 @@ from ai_agent_lab.domain.security.untrusted import UntrustedOrigin, untrusted
 from ai_agent_lab.infrastructure.inmemory.mail_tools import InMemoryMailTools, Mailbox
 from ai_agent_lab.mcp.mail.contracts import MailTools
 from ai_agent_lab.mcp.mail.errors import MailAccessDeniedError, MailNotFoundError
-from tests.conftest import make_message
 
 OWNER = UserContext(user_id="owner", session_id="s1", permissions=frozenset(Permission))
 INTRUDER = UserContext(user_id="intruder", session_id="s2", permissions=frozenset(Permission))

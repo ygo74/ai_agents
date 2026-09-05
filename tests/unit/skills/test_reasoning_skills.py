@@ -159,7 +159,9 @@ class TestMailSummarySkill:
             await summary_skill.summarise_messages((), owner)
 
     @pytest.mark.security
-    async def test_untrusted_content_is_fenced_in_the_prompt(self, mail_tools, context_builder, mapper, envelope_builder):
+    async def test_untrusted_content_is_fenced_in_the_prompt(
+        self, mail_tools, context_builder, mapper, envelope_builder
+    ):
         scripted = reasoner({MailSummaryOutput: {**SUMMARY_ANSWER, "actions": []}}, envelope_builder)
         skill = MailSummarySkill(mail_tools, scripted, context_builder, mapper)
 

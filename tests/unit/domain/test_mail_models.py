@@ -6,6 +6,7 @@ from datetime import UTC, datetime
 
 import pytest
 from pydantic import ValidationError
+from tests.conftest import make_message, make_thread
 
 from ai_agent_lab.domain.mail.models import (
     EmailAddress,
@@ -14,7 +15,6 @@ from ai_agent_lab.domain.mail.models import (
     MailThread,
 )
 from ai_agent_lab.domain.security.untrusted import UntrustedOrigin, untrusted
-from tests.conftest import make_message, make_thread
 
 
 class TestEmailAddress:
@@ -37,7 +37,7 @@ class TestMailMessage:
 
     def test_rejects_naive_datetimes(self):
         with pytest.raises(ValidationError):
-            make_message(sent_at=datetime(2026, 9, 1, 10, 0))  # noqa: DTZ001
+            make_message(sent_at=datetime(2026, 9, 1, 10, 0))
 
     def test_normalises_datetimes_to_utc(self):
         message = make_message(sent_at=datetime(2026, 9, 1, 10, 0, tzinfo=UTC))

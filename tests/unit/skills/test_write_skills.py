@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import pytest
+from tests.conftest import make_message
 
 from ai_agent_lab.domain.mail.errors import NoReplyRecipientError
 from ai_agent_lab.domain.mail.models import EmailAddress, MailDraft
@@ -31,7 +32,6 @@ from ai_agent_lab.skills.mail.gating import GatedMailOperationRunner
 from ai_agent_lab.skills.mail.management_skill import MailManagementSkill
 from ai_agent_lab.skills.mail.reply_skill import MailReplySkill, ReplyRecipientPlanner
 from ai_agent_lab.skills.mail.send_skill import SendMailSkill
-from tests.conftest import make_message
 
 REPLY_ANSWER = {"subject": "Re: Project Alpha - architecture review", "body": "Agreed. I will review it tomorrow."}
 

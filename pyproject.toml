@@ -84,7 +84,9 @@ ignore = [
 max-complexity = 8
 
 [tool.ruff.lint.per-file-ignores]
-"tests/**" = ["S101", "ANN201", "ANN001", "ARG001", "ARG002"]
+# Tests assert, use fixtures with implicit types and reach into framework
+# internals to build doubles; strict production rules would add noise there.
+"tests/**" = ["S101", "ANN", "ARG", "SLF001", "PLC2701", "TRY"]
 
 [tool.mypy]
 python_version = "3.12"
