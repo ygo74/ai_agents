@@ -1,0 +1,99 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "ai-agent-lab"
+version = "0.1.0"
+description = "Enterprise AI agent laboratory - Mail Agent proof of concept"
+readme = "README.md"
+requires-python = ">=3.12"
+
+# The core distribution stays framework-free on purpose: domain models, skills
+# and MCP contracts must never depend on an agentic framework.
+dependencies = [
+    "pydantic>=2,<3",
+    "pydantic-settings>=2,<3",
+]
+
+[project.optional-dependencies]
+# Microsoft Agent Framework adapter (src/frameworks/microsoft_agent_framework).
+maf = [
+    "agent-framework-core>=1.17,<2",
+    "agent-framework-openai>=1.14,<2",
+    "mcp>=1.24,<2",
+]
+dev = [
+    "pytest>=8,<9",
+    "pytest-asyncio>=0.24,<2",
+    "ruff>=0.9",
+    "mypy>=1.14",
+]
+
+[project.scripts]
+mail-agent = "ai_agent_lab.application.mail.cli_entrypoint:main"
+
+# The architecture layers (agents, skills, mcp, domain, application,
+# infrastructure, frameworks) live under a single `ai_agent_lab` root package.
+# Exposing them as top-level modules would shadow third-party distributions,
+# most notably `mcp`.
+[tool.hatch.build.targets.wheel]
+packages = ["src/ai_agent_lab"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+addopts = "-q --strict-markers"
+markers = [
+    "scenario: reproducible agent scenario test",
+    "security: security-focused test",
+]
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = [
+    "E", "W",    # pycodestyle
+    "F",         # pyflakes
+    "I",         # isort
+    "N",         # pep8-naming
+    "UP",        # pyupgrade
+    "B",         # flake8-bugbear
+    "C4",        # comprehensions
+    "SIM",       # simplify
+    "RET",       # early return
+    "ARG",       # unused arguments
+    "PTH",       # pathlib
+    "TID",       # tidy imports
+    "C90",       # mccabe complexity
+    "ANN",       # type annotations
+    "S",         # bandit security
+    "BLE",       # blind except
+    "TRY",       # exception handling
+    "RUF",
+]
+ignore = [
+    "ANN401",  # justified `Any` is reviewed case by case
+    "TRY003",  # explicit messages in raise are readable
+]
+
+[tool.ruff.lint.mccabe]
+max-complexity = 8
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S101", "ANN201", "ANN001", "ARG001", "ARG002"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+warn_unreachable = true
+disallow_any_explicit = false
+mypy_path = "src"
+packages = ["ai_agent_lab"]
+
+[[tool.mypy.overrides]]
+module = "tests.*"
+disallow_untyped_defs = false
