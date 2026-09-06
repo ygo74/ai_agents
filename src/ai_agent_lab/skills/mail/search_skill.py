@@ -13,7 +13,8 @@ from ai_agent_lab.domain.mail.models import (
     MailSearchResult,
     MailThread,
 )
-from ai_agent_lab.domain.security.context import Permission, UserContext
+from ai_agent_lab.domain.mail.permissions import MailPermission
+from ai_agent_lab.domain.security.context import UserContext
 from ai_agent_lab.mcp.mail.contracts import MailReadTools
 
 
@@ -30,7 +31,7 @@ class MailSearchSkill:
 
     async def search(self, request: MailSearchRequest, user: UserContext) -> MailSearchResult:
         """Return the headers matching the request."""
-        user.require_permission(Permission.MAIL_READ)
+        user.require_permission(MailPermission.READ)
         return await self._mail_tools.search(request, user)
 
     async def search_unread(self, user: UserContext, *, limit: int = 20) -> MailSearchResult:
@@ -46,16 +47,16 @@ class MailReadSkill:
 
     async def read_message(self, message_id: str, user: UserContext) -> MailMessage:
         """Return one complete message."""
-        user.require_permission(Permission.MAIL_READ)
+        user.require_permission(MailPermission.READ)
         return await self._mail_tools.get_message(message_id, user)
 
     async def read_thread(self, thread_id: str, user: UserContext) -> MailThread:
         """Return a whole conversation, oldest message first."""
-        user.require_permission(Permission.MAIL_READ)
+        user.require_permission(MailPermission.READ)
         thread = await self._mail_tools.get_thread(thread_id, user)
         return thread.model_copy(update={"messages": thread.in_chronological_order()})
 
     async def read_messages(self, message_ids: tuple[str, ...], user: UserContext) -> tuple[MailMessage, ...]:
         """Return several messages, preserving the requested order."""
-        user.require_permission(Permission.MAIL_READ)
+        user.require_permission(MailPermission.READ)
         return tuple([await self._mail_tools.get_message(message_id, user) for message_id in message_ids])

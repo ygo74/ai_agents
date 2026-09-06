@@ -16,6 +16,10 @@ class MafTextReasoner:
 
     The prompt is assembled by the domain envelope builder, not here, so the
     untrusted-content fencing is identical whichever framework is in use.
+
+    ``temperature`` is omitted when it is ``None``. Reasoning models reject the
+    parameter outright, so sending it unconditionally would make every analysis
+    fail against such a deployment.
     """
 
     def __init__(
@@ -23,7 +27,7 @@ class MafTextReasoner:
         client: SupportsChatGetResponse,
         envelope_builder: PromptEnvelopeBuilder,
         *,
-        temperature: float = 0.0,
+        temperature: float | None = None,
     ) -> None:
         self._client = client
         self._envelope_builder = envelope_builder
@@ -45,7 +49,7 @@ class MafTextReasoner:
         response_model: type[ReasoningOutputT],
     ) -> ChatResponse[ReasoningOutputT]:
         """Call the chat client, translating transport failures."""
-        options = ChatOptions(response_format=response_model, temperature=self._temperature)
+        options = self._options(response_model)
         try:
             return cast(
                 ChatResponse[ReasoningOutputT],
@@ -53,6 +57,12 @@ class MafTextReasoner:
             )
         except Exception as error:
             raise ReasoningUnavailableError(f"the reasoning backend failed: {type(error).__name__}") from error
+
+    def _options(self, response_model: type[ReasoningOutputT]) -> ChatOptions[ReasoningOutputT]:
+        """Build the call options, omitting a temperature that was not asked for."""
+        if self._temperature is None:
+            return ChatOptions(response_format=response_model)
+        return ChatOptions(response_format=response_model, temperature=self._temperature)
 
     @staticmethod
     def _extract(

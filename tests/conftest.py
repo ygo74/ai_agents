@@ -12,7 +12,8 @@ from ai_agent_lab.domain.mail.models import (
     MailParticipant,
     MailThread,
 )
-from ai_agent_lab.domain.security.context import Permission, UserContext
+from ai_agent_lab.domain.mail.permissions import MailPermission
+from ai_agent_lab.domain.security.context import UserContext
 from ai_agent_lab.domain.security.untrusted import UntrustedOrigin, untrusted
 
 OWNER_EMAIL = "owner@example.com"
@@ -66,7 +67,7 @@ def owner() -> UserContext:
     return UserContext(
         user_id="owner",
         session_id="session-1",
-        permissions=frozenset(Permission),
+        permissions=MailPermission.declared(),
     )
 
 
@@ -76,5 +77,5 @@ def reader() -> UserContext:
     return UserContext(
         user_id="reader",
         session_id="session-2",
-        permissions=frozenset({Permission.MAIL_READ}),
+        permissions=frozenset({MailPermission.READ}),
     )

@@ -20,14 +20,15 @@ from ai_agent_lab.domain.mail.models import (
     MailSearchRequest,
     MailSendRequest,
 )
-from ai_agent_lab.domain.security.context import Permission, UserContext
+from ai_agent_lab.domain.mail.permissions import MailPermission
+from ai_agent_lab.domain.security.context import UserContext
 from ai_agent_lab.domain.security.untrusted import UntrustedOrigin, untrusted
 from ai_agent_lab.infrastructure.inmemory.mail_tools import InMemoryMailTools, Mailbox
 from ai_agent_lab.mcp.mail.contracts import MailTools
 from ai_agent_lab.mcp.mail.errors import MailAccessDeniedError, MailNotFoundError
 
-OWNER = UserContext(user_id="owner", session_id="s1", permissions=frozenset(Permission))
-INTRUDER = UserContext(user_id="intruder", session_id="s2", permissions=frozenset(Permission))
+OWNER = UserContext(user_id="owner", session_id="s1", permissions=MailPermission.declared())
+INTRUDER = UserContext(user_id="intruder", session_id="s2", permissions=MailPermission.declared())
 
 
 def draft(to: str = "john@example.com") -> MailDraft:

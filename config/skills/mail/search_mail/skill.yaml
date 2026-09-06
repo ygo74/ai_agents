@@ -1,0 +1,20 @@
+# Capability delivered to the Mail Agent.
+tool_name: search_mail
+implementation: mail.search
+
+# The model selects tools from this text, so it is part of the contract.
+description: >-
+  Search the mailbox and return message headers. Supports sender, recipient, subject,
+  free-text keywords, label, date range, unread state and attachment filters, alone or
+  combined. Returns previews only, never message bodies. Has no side effect.
+
+# Security posture. The risk floor enforced in code cannot be lowered here.
+operation:
+  type: READ
+  risk: LOW
+  permission: mail:read
+  confirmation_required: false
+
+# Logical MCP tools this capability is allowed to use.
+mcp_tools:
+  - search_mail

@@ -39,13 +39,14 @@ frameworks, not to build the same business logic three times.
 
 ```text
 src/ai_agent_lab/
-  domain/          typed models, security primitives, reasoning ports
-  mcp/             MCP tool contracts and catalogues
+  domain/          typed models, manifests, security primitives, reasoning ports
+  mcp/             MCP tool contracts, catalogues and security floors
   skills/          reusable domain capabilities
-  agents/          framework-independent agent definitions
+  agents/          skill registry and capability bindings
   frameworks/      framework adapters (the only place importing a framework)
-  infrastructure/  MCP clients, in-memory doubles, config, observability
+  infrastructure/  MCP clients, configuration loaders, in-memory doubles
   application/     composition root, CLI
+config/            delivered configuration: agent, skill packages, MCP bindings
 tests/             unit, contract, integration, agent, security, architecture
 data/mail/         deterministic mailbox datasets
 scenarios/mail/    reproducible agent scenarios
@@ -53,6 +54,10 @@ docs/              architecture and design documents
 ```
 
 Layer boundaries are enforced by `tests/architecture/test_layer_boundaries.py`.
+
+Instructions, tool descriptions, prompts, approval defaults and MCP tool names
+live in `config/`, so they ship independently of the code. See
+[docs/configuration.md](./docs/configuration.md).
 
 ## Getting started
 
@@ -99,6 +104,7 @@ No test needs a network, an API key or a mailbox.
 | [docs/architecture.md](./docs/architecture.md) | Layers, dependency rule, runtime modes. |
 | [docs/agent-design.md](./docs/agent-design.md) | What an agent is, framework adapters, confirmation model. |
 | [docs/mcp-design.md](./docs/mcp-design.md) | Tool contracts, tool surface, error translation. |
+| [docs/configuration.md](./docs/configuration.md) | What is delivered as configuration, and what stays in code. |
 | [docs/mail-agent.md](./docs/mail-agent.md) | The Mail Agent: capabilities, skills, security, how to run it. |
 
 ## Security

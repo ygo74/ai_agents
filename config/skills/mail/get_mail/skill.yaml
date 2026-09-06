@@ -1,0 +1,18 @@
+# Capability delivered to the Mail Agent.
+tool_name: get_mail
+implementation: mail.get_message
+
+# The model selects tools from this text, so it is part of the contract.
+description: >-
+  Retrieve one complete message, body included, by message identifier. Has no side effect.
+
+# Security posture. The risk floor enforced in code cannot be lowered here.
+operation:
+  type: READ
+  risk: LOW
+  permission: mail:read
+  confirmation_required: false
+
+# Logical MCP tools this capability is allowed to use.
+mcp_tools:
+  - get_mail

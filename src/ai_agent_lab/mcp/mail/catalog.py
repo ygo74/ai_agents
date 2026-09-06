@@ -13,12 +13,13 @@ from __future__ import annotations
 from collections.abc import Mapping
 from enum import StrEnum
 
-from ai_agent_lab.domain.security.context import Permission
+from ai_agent_lab.domain.mail.permissions import MailPermission
 from ai_agent_lab.domain.security.operations import (
     OperationType,
     RiskLevel,
     ToolOperationDescriptor,
 )
+from ai_agent_lab.domain.security.permissions import Permission
 
 
 class MailToolName(StrEnum):
@@ -42,7 +43,7 @@ def _read(name: MailToolName) -> ToolOperationDescriptor:
         tool_name=name.value,
         operation_type=OperationType.READ,
         risk_level=RiskLevel.LOW,
-        required_permission=Permission.MAIL_READ,
+        required_permission=MailPermission.READ,
         confirmation_required_by_default=False,
     )
 
@@ -74,14 +75,14 @@ _DESCRIPTORS: Mapping[MailToolName, ToolOperationDescriptor] = {
     MailToolName.CREATE_DRAFT: _write(
         MailToolName.CREATE_DRAFT,
         RiskLevel.LOW,
-        Permission.MAIL_DRAFT,
+        MailPermission.DRAFT,
         confirmation_required=False,
     ),
-    MailToolName.SEND_MAIL: _write(MailToolName.SEND_MAIL, RiskLevel.HIGH, Permission.MAIL_SEND),
-    MailToolName.MARK_READ: _write(MailToolName.MARK_READ, RiskLevel.LOW, Permission.MAIL_MANAGE),
-    MailToolName.ARCHIVE_MAIL: _write(MailToolName.ARCHIVE_MAIL, RiskLevel.MEDIUM, Permission.MAIL_MANAGE),
-    MailToolName.APPLY_LABEL: _write(MailToolName.APPLY_LABEL, RiskLevel.MEDIUM, Permission.MAIL_MANAGE),
-    MailToolName.REMOVE_LABEL: _write(MailToolName.REMOVE_LABEL, RiskLevel.MEDIUM, Permission.MAIL_MANAGE),
+    MailToolName.SEND_MAIL: _write(MailToolName.SEND_MAIL, RiskLevel.HIGH, MailPermission.SEND),
+    MailToolName.MARK_READ: _write(MailToolName.MARK_READ, RiskLevel.LOW, MailPermission.MANAGE),
+    MailToolName.ARCHIVE_MAIL: _write(MailToolName.ARCHIVE_MAIL, RiskLevel.MEDIUM, MailPermission.MANAGE),
+    MailToolName.APPLY_LABEL: _write(MailToolName.APPLY_LABEL, RiskLevel.MEDIUM, MailPermission.MANAGE),
+    MailToolName.REMOVE_LABEL: _write(MailToolName.REMOVE_LABEL, RiskLevel.MEDIUM, MailPermission.MANAGE),
 }
 
 _DESCRIPTIONS: Mapping[MailToolName, str] = {

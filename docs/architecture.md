@@ -19,23 +19,33 @@ adapter changes between two evaluations, never the business logic.
     microsoft_agent_framework/                         specific agent framework
     (later: langchain/, crewai/)
   ---------------------------------- | -------------------------------------
-  agents/              Agent definitions           <-- framework independent
-                       (identity, instructions, exposed skills)
+  agents/              Skill registry and capability bindings
+                       (manifest + code, framework independent)
   ---------------------------------- | -------------------------------------
   skills/              Reusable domain capabilities
                        (orchestrate MCP tools + deterministic business logic)
   ---------------------------------- | -------------------------------------
-  mcp/                 MCP contracts (Protocols, tool catalog, errors)
+  mcp/                 MCP contracts (Protocols, tool catalog, floors, errors)
   ---------------------------------- | -------------------------------------
   infrastructure/      Concrete implementations
                        mcp/       -> real MCP client       -> MCP server -> system
                        inmemory/  -> deterministic dataset -> tests / mock mode
-                       config/, observability/
+                       config/    -> manifest and binding loaders
+                       observability/
   ---------------------------------------------------------------------------
-  domain/              Typed models, security primitives, reasoning ports
-                       (no outgoing dependency at all)
+  domain/              Typed models, manifests, security primitives,
+                       reasoning ports (no outgoing dependency at all)
 
   application/         Composition root, dependency injection, CLI
+                       (builds the framework agent with its own public API)
+```
+
+Delivered configuration sits beside the code, not inside it:
+
+```text
+config/                Agent manifest, skill packages, MCP bindings
+                       -> loaded by infrastructure/config
+                       -> see docs/configuration.md
 ```
 
 ### Dependency rule

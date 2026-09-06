@@ -1,0 +1,18 @@
+# Capability delivered to the Mail Agent.
+tool_name: archive_mail
+implementation: mail.archive
+
+# The model selects tools from this text, so it is part of the contract.
+description: >-
+  Remove a message from the inbox without deleting it. Modifies the mailbox.
+
+# Security posture. The risk floor enforced in code cannot be lowered here.
+operation:
+  type: WRITE
+  risk: MEDIUM
+  permission: mail:manage
+  confirmation_required: true
+
+# Logical MCP tools this capability is allowed to use.
+mcp_tools:
+  - archive_mail

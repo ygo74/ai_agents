@@ -44,6 +44,12 @@ Skills hold the domain logic and know nothing about any agent framework.
 | `SendMailSkill` | Saves drafts and delivers them once approved. |
 | `MailManagementSkill` | Read state, archiving and labels. |
 
+Each capability is delivered as a package under `config/skills/mail/`: a
+`skill.yaml` declaring its identity, security posture and the MCP tools it may
+use, plus a `SKILL.md` carrying the prompt when a model is involved. The prompt
+is injected into the skill, so re-wording a summary is a configuration delivery.
+See [configuration.md](./configuration.md).
+
 Collaborators worth naming: `MailContextBuilder` assembles the untrusted
 context, `MailAnalysisMapper` maps model output to domain models and enforces
 grounding, `ReplyRecipientPlanner` decides recipients deterministically, and
@@ -119,12 +125,14 @@ executed. This is covered by `tests/agent/test_mail_scenarios.py`.
 The policy is data driven and resolved per user:
 
 ```text
-always_confirm (per user)  >  auto_approve (per user)  >  tool default
+always_confirm (per user)  >  auto_approve (per user)  >  manifest default
 ```
 
 A risk floor sits above all of that: operations at or above
 `non_overridable_risk` - `HIGH` by default - always require a confirmation, so
-a preference file can never silently disarm sending an email.
+a preference file can never silently disarm sending an email. The delivered
+manifests cannot weaken it either: `config/skills/mail/send_mail/skill.yaml`
+declaring a lower risk is refused at load time.
 
 ```bash
 # .env
@@ -132,8 +140,9 @@ MAIL_AGENT_AUTO_APPROVED_TOOLS=mark_read
 MAIL_AGENT_ALWAYS_CONFIRM_TOOLS=create_draft
 ```
 
-Preferences are stored per user through `ConfirmationPreferenceStore`, so
-per-user settings become a matter of implementing that port against a database.
+Defaults ship in the skill packages; per-user overrides go through
+`ConfirmationPreferenceStore`, so a future interface letting each user choose
+their own levels only has to implement that port.
 
 ### Draft references
 

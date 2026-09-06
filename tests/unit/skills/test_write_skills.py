@@ -7,6 +7,7 @@ from tests.conftest import make_message
 
 from ai_agent_lab.domain.mail.errors import NoReplyRecipientError
 from ai_agent_lab.domain.mail.models import EmailAddress, MailDraft
+from ai_agent_lab.domain.mail.permissions import MailPermission
 from ai_agent_lab.domain.security.audit import AuditOutcome
 from ai_agent_lab.domain.security.confirmation import (
     ConfiguredConfirmationPolicy,
@@ -15,7 +16,7 @@ from ai_agent_lab.domain.security.confirmation import (
     ConfirmationPreferences,
     InMemoryConfirmationPreferenceStore,
 )
-from ai_agent_lab.domain.security.context import Permission, UserContext
+from ai_agent_lab.domain.security.context import UserContext
 from ai_agent_lab.domain.security.errors import (
     AuthorizationError,
     ConfirmationMismatchError,
@@ -34,6 +35,10 @@ from ai_agent_lab.skills.mail.reply_skill import MailReplySkill, ReplyRecipientP
 from ai_agent_lab.skills.mail.send_skill import SendMailSkill
 
 REPLY_ANSWER = {"subject": "Re: Project Alpha - architecture review", "body": "Agreed. I will review it tomorrow."}
+
+# Reasoning instructions are delivered configuration, so a unit test supplies
+# its own rather than depending on the wording shipped in config/.
+REPLY_PROMPT = "Draft a reply. Do not add recipients and do not invent commitments."
 
 
 @pytest.fixture
@@ -76,6 +81,7 @@ def reply_skill(mail_tools, context_builder, envelope_builder):
         context_builder,
         ConfiguredMailboxOwnerDirectory({"owner": "owner@example.com"}),
         ReplyRecipientPlanner(),
+        REPLY_PROMPT,
     )
 
 
@@ -129,6 +135,7 @@ class TestMailReplySkill:
             context_builder,
             ConfiguredMailboxOwnerDirectory({"owner": "owner@example.com"}),
             ReplyRecipientPlanner(),
+        REPLY_PROMPT,
         )
 
         result = await skill.draft_reply_to_message("m1", "Say I agree", owner)
@@ -137,7 +144,7 @@ class TestMailReplySkill:
 
     @pytest.mark.security
     async def test_requires_the_draft_permission(self, reply_skill):
-        reader = UserContext(user_id="owner", session_id="s", permissions=frozenset({Permission.MAIL_READ}))
+        reader = UserContext(user_id="owner", session_id="s", permissions=frozenset({MailPermission.READ}))
 
         with pytest.raises(AuthorizationError):
             await reply_skill.draft_reply_to_message("m1", "Say I agree", reader)
@@ -257,7 +264,7 @@ class TestSendMailSkill:
 
     @pytest.mark.security
     async def test_requires_the_send_permission(self, send_skill, mail_tools):
-        limited = UserContext(user_id="owner", session_id="s", permissions=frozenset({Permission.MAIL_READ}))
+        limited = UserContext(user_id="owner", session_id="s", permissions=frozenset({MailPermission.READ}))
 
         with pytest.raises(AuthorizationError):
             await send_skill.send(draft(), limited)

@@ -11,7 +11,7 @@ from enum import StrEnum
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from ai_agent_lab.domain.security.context import Permission
+from ai_agent_lab.domain.security.permissions import Permission
 
 
 class OperationType(StrEnum):

@@ -6,14 +6,15 @@ from pathlib import Path
 
 import pytest
 
-from ai_agent_lab.domain.security.context import Permission, UserContext
+from ai_agent_lab.domain.mail.permissions import MailPermission
+from ai_agent_lab.domain.security.context import UserContext
 from ai_agent_lab.infrastructure.inmemory.dataset import MailDatasetError, MailDatasetLoader
 from ai_agent_lab.infrastructure.inmemory.mail_tools import InMemoryMailTools
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 SAMPLE_DATASET = REPOSITORY_ROOT / "data" / "mail" / "sample_mailbox.json"
 
-LOCAL_USER = UserContext(user_id="local-user", session_id="s1", permissions=frozenset(Permission))
+LOCAL_USER = UserContext(user_id="local-user", session_id="s1", permissions=MailPermission.declared())
 
 
 @pytest.fixture

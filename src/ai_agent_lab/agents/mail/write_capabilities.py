@@ -11,7 +11,6 @@ from collections.abc import Awaitable, Callable
 
 from pydantic import BaseModel
 
-from ai_agent_lab.agents.definition import SkillDescriptor
 from ai_agent_lab.agents.mail.confirmation_broker import ConfirmationBroker
 from ai_agent_lab.agents.mail.results import (
     DraftPreparedResult,
@@ -25,16 +24,13 @@ from ai_agent_lab.agents.mail.tool_inputs import (
     MessageInput,
     SetReadStateInput,
 )
+from ai_agent_lab.agents.registry import SkillDescriptor
 from ai_agent_lab.domain.mail.models import MailDraft
 from ai_agent_lab.domain.mail.ports import DraftStore
+from ai_agent_lab.domain.manifests import AgentManifest
 from ai_agent_lab.domain.security.confirmation import ConfirmationDecision, ConfirmationRequest
-from ai_agent_lab.domain.security.context import Permission, UserContext
-from ai_agent_lab.domain.security.operations import (
-    OperationType,
-    RiskLevel,
-    ToolOperationDescriptor,
-)
-from ai_agent_lab.mcp.mail.catalog import MailToolCatalog, MailToolName
+from ai_agent_lab.domain.security.context import UserContext
+from ai_agent_lab.mcp.mail.catalog import MailToolName
 from ai_agent_lab.skills.mail.errors import EmptyMailSelectionError
 from ai_agent_lab.skills.mail.management_skill import MailManagementSkill
 from ai_agent_lab.skills.mail.reply_skill import MailReplySkill
@@ -54,28 +50,20 @@ def housekeeping_target(message_id: str, label_id: str | None) -> str:
     """
     return message_id if label_id is None else f"{message_id}:{label_id}"
 
-_DRAFT_REPLY_OPERATION = ToolOperationDescriptor(
-    tool_name=DRAFT_MAIL_REPLY,
-    operation_type=OperationType.READ,
-    risk_level=RiskLevel.LOW,
-    required_permission=Permission.MAIL_DRAFT,
-    confirmation_required_by_default=False,
-)
-
 
 class MailWriteCapabilities:
     """Builds the descriptors of the capabilities that change something."""
 
     def __init__(
         self,
-        catalog: MailToolCatalog,
+        manifest: AgentManifest,
         reply_skill: MailReplySkill,
         send_skill: SendMailSkill,
         management_skill: MailManagementSkill,
         draft_store: DraftStore,
         broker: ConfirmationBroker,
     ) -> None:
-        self._catalog = catalog
+        self._manifest = manifest
         self._reply_skill = reply_skill
         self._send_skill = send_skill
         self._management_skill = management_skill
@@ -109,17 +97,7 @@ class MailWriteCapabilities:
                 in_reply_to_message_id=draft.in_reply_to_message_id,
             )
 
-        return SkillDescriptor(
-            tool_name=DRAFT_MAIL_REPLY,
-            description=(
-                "Prepare a reply to a message, or to the most recent message of a conversation, following "
-                "the intent stated by the mailbox owner. Returns the draft and a draft reference. Nothing "
-                "is sent and nothing is stored in the mailbox."
-            ),
-            input_model=DraftReplyInput,
-            operation=_DRAFT_REPLY_OPERATION,
-            invoke=invoke,
-        )
+        return self._bind(DRAFT_MAIL_REPLY, DraftReplyInput, invoke)
 
     def _send_draft(self) -> SkillDescriptor:
         """Deliver a previously prepared draft."""
@@ -139,17 +117,7 @@ class MailWriteCapabilities:
                 sent_at=result.sent_at.isoformat(),
             )
 
-        return SkillDescriptor(
-            tool_name=MailToolName.SEND_MAIL.value,
-            description=(
-                "Send a reply prepared earlier, identified by its draft reference. The content delivered "
-                "is exactly the content of that draft. This is irreversible and the mailbox owner is "
-                "asked to approve it first."
-            ),
-            input_model=DraftReferenceInput,
-            operation=self._catalog.descriptor(MailToolName.SEND_MAIL),
-            invoke=invoke,
-        )
+        return self._bind(MailToolName.SEND_MAIL.value, DraftReferenceInput, invoke)
 
     def _set_read_state(self) -> SkillDescriptor:
         """Mark a message as read or unread."""
@@ -222,6 +190,15 @@ class MailWriteCapabilities:
 
         return self._housekeeping_descriptor(MailToolName.REMOVE_LABEL, LabelInput, invoke)
 
+    def _bind(
+        self,
+        tool_name: str,
+        input_model: type[BaseModel],
+        invoke: Callable[[BaseModel, UserContext], Awaitable[BaseModel]],
+    ) -> SkillDescriptor:
+        """Bind a delivered manifest to the code running the capability."""
+        return SkillDescriptor.from_manifest(self._manifest.skill(tool_name), input_model, invoke)
+
     def _housekeeping_descriptor(
         self,
         tool: MailToolName,
@@ -229,13 +206,7 @@ class MailWriteCapabilities:
         invoke: Callable[[BaseModel, UserContext], Awaitable[BaseModel]],
     ) -> SkillDescriptor:
         """Assemble the descriptor of a housekeeping capability."""
-        return SkillDescriptor(
-            tool_name=tool.value,
-            description=self._catalog.description(tool),
-            input_model=input_model,
-            operation=self._catalog.descriptor(tool),
-            invoke=invoke,
-        )
+        return self._bind(tool.value, input_model, invoke)
 
     async def _run_housekeeping(
         self,

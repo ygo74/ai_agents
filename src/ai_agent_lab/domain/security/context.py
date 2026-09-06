@@ -2,25 +2,10 @@
 
 from __future__ import annotations
 
-from enum import StrEnum
-
 from pydantic import BaseModel, ConfigDict, Field
 
 from ai_agent_lab.domain.security.errors import AuthorizationError
-
-
-class Permission(StrEnum):
-    """Capability a user may hold.
-
-    Permissions are coarse on purpose: fine-grained authorisation belongs to the
-    source system, which remains the authority. These values only gate what the
-    application is willing to attempt on the user's behalf.
-    """
-
-    MAIL_READ = "mail:read"
-    MAIL_DRAFT = "mail:draft"
-    MAIL_SEND = "mail:send"
-    MAIL_MANAGE = "mail:manage"
+from ai_agent_lab.domain.security.permissions import Permission
 
 
 class UserContext(BaseModel):

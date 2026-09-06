@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 from ai_agent_lab.domain.mail.models import MailLabel
+from ai_agent_lab.domain.mail.permissions import MailPermission
 from ai_agent_lab.domain.security.confirmation import (
     ConfirmationDecision,
     ConfirmationDetail,
     ConfirmationRequest,
 )
-from ai_agent_lab.domain.security.context import Permission, UserContext
+from ai_agent_lab.domain.security.context import UserContext
 from ai_agent_lab.mcp.mail.catalog import MailToolName
 from ai_agent_lab.mcp.mail.contracts import MailOrganisationTools, MailReadTools
 from ai_agent_lab.skills.mail.gating import GatedMailOperationRunner
@@ -34,7 +35,7 @@ class MailManagementSkill:
 
     async def list_labels(self, user: UserContext) -> tuple[MailLabel, ...]:
         """Return the labels available in the mailbox."""
-        user.require_permission(Permission.MAIL_READ)
+        user.require_permission(MailPermission.READ)
         return await self._read_tools.list_labels(user)
 
     def requires_confirmation(self, tool: MailToolName, user: UserContext) -> bool:

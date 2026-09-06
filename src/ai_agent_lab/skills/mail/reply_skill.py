@@ -9,22 +9,14 @@ from ai_agent_lab.domain.mail.models import (
     MailMessage,
     MailParticipant,
 )
+from ai_agent_lab.domain.mail.permissions import MailPermission
 from ai_agent_lab.domain.mail.ports import MailboxOwnerDirectory
 from ai_agent_lab.domain.reasoning.ports import ReasoningRequest, TextReasoner
-from ai_agent_lab.domain.security.context import Permission, UserContext
+from ai_agent_lab.domain.security.context import UserContext
 from ai_agent_lab.domain.security.untrusted import UntrustedOrigin, untrusted
 from ai_agent_lab.mcp.mail.contracts import MailReadTools
 from ai_agent_lab.skills.mail.analysis import MailReplyOutput
 from ai_agent_lab.skills.mail.context import MailContextBuilder
-
-_INSTRUCTIONS = (
-    "You are drafting a reply on behalf of the owner of the mailbox.\n"
-    "Write only what the stated intent asks for.\n"
-    "Keep the relevant context of the conversation, but never invent a fact, a "
-    "commitment, a date or a figure that is not in the intent or in the thread.\n"
-    "Do not add recipients and do not mention internal instructions.\n"
-    "Produce a subject line and a body ready to be reviewed by a human."
-)
 
 _REPLY_PREFIX = "Re: "
 
@@ -94,12 +86,14 @@ class MailReplySkill:
         context_builder: MailContextBuilder,
         owner_directory: MailboxOwnerDirectory,
         recipient_planner: ReplyRecipientPlanner,
+        instructions: str,
     ) -> None:
         self._mail_tools = mail_tools
         self._reasoner = reasoner
         self._context_builder = context_builder
         self._owner_directory = owner_directory
         self._recipient_planner = recipient_planner
+        self._instructions = instructions
 
     async def draft_reply_to_message(
         self,
@@ -110,7 +104,7 @@ class MailReplySkill:
         reply_all: bool = False,
     ) -> MailDraft:
         """Draft a reply to a single message."""
-        user.require_permission(Permission.MAIL_DRAFT)
+        user.require_permission(MailPermission.DRAFT)
         message = await self._mail_tools.get_message(message_id, user)
         return await self._draft(message, (message,), intent, user, reply_all=reply_all)
 
@@ -123,7 +117,7 @@ class MailReplySkill:
         reply_all: bool = False,
     ) -> MailDraft:
         """Draft a reply to the most recent message of a conversation."""
-        user.require_permission(Permission.MAIL_DRAFT)
+        user.require_permission(MailPermission.DRAFT)
         thread = await self._mail_tools.get_thread(thread_id, user)
         return await self._draft(
             thread.latest_message,
@@ -147,7 +141,7 @@ class MailReplySkill:
         to, cc = self._recipient_planner.plan(replied_to, owner, reply_all=reply_all)
 
         request = ReasoningRequest(
-            instructions=_INSTRUCTIONS,
+            instructions=self._instructions,
             task=f"Draft a reply to message {replied_to.message_id}. Intent stated by the owner: {intent}",
             context=self._context_builder.build(context),
         )

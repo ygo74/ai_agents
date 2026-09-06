@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from pydantic import BaseModel
 
-from ai_agent_lab.agents.definition import SkillDescriptor
 from ai_agent_lab.agents.mail.converters import MailSearchRequestFactory
 from ai_agent_lab.agents.mail.results import (
     MailActionsResult,
@@ -20,14 +19,11 @@ from ai_agent_lab.agents.mail.tool_inputs import (
     SearchMailInput,
     ThreadInput,
 )
+from ai_agent_lab.agents.registry import SkillDescriptor, SkillInvocation
 from ai_agent_lab.domain.mail.models import MailAction
-from ai_agent_lab.domain.security.context import Permission, UserContext
-from ai_agent_lab.domain.security.operations import (
-    OperationType,
-    RiskLevel,
-    ToolOperationDescriptor,
-)
-from ai_agent_lab.mcp.mail.catalog import MailToolCatalog, MailToolName
+from ai_agent_lab.domain.manifests import AgentManifest
+from ai_agent_lab.domain.security.context import UserContext
+from ai_agent_lab.mcp.mail.catalog import MailToolName
 from ai_agent_lab.skills.mail.action_extraction_skill import MailActionExtractionSkill
 from ai_agent_lab.skills.mail.classification_skill import MailClassificationSkill
 from ai_agent_lab.skills.mail.errors import EmptyMailSelectionError
@@ -40,23 +36,12 @@ CLASSIFY_MAIL = "classify_mail"
 EXTRACT_MAIL_ACTIONS = "extract_mail_actions"
 
 
-def _analysis_operation(tool_name: str) -> ToolOperationDescriptor:
-    """Describe a capability that only reads and reasons."""
-    return ToolOperationDescriptor(
-        tool_name=tool_name,
-        operation_type=OperationType.READ,
-        risk_level=RiskLevel.LOW,
-        required_permission=Permission.MAIL_READ,
-        confirmation_required_by_default=False,
-    )
-
-
 class MailReadCapabilities:
     """Builds the descriptors of the capabilities that never change anything."""
 
     def __init__(
         self,
-        catalog: MailToolCatalog,
+        manifest: AgentManifest,
         search_skill: MailSearchSkill,
         read_skill: MailReadSkill,
         summary_skill: MailSummarySkill,
@@ -65,7 +50,7 @@ class MailReadCapabilities:
         management_skill: MailManagementSkill,
         search_request_factory: MailSearchRequestFactory,
     ) -> None:
-        self._catalog = catalog
+        self._manifest = manifest
         self._search_skill = search_skill
         self._read_skill = read_skill
         self._summary_skill = summary_skill
@@ -86,6 +71,15 @@ class MailReadCapabilities:
             self._extract_actions(),
         )
 
+    def _bind(
+        self,
+        tool_name: str,
+        input_model: type[BaseModel],
+        invoke: SkillInvocation,
+    ) -> SkillDescriptor:
+        """Bind a delivered manifest to the code running the capability."""
+        return SkillDescriptor.from_manifest(self._manifest.skill(tool_name), input_model, invoke)
+
     def _list_labels(self) -> SkillDescriptor:
         """List the labels available in the mailbox.
 
@@ -97,13 +91,7 @@ class MailReadCapabilities:
             NoInput.model_validate(payload)
             return MailLabelsResult(labels=await self._management_skill.list_labels(user))
 
-        return SkillDescriptor(
-            tool_name=MailToolName.LIST_LABELS.value,
-            description=self._catalog.description(MailToolName.LIST_LABELS),
-            input_model=NoInput,
-            operation=self._catalog.descriptor(MailToolName.LIST_LABELS),
-            invoke=invoke,
-        )
+        return self._bind(MailToolName.LIST_LABELS.value, NoInput, invoke)
 
     def _search(self) -> SkillDescriptor:
         """Search the mailbox."""
@@ -112,13 +100,7 @@ class MailReadCapabilities:
             request = self._search_request_factory.build(SearchMailInput.model_validate(payload))
             return await self._search_skill.search(request, user)
 
-        return SkillDescriptor(
-            tool_name=MailToolName.SEARCH_MAIL.value,
-            description=self._catalog.description(MailToolName.SEARCH_MAIL),
-            input_model=SearchMailInput,
-            operation=self._catalog.descriptor(MailToolName.SEARCH_MAIL),
-            invoke=invoke,
-        )
+        return self._bind(MailToolName.SEARCH_MAIL.value, SearchMailInput, invoke)
 
     def _read_message(self) -> SkillDescriptor:
         """Retrieve one complete message."""
@@ -126,13 +108,7 @@ class MailReadCapabilities:
         async def invoke(payload: BaseModel, user: UserContext) -> BaseModel:
             return await self._read_skill.read_message(MessageInput.model_validate(payload).message_id, user)
 
-        return SkillDescriptor(
-            tool_name=MailToolName.GET_MAIL.value,
-            description=self._catalog.description(MailToolName.GET_MAIL),
-            input_model=MessageInput,
-            operation=self._catalog.descriptor(MailToolName.GET_MAIL),
-            invoke=invoke,
-        )
+        return self._bind(MailToolName.GET_MAIL.value, MessageInput, invoke)
 
     def _read_thread(self) -> SkillDescriptor:
         """Retrieve a whole conversation."""
@@ -140,13 +116,7 @@ class MailReadCapabilities:
         async def invoke(payload: BaseModel, user: UserContext) -> BaseModel:
             return await self._read_skill.read_thread(ThreadInput.model_validate(payload).thread_id, user)
 
-        return SkillDescriptor(
-            tool_name=MailToolName.GET_THREAD.value,
-            description=self._catalog.description(MailToolName.GET_THREAD),
-            input_model=ThreadInput,
-            operation=self._catalog.descriptor(MailToolName.GET_THREAD),
-            invoke=invoke,
-        )
+        return self._bind(MailToolName.GET_THREAD.value, ThreadInput, invoke)
 
     def _summarise(self) -> SkillDescriptor:
         """Summarise a message or a conversation."""
@@ -159,17 +129,7 @@ class MailReadCapabilities:
                 return await self._summary_skill.summarise_message(selection.message_id, user)
             raise EmptyMailSelectionError(SUMMARISE_MAIL)
 
-        return SkillDescriptor(
-            tool_name=SUMMARISE_MAIL,
-            description=(
-                "Summarise a message or a whole conversation. Returns the summary, the key points, "
-                "the decisions, the actions expected from the owner, the deadlines, the participants, "
-                "the open questions and the source message identifiers. Has no side effect."
-            ),
-            input_model=MessageOrThreadInput,
-            operation=_analysis_operation(SUMMARISE_MAIL),
-            invoke=invoke,
-        )
+        return self._bind(SUMMARISE_MAIL, MessageOrThreadInput, invoke)
 
     def _classify(self) -> SkillDescriptor:
         """Assign a category to messages."""
@@ -179,16 +139,7 @@ class MailReadCapabilities:
             classifications = await self._classification_skill.classify_messages(tuple(selection.message_ids), user)
             return MailClassificationsResult(classifications=classifications)
 
-        return SkillDescriptor(
-            tool_name=CLASSIFY_MAIL,
-            description=(
-                "Assign one business category to each of the given messages, with a confidence and a "
-                "short reason. Has no side effect and does not apply any label to the mailbox."
-            ),
-            input_model=ClassifyMailInput,
-            operation=_analysis_operation(CLASSIFY_MAIL),
-            invoke=invoke,
-        )
+        return self._bind(CLASSIFY_MAIL, ClassifyMailInput, invoke)
 
     def _extract_actions(self) -> SkillDescriptor:
         """List the actions expected from the mailbox owner."""
@@ -200,17 +151,7 @@ class MailReadCapabilities:
                 actions = MailActionExtractionSkill.only_explicit(actions)
             return MailActionsResult(actions=actions)
 
-        return SkillDescriptor(
-            tool_name=EXTRACT_MAIL_ACTIONS,
-            description=(
-                "List the actions the mailbox owner is expected to perform, based on the given messages "
-                "or conversation. Each action states whether it was explicitly requested or deduced, its "
-                "confidence, its due date when one is given, and its source message. Has no side effect."
-            ),
-            input_model=ExtractActionsInput,
-            operation=_analysis_operation(EXTRACT_MAIL_ACTIONS),
-            invoke=invoke,
-        )
+        return self._bind(EXTRACT_MAIL_ACTIONS, ExtractActionsInput, invoke)
 
     async def _actions_for(
         self,

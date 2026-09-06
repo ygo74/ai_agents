@@ -103,6 +103,9 @@ class ChatClientSettings(BaseSettings):
 
     provider: ChatProvider = Field(default=ChatProvider.OPENAI, validation_alias="AGENT_CHAT_PROVIDER")
     openai_model: str = Field(default="", validation_alias="OPENAI_CHAT_MODEL")
+    # Kept as text: an empty value means "do not send it at all", which no
+    # numeric type can express, and reasoning models reject the parameter.
+    temperature: str = Field(default="", validation_alias="AGENT_CHAT_TEMPERATURE")
     azure_model: str = Field(default="", validation_alias="AZURE_OPENAI_CHAT_MODEL")
     azure_endpoint: str = Field(default="", validation_alias="AZURE_OPENAI_ENDPOINT")
     azure_api_version: str = Field(default="", validation_alias="AZURE_OPENAI_API_VERSION")
@@ -113,6 +116,20 @@ class ChatClientSettings(BaseSettings):
     # Read only to reject it: the client refuses an endpoint and a base URL at
     # the same time, and the endpoint alone covers both forms.
     azure_base_url: str = Field(default="", validation_alias="AZURE_OPENAI_BASE_URL")
+
+    def sampling_temperature(self) -> float | None:
+        """Return the configured temperature, or nothing when it must be omitted.
+
+        Reasoning models refuse the parameter outright, so it is only sent when
+        a value was configured.
+        """
+        value = self.temperature.strip()
+        if not value:
+            return None
+        try:
+            return float(value)
+        except ValueError as error:
+            raise ValueError(f"AGENT_CHAT_TEMPERATURE must be a number or empty, got {value!r}") from error
 
 
 class MailMcpSettings(BaseSettings):

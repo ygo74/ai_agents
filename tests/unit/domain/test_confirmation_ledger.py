@@ -10,13 +10,14 @@ from __future__ import annotations
 
 import pytest
 
+from ai_agent_lab.domain.mail.permissions import MailPermission
 from ai_agent_lab.domain.security.confirmation import (
     ConfirmationDecision,
     ConfirmationKey,
     ConfirmationOutcome,
     ConfirmationRequest,
 )
-from ai_agent_lab.domain.security.context import Permission, UserContext
+from ai_agent_lab.domain.security.context import UserContext
 from ai_agent_lab.domain.security.operations import (
     OperationType,
     RiskLevel,
@@ -24,14 +25,14 @@ from ai_agent_lab.domain.security.operations import (
 )
 from ai_agent_lab.infrastructure.inmemory.confirmation_ledger import InMemoryConfirmationLedger
 
-OWNER = UserContext(user_id="owner", session_id="s1", permissions=frozenset(Permission))
-INTRUDER = UserContext(user_id="intruder", session_id="s2", permissions=frozenset(Permission))
+OWNER = UserContext(user_id="owner", session_id="s1", permissions=MailPermission.declared())
+INTRUDER = UserContext(user_id="intruder", session_id="s2", permissions=MailPermission.declared())
 
 SEND = ToolOperationDescriptor(
     tool_name="send_mail",
     operation_type=OperationType.WRITE,
     risk_level=RiskLevel.HIGH,
-    required_permission=Permission.MAIL_SEND,
+    required_permission=MailPermission.SEND,
     confirmation_required_by_default=True,
 )
 

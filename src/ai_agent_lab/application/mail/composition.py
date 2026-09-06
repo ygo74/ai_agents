@@ -2,8 +2,14 @@
 
 This is the only place allowed to instantiate concrete implementations. Every
 other component receives its collaborators, which is what makes the skills
-testable, the framework replaceable and the runtime mode a configuration
-choice rather than a code change.
+testable, the runtime mode a configuration choice, and the framework
+replaceable.
+
+The agent itself is built here with the plain Microsoft Agent Framework API,
+deliberately. There is no house abstraction to learn: a developer reads
+``Agent(...)`` and finds the public documentation of that call. What the
+repository owns is what makes skills reusable - the manifests, the registry, the
+adapter and the confirmation policy - not a wrapper around an agent.
 """
 
 from __future__ import annotations
@@ -11,17 +17,18 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
-from agent_framework import Agent, SupportsChatGetResponse
+from agent_framework import Agent, SupportsChatGetResponse, ToolApprovalMiddleware
 
-from ai_agent_lab.agents.definition import AgentDefinition
-from ai_agent_lab.agents.mail.agent import MailAgentDefinitionFactory
 from ai_agent_lab.agents.mail.confirmation_broker import ConfirmationBroker
 from ai_agent_lab.agents.mail.converters import MailSearchRequestFactory
 from ai_agent_lab.agents.mail.read_capabilities import MailReadCapabilities
 from ai_agent_lab.agents.mail.results import MailToolResultRenderer
 from ai_agent_lab.agents.mail.write_capabilities import MailWriteCapabilities
+from ai_agent_lab.agents.registry import SkillRegistry
 from ai_agent_lab.application.mail.confirmation_presenter import MailConfirmationPresenter
 from ai_agent_lab.application.mail.skills_factory import MailSkills, MailSkillsFactory
+from ai_agent_lab.domain.mail.permissions import MailPermission
+from ai_agent_lab.domain.manifests import AgentManifest
 from ai_agent_lab.domain.reasoning.envelope import PromptEnvelopeBuilder
 from ai_agent_lab.domain.reasoning.ports import TextReasoner
 from ai_agent_lab.domain.security.confirmation import (
@@ -29,22 +36,27 @@ from ai_agent_lab.domain.security.confirmation import (
     ConfirmationPolicy,
     InMemoryConfirmationPreferenceStore,
 )
-from ai_agent_lab.domain.security.context import Permission, UserContext
-from ai_agent_lab.frameworks.microsoft_agent_framework.agent_factory import MafAgentFactory
+from ai_agent_lab.domain.security.context import UserContext
+from ai_agent_lab.domain.security.permissions import PermissionRegistry
 from ai_agent_lab.frameworks.microsoft_agent_framework.authority import UnattendedApprovalAuthority
 from ai_agent_lab.frameworks.microsoft_agent_framework.reasoner import MafTextReasoner
 from ai_agent_lab.frameworks.microsoft_agent_framework.tool_adapter import SkillToolAdapter
+from ai_agent_lab.infrastructure.config.directory import ConfigurationDirectory
 from ai_agent_lab.infrastructure.config.mail_tools_provider import MailToolsProvider
 from ai_agent_lab.infrastructure.config.mailbox_directory import ConfiguredMailboxOwnerDirectory
-from ai_agent_lab.infrastructure.config.settings import MailAgentSettings
+from ai_agent_lab.infrastructure.config.manifests import AgentManifestLoader, SkillManifestLoader
+from ai_agent_lab.infrastructure.config.settings import ChatClientSettings, MailAgentSettings
 from ai_agent_lab.infrastructure.inmemory.confirmation_ledger import InMemoryConfirmationLedger
 from ai_agent_lab.infrastructure.inmemory.dataset import MailDatasetLoader
 from ai_agent_lab.infrastructure.inmemory.draft_store import InMemoryDraftStore
 from ai_agent_lab.infrastructure.observability.audit import InMemoryAuditTrail, LoggingAuditTrail
 from ai_agent_lab.mcp.mail.catalog import MailToolCatalog
 from ai_agent_lab.mcp.mail.contracts import MailTools
+from ai_agent_lab.mcp.mail.floor import MailSecurityFloor
 from ai_agent_lab.skills.mail.categories import MailCategoryCatalog
 from ai_agent_lab.skills.mail.context import MailContextBuilder
+
+MAIL_AGENT = "mail"
 
 
 @dataclass(frozen=True, slots=True)
@@ -52,7 +64,8 @@ class MailAgentRuntime:
     """Everything the console, a test or another host needs to drive the agent."""
 
     user: UserContext
-    definition: AgentDefinition
+    manifest: AgentManifest
+    registry: SkillRegistry
     agent: Agent
     skills: MailSkills
     presenter: MailConfirmationPresenter
@@ -81,32 +94,31 @@ class MailAgentCompositionRoot:
 
     def build(self, *, session_id: str) -> MailAgentRuntime:
         """Assemble the Mail Agent and everything driving it."""
+        manifest = self._manifest()
         user = self._user_context(session_id)
         policy = self._policy()
         audit = InMemoryAuditTrail()
-        catalog = MailToolCatalog()
         mail_tools = self._mail_tools()
-
-        skills = MailSkillsFactory(
-            mail_tools=mail_tools,
-            reasoner=self._reasoner(),
-            catalog=catalog,
-            policy=policy,
-            audit=LoggingAuditTrail(audit),
-            owner_directory=ConfiguredMailboxOwnerDirectory({user.user_id: self._settings.user_email}),
-            category_catalog=MailCategoryCatalog(),
-            context_builder=MailContextBuilder(),
-        ).build()
+        skills = self._skills(manifest, mail_tools, policy, audit, user)
 
         draft_store = InMemoryDraftStore()
         ledger = InMemoryConfirmationLedger()
-        definition = self._definition(catalog, skills, draft_store, ledger)
-        adapter = SkillToolAdapter(MailToolResultRenderer(), policy)
+        registry = self._registry(manifest, skills, draft_store, ledger)
+        tools = SkillToolAdapter(MailToolResultRenderer(), policy).to_tools(registry, user)
 
         return MailAgentRuntime(
             user=user,
-            definition=definition,
-            agent=MafAgentFactory(self._chat_client, adapter).build(definition, user),
+            manifest=manifest,
+            registry=registry,
+            agent=Agent(
+                self._chat_client,
+                manifest.instructions,
+                id=manifest.name,
+                name=manifest.name,
+                description=manifest.description,
+                tools=list(tools),
+                middleware=[ToolApprovalMiddleware()],
+            ),
             skills=skills,
             presenter=MailConfirmationPresenter(skills, draft_store),
             confirmation_ledger=ledger,
@@ -114,17 +126,47 @@ class MailAgentCompositionRoot:
             mail_tools=mail_tools,
         )
 
-    def _definition(
+    def _skills(
         self,
-        catalog: MailToolCatalog,
+        manifest: AgentManifest,
+        mail_tools: MailTools,
+        policy: ConfirmationPolicy,
+        audit: InMemoryAuditTrail,
+        user: UserContext,
+    ) -> MailSkills:
+        """Assemble the reusable domain capabilities."""
+        return MailSkillsFactory(
+            mail_tools=mail_tools,
+            reasoner=self._reasoner(),
+            catalog=MailToolCatalog(),
+            policy=policy,
+            audit=LoggingAuditTrail(audit),
+            owner_directory=ConfiguredMailboxOwnerDirectory({user.user_id: self._settings.user_email}),
+            category_catalog=MailCategoryCatalog(),
+            context_builder=MailContextBuilder(),
+            manifest=manifest,
+        ).build()
+
+    def _manifest(self) -> AgentManifest:
+        """Load the configuration delivered for this agent."""
+        directory = ConfigurationDirectory.resolve(base_path=self._base_path)
+        skills = SkillManifestLoader(
+            PermissionRegistry(MailPermission.declared()),
+            MailSecurityFloor().build(),
+        )
+        return AgentManifestLoader(directory, skills).load(MAIL_AGENT)
+
+    def _registry(
+        self,
+        manifest: AgentManifest,
         skills: MailSkills,
         draft_store: InMemoryDraftStore,
         ledger: InMemoryConfirmationLedger,
-    ) -> AgentDefinition:
-        """Build the framework-independent definition of the agent."""
+    ) -> SkillRegistry:
+        """Bind the delivered manifests to the code that runs them."""
         broker = ConfirmationBroker(UnattendedApprovalAuthority(), ledger)
         read_capabilities = MailReadCapabilities(
-            catalog,
+            manifest,
             skills.search,
             skills.read,
             skills.summary,
@@ -134,14 +176,14 @@ class MailAgentCompositionRoot:
             MailSearchRequestFactory(),
         )
         write_capabilities = MailWriteCapabilities(
-            catalog,
+            manifest,
             skills.reply,
             skills.send,
             skills.management,
             draft_store,
             broker,
         )
-        return MailAgentDefinitionFactory(read_capabilities, write_capabilities).build()
+        return SkillRegistry((*read_capabilities.descriptors(), *write_capabilities.descriptors()))
 
     def _policy(self) -> ConfirmationPolicy:
         """Build the confirmation policy from the configured preferences."""
@@ -155,7 +197,7 @@ class MailAgentCompositionRoot:
         return UserContext(
             user_id=self._settings.user_id,
             session_id=session_id,
-            permissions=frozenset(Permission),
+            permissions=MailPermission.declared(),
         )
 
     def _mail_tools(self) -> MailTools:
@@ -168,4 +210,8 @@ class MailAgentCompositionRoot:
         """Build the reasoner used by the analysis skills."""
         if self._reasoner_override is not None:
             return self._reasoner_override
-        return MafTextReasoner(self._chat_client, PromptEnvelopeBuilder())
+        return MafTextReasoner(
+            self._chat_client,
+            PromptEnvelopeBuilder(),
+            temperature=ChatClientSettings().sampling_temperature(),
+        )

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import pytest
 
+from ai_agent_lab.domain.mail.permissions import MailPermission
 from ai_agent_lab.domain.security.confirmation import (
     ConfiguredConfirmationPolicy,
     ConfirmationDecision,
@@ -12,7 +13,6 @@ from ai_agent_lab.domain.security.confirmation import (
     ConfirmationRequest,
     InMemoryConfirmationPreferenceStore,
 )
-from ai_agent_lab.domain.security.context import Permission
 from ai_agent_lab.domain.security.errors import (
     AuthorizationError,
     ConfirmationMismatchError,
@@ -24,6 +24,7 @@ from ai_agent_lab.domain.security.operations import (
     RiskLevel,
     ToolOperationDescriptor,
 )
+from ai_agent_lab.domain.security.permissions import Permission
 
 
 def descriptor(
@@ -31,7 +32,7 @@ def descriptor(
     *,
     operation_type: OperationType = OperationType.WRITE,
     risk_level: RiskLevel = RiskLevel.LOW,
-    permission: Permission = Permission.MAIL_MANAGE,
+    permission: Permission = MailPermission.MANAGE,
     default: bool = True,
 ) -> ToolOperationDescriptor:
     """Build a tool operation descriptor."""
@@ -48,12 +49,12 @@ READ_OP = descriptor(
     "search_mail",
     operation_type=OperationType.READ,
     risk_level=RiskLevel.LOW,
-    permission=Permission.MAIL_READ,
+    permission=MailPermission.READ,
     default=False,
 )
 MARK_READ_OP = descriptor("mark_read", risk_level=RiskLevel.LOW, default=True)
 ARCHIVE_OP = descriptor("archive_mail", risk_level=RiskLevel.MEDIUM, default=True)
-SEND_OP = descriptor("send_mail", risk_level=RiskLevel.HIGH, permission=Permission.MAIL_SEND, default=True)
+SEND_OP = descriptor("send_mail", risk_level=RiskLevel.HIGH, permission=MailPermission.SEND, default=True)
 
 
 def policy_with(preferences: ConfirmationPreferences | None = None) -> ConfiguredConfirmationPolicy:

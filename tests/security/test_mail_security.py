@@ -15,6 +15,7 @@ from tests.unit.test_mail_dataset import SAMPLE_DATASET
 
 from ai_agent_lab.domain.mail.errors import DraftNotFoundError
 from ai_agent_lab.domain.mail.models import EmailAddress, MailDraft, MailSearchRequest
+from ai_agent_lab.domain.mail.permissions import MailPermission
 from ai_agent_lab.domain.security.audit import AuditOutcome
 from ai_agent_lab.domain.security.confirmation import (
     ConfiguredConfirmationPolicy,
@@ -23,7 +24,7 @@ from ai_agent_lab.domain.security.confirmation import (
     ConfirmationPreferences,
     InMemoryConfirmationPreferenceStore,
 )
-from ai_agent_lab.domain.security.context import Permission, UserContext
+from ai_agent_lab.domain.security.context import UserContext
 from ai_agent_lab.domain.security.errors import (
     AuthorizationError,
     ConfirmationMismatchError,
@@ -42,8 +43,8 @@ from ai_agent_lab.skills.mail.management_skill import MailManagementSkill
 from ai_agent_lab.skills.mail.search_skill import MailReadSkill, MailSearchSkill
 from ai_agent_lab.skills.mail.send_skill import SendMailSkill
 
-LOCAL_USER = UserContext(user_id="local-user", session_id="s1", permissions=frozenset(Permission))
-OTHER_USER = UserContext(user_id="other-user", session_id="s2", permissions=frozenset(Permission))
+LOCAL_USER = UserContext(user_id="local-user", session_id="s1", permissions=MailPermission.declared())
+OTHER_USER = UserContext(user_id="other-user", session_id="s2", permissions=MailPermission.declared())
 
 pytestmark = pytest.mark.security
 
@@ -89,7 +90,7 @@ class TestCrossMailboxAccess:
         assert result.headers == ()
 
     async def test_an_unknown_caller_is_refused_outright(self, mail_tools):
-        stranger = UserContext(user_id="stranger", session_id="s3", permissions=frozenset(Permission))
+        stranger = UserContext(user_id="stranger", session_id="s3", permissions=MailPermission.declared())
 
         with pytest.raises(MailAccessDeniedError):
             await MailReadSkill(mail_tools).read_message("m-alpha-1", stranger)
@@ -187,7 +188,7 @@ class TestAuthorisation:
 
     @pytest.mark.parametrize(
         "permissions",
-        [frozenset(), frozenset({Permission.MAIL_READ}), frozenset({Permission.MAIL_READ, Permission.MAIL_DRAFT})],
+        [frozenset(), frozenset({MailPermission.READ}), frozenset({MailPermission.READ, MailPermission.DRAFT})],
     )
     async def test_sending_requires_the_send_permission(self, mail_tools, runner, permissions):
         limited = UserContext(user_id="local-user", session_id="s", permissions=permissions)

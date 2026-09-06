@@ -1,0 +1,21 @@
+# Capability delivered to the Mail Agent.
+tool_name: extract_mail_actions
+implementation: mail.extract_actions
+
+# The model selects tools from this text, so it is part of the contract.
+description: >-
+  List the actions the mailbox owner is expected to perform, based on the given messages or
+  conversation. Each action states whether it was explicitly requested or deduced, its
+  confidence, its due date when one is given, and its source message. Has no side effect.
+
+# Security posture. The risk floor enforced in code cannot be lowered here.
+operation:
+  type: READ
+  risk: LOW
+  permission: mail:read
+  confirmation_required: false
+
+# Logical MCP tools this capability is allowed to use.
+mcp_tools:
+  - get_mail
+  - get_thread

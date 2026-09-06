@@ -13,11 +13,12 @@ from tests.support.maf_fakes import ScriptedChatClient, says
 from ai_agent_lab.agents.mail.read_capabilities import CLASSIFY_MAIL, SUMMARISE_MAIL
 from ai_agent_lab.agents.mail.write_capabilities import DRAFT_MAIL_REPLY
 from ai_agent_lab.application.mail.composition import MailAgentCompositionRoot
+from ai_agent_lab.domain.mail.permissions import MailPermission
 from ai_agent_lab.domain.security.confirmation import (
     ConfiguredConfirmationPolicy,
     InMemoryConfirmationPreferenceStore,
 )
-from ai_agent_lab.domain.security.context import Permission, UserContext
+from ai_agent_lab.domain.security.context import UserContext
 from ai_agent_lab.frameworks.microsoft_agent_framework.tool_adapter import SkillToolAdapter
 from ai_agent_lab.infrastructure.config.settings import MailAgentSettings
 from ai_agent_lab.infrastructure.inmemory.reasoner import ScriptedTextReasoner
@@ -59,7 +60,7 @@ def tools_of(runtime, settings: MailAgentSettings | None = None):
     from ai_agent_lab.agents.mail.results import MailToolResultRenderer
 
     adapter = SkillToolAdapter(MailToolResultRenderer(), policy)
-    return {tool.name: tool for tool in adapter.to_tools(runtime.definition, runtime.user)}
+    return {tool.name: tool for tool in adapter.to_tools(runtime.registry, runtime.user)}
 
 
 class TestToolRegistration:
@@ -128,7 +129,7 @@ class TestApprovalModeFollowsConfiguration:
         monkeypatch.setenv("MAIL_AGENT_AUTO_APPROVED_TOOLS", MailToolName.ARCHIVE_MAIL.value)
         settings = MailAgentSettings()
         runtime = build_runtime(settings)
-        stranger = UserContext(user_id="somebody-else", session_id="s", permissions=frozenset(Permission))
+        stranger = UserContext(user_id="somebody-else", session_id="s", permissions=MailPermission.declared())
 
         policy = ConfiguredConfirmationPolicy(
             InMemoryConfirmationPreferenceStore({settings.user_id: settings.confirmation_preferences()})
@@ -136,8 +137,8 @@ class TestApprovalModeFollowsConfiguration:
         from ai_agent_lab.agents.mail.results import MailToolResultRenderer
 
         adapter = SkillToolAdapter(MailToolResultRenderer(), policy)
-        for_owner = {tool.name: tool for tool in adapter.to_tools(runtime.definition, runtime.user)}
-        for_stranger = {tool.name: tool for tool in adapter.to_tools(runtime.definition, stranger)}
+        for_owner = {tool.name: tool for tool in adapter.to_tools(runtime.registry, runtime.user)}
+        for_stranger = {tool.name: tool for tool in adapter.to_tools(runtime.registry, stranger)}
 
         assert for_owner[MailToolName.ARCHIVE_MAIL.value].approval_mode == "never_require"
         assert for_stranger[MailToolName.ARCHIVE_MAIL.value].approval_mode == "always_require"

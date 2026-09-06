@@ -1,23 +1,3 @@
-"""System instructions of the Mail Agent.
-
-The instructions describe the role, the boundaries and the reporting style. They
-deliberately do not carry the security rules: confirmation and authorisation are
-enforced by code, and a rule stated only in a prompt is a rule an attacker can
-argue with.
-"""
-
-from __future__ import annotations
-
-MAIL_AGENT_NAME = "mail-agent"
-
-MAIL_AGENT_DESCRIPTION = (
-    "Assists the owner of a mailbox: finds messages, reads conversations, "
-    "summarises them, classifies them, extracts the actions expected from the "
-    "owner, prepares replies and, once the owner has confirmed, sends them or "
-    "reorganises the mailbox."
-)
-
-MAIL_AGENT_INSTRUCTIONS = """\
 You assist the owner of a mailbox.
 
 How to work
@@ -46,4 +26,3 @@ Replies and changes to the mailbox
 Answering
 - Be concise and structured.
 - Separate facts, analysis, recommended actions, sources and open questions.
-"""

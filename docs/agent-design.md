@@ -2,24 +2,29 @@
 
 ## 1. What an agent is in this repository
 
-An agent is a thin, framework-independent definition:
+An agent is built with the API of its framework, directly. There is no house
+abstraction over an agent: a developer reads `Agent(...)` in the composition root
+and finds the public documentation of that call, rather than a wrapper this
+repository would have to document, support and teach.
 
-- an identity (name, description);
-- system instructions;
-- a set of skill descriptors it is allowed to expose;
-- nothing else.
+What the repository does own is what makes an agent's capabilities reusable
+across frameworks:
+
+- a **manifest**, delivered as configuration: identity, instructions, and for
+  each capability its description, security posture and prompt;
+- a **skill registry**, built in code: the capabilities bound to the coroutines
+  that run them;
+- an **adapter**, per framework: registry entries turned into that framework's
+  tools.
 
 An agent contains no business logic, no integration code and no reasoning
 implementation. Business logic belongs to skills; integrations belong to MCP
 servers.
 
-## 2. Framework-independent agent definition
+## 2. Skill registry
 
 ```text
-AgentDefinition
-  name: str
-  description: str
-  instructions: str
+SkillRegistry
   skills: Sequence[SkillDescriptor]
 
 SkillDescriptor
@@ -30,9 +35,14 @@ SkillDescriptor
   invoke: Callable[[BaseModel, UserContext], Awaitable[SkillResult]]
 ```
 
+`tool_name`, `description` and `operation` come from the delivered manifest;
+`input_model` and `invoke` come from the code. `SkillDescriptor.from_manifest`
+is where the two meet.
+
 The descriptor is the single contract a framework adapter needs. Adding
-LangChain or CrewAI support means writing one adapter that reads descriptors -
-no business code is duplicated.
+LangChain or CrewAI support means writing one adapter that reads descriptors and
+building that framework's agent in its own idiomatic way - no business code is
+duplicated, and no agent abstraction is imposed.
 
 ## 3. Framework adapter responsibilities
 
@@ -41,7 +51,7 @@ conventions. For Microsoft Agent Framework 1.17:
 
 | Repository concept          | Microsoft Agent Framework 1.17            |
 |-----------------------------|-------------------------------------------|
-| `AgentDefinition`           | `agent_framework.Agent`                   |
+| `AgentManifest`             | arguments of `agent_framework.Agent`      |
 | `SkillDescriptor`           | `agent_framework.FunctionTool` (`@tool`)  |
 | confirmation required       | `approval_mode="always_require"`          |
 | confirmation orchestration  | `ToolApprovalMiddleware` + `AgentSession` |
@@ -50,6 +60,7 @@ conventions. For Microsoft Agent Framework 1.17:
 | `TextReasoner`              | a chat client `get_response` call         |
 
 The adapter must not contain domain rules. It maps types and wires middleware.
+Building the agent is left to the composition root, in plain framework code.
 
 > API note: this repository targets the GA API of Microsoft Agent Framework
 > (`Agent`, `AgentResponse`, `Message`, `Content`, `@tool`, `AgentSession`).
@@ -59,7 +70,7 @@ The adapter must not contain domain rules. It maps types and wires middleware.
 ## 4. The Mail Agent
 
 ```text
-MailAgentDefinition
+Mail agent manifest + skill registry
     |
     +-- MailSearchSkill              READ
     +-- MailReadSkill                READ   (message / thread retrieval)

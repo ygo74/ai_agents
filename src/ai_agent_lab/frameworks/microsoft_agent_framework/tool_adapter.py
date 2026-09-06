@@ -6,8 +6,8 @@ from typing import Any, Literal
 
 from agent_framework import FunctionTool
 
-from ai_agent_lab.agents.definition import AgentDefinition, SkillDescriptor
 from ai_agent_lab.agents.mail.results import MailToolResultRenderer
+from ai_agent_lab.agents.registry import SkillDescriptor, SkillRegistry
 from ai_agent_lab.domain.errors import DomainError
 from ai_agent_lab.domain.security.confirmation import ConfirmationPolicy
 from ai_agent_lab.domain.security.context import UserContext
@@ -30,7 +30,7 @@ class SkillToolAdapter:
         self._renderer = renderer
         self._policy = policy
 
-    def to_tools(self, definition: AgentDefinition, user: UserContext) -> tuple[FunctionTool, ...]:
+    def to_tools(self, definition: SkillRegistry, user: UserContext) -> tuple[FunctionTool, ...]:
         """Expose every capability of an agent definition as a framework tool."""
         return tuple(self.to_tool(descriptor, user) for descriptor in definition.skills)
 

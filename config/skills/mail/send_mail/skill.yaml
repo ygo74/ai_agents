@@ -1,0 +1,21 @@
+# Capability delivered to the Mail Agent.
+tool_name: send_mail
+implementation: mail.send
+
+# The model selects tools from this text, so it is part of the contract.
+description: >-
+  Send a reply prepared earlier, identified by its draft reference. The content delivered is
+  exactly the content of that draft. This is irreversible and the mailbox owner is asked to
+  approve it first.
+
+# Security posture. The risk floor enforced in code cannot be lowered here.
+operation:
+  type: WRITE
+  risk: HIGH
+  permission: mail:send
+  confirmation_required: true
+
+# Logical MCP tools this capability is allowed to use.
+mcp_tools:
+  - create_draft
+  - send_mail
