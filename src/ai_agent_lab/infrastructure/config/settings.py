@@ -10,9 +10,14 @@ from __future__ import annotations
 from enum import StrEnum
 from pathlib import Path
 
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from ai_agent_lab.domain.security.confirmation import ConfirmationPreferences
+
+# Every settings class reads the same file, and so does the chat client, so a
+# key placed there is found wherever it is needed.
+ENV_FILE = ".env"
 
 
 class MailAgentMode(StrEnum):
@@ -20,6 +25,25 @@ class MailAgentMode(StrEnum):
 
     MOCK = "mock"
     MCP = "mcp"
+
+
+class ChatProvider(StrEnum):
+    """Which model provider backs the agent."""
+
+    OPENAI = "openai"
+    AZURE_OPENAI = "azure_openai"
+
+
+class AzureCredentialMode(StrEnum):
+    """How the agent authenticates against Azure OpenAI.
+
+    ``API_KEY`` leaves the key to the framework client, which reads it from the
+    environment. The other modes use Entra ID, so no key exists at all.
+    """
+
+    API_KEY = "api_key"
+    AZURE_CLI = "azure_cli"
+    DEFAULT = "default"
 
 
 class McpTransport(StrEnum):
@@ -34,7 +58,7 @@ class MailAgentSettings(BaseSettings):
 
     model_config = SettingsConfigDict(
         env_prefix="MAIL_AGENT_",
-        env_file=".env",
+        env_file=ENV_FILE,
         env_file_encoding="utf-8",
         extra="ignore",
     )
@@ -58,12 +82,45 @@ class MailAgentSettings(BaseSettings):
         )
 
 
+class ChatClientSettings(BaseSettings):
+    """Selection of the chat client that backs the agent.
+
+    Only routing information lives here. No API key is ever read, held or logged
+    by the application: the framework client resolves credentials itself, from
+    the environment or from Entra ID.
+
+    The provider is explicit on purpose. The unified client stays on OpenAI
+    whenever ``OPENAI_API_KEY`` is set, even when ``AZURE_OPENAI_*`` variables
+    are present, so an implicit selection would silently ignore an Azure
+    configuration.
+    """
+
+    model_config = SettingsConfigDict(
+        env_file=ENV_FILE,
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )
+
+    provider: ChatProvider = Field(default=ChatProvider.OPENAI, validation_alias="AGENT_CHAT_PROVIDER")
+    openai_model: str = Field(default="", validation_alias="OPENAI_CHAT_MODEL")
+    azure_model: str = Field(default="", validation_alias="AZURE_OPENAI_CHAT_MODEL")
+    azure_endpoint: str = Field(default="", validation_alias="AZURE_OPENAI_ENDPOINT")
+    azure_api_version: str = Field(default="", validation_alias="AZURE_OPENAI_API_VERSION")
+    azure_credential: AzureCredentialMode = Field(
+        default=AzureCredentialMode.API_KEY,
+        validation_alias="AZURE_OPENAI_CREDENTIAL",
+    )
+    # Read only to reject it: the client refuses an endpoint and a base URL at
+    # the same time, and the endpoint alone covers both forms.
+    azure_base_url: str = Field(default="", validation_alias="AZURE_OPENAI_BASE_URL")
+
+
 class MailMcpSettings(BaseSettings):
     """Connection settings of the mail MCP server."""
 
     model_config = SettingsConfigDict(
         env_prefix="MAIL_MCP_",
-        env_file=".env",
+        env_file=ENV_FILE,
         env_file_encoding="utf-8",
         extra="ignore",
     )

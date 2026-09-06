@@ -66,13 +66,19 @@ Copy-Item .env.example .env
 ```
 
 The core distribution is framework free; framework dependencies come from
-extras (`.[maf]`).
+extras (`.[maf]`). Add `.[azure]` for Entra ID authentication against Azure
+OpenAI.
+
+Pick the model provider in `.env`. `AGENT_CHAT_PROVIDER=openai` or
+`AGENT_CHAT_PROVIDER=azure_openai`; see
+[docs/mail-agent.md](./docs/mail-agent.md) for the Azure variables.
 
 Run the Mail Agent against the local dataset - no Gmail, no mail credentials:
 
 ```powershell
 $env:MAIL_AGENT_MODE = "mock"
 $env:OPENAI_API_KEY  = "<your key>"
+$env:OPENAI_CHAT_MODEL = "gpt-4o-mini"
 .\.venvs\mail-agent-maf\Scripts\python.exe -m ai_agent_lab.application.mail
 ```
 

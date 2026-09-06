@@ -7,14 +7,18 @@ import logging
 import uuid
 from pathlib import Path
 
-from agent_framework.openai import OpenAIChatClient
+from agent_framework import SupportsChatGetResponse
 
+from ai_agent_lab.application.chat_client import ConfiguredChatClientFactory
 from ai_agent_lab.application.mail.composition import MailAgentCompositionRoot
 from ai_agent_lab.application.mail.console import Console, ConsoleConfirmationPrompt
 from ai_agent_lab.application.mail.session import MailAgentSession
 from ai_agent_lab.domain.errors import DomainError
 from ai_agent_lab.frameworks.microsoft_agent_framework.approval import MafApprovalTranslator
-from ai_agent_lab.infrastructure.config.settings import MailAgentSettings
+from ai_agent_lab.frameworks.microsoft_agent_framework.chat_client import MafChatClientFactory
+from ai_agent_lab.infrastructure.config.azure_credentials import AzureIdentityCredentialProvider
+from ai_agent_lab.infrastructure.config.environment import EnvironmentFile
+from ai_agent_lab.infrastructure.config.settings import ChatClientSettings, MailAgentSettings
 
 _BANNER = """\
 Mail Agent ready.
@@ -59,20 +63,39 @@ class MailAgentCli:
         self._console.write(f"\nAgent > {answer}\n")
 
 
-def build_cli(*, base_path: Path | None = None) -> MailAgentCli:
-    """Assemble the command-line application from the environment."""
+def build_cli(
+    *,
+    base_path: Path | None = None,
+    chat_client: SupportsChatGetResponse | None = None,
+) -> MailAgentCli:
+    """Assemble the command-line application from the environment.
+
+    The chat client is chosen by ``AGENT_CHAT_PROVIDER``. A client can also be
+    injected by another host or by a test.
+    """
+    EnvironmentFile().load()
     settings = MailAgentSettings()
     logging.basicConfig(level=settings.log_level.upper())
 
     runtime = MailAgentCompositionRoot(
         settings,
-        OpenAIChatClient(),
+        chat_client or build_chat_client(),
         base_path=base_path or Path.cwd(),
     ).build(session_id=f"cli-{uuid.uuid4().hex[:8]}")
 
     console = Console()
     session = MailAgentSession(runtime, console, ConsoleConfirmationPrompt(console), MafApprovalTranslator())
     return MailAgentCli(session, console)
+
+
+def build_chat_client() -> SupportsChatGetResponse:
+    """Build the configured chat client, OpenAI or Azure OpenAI."""
+    EnvironmentFile().load()
+    return ConfiguredChatClientFactory(
+        ChatClientSettings(),
+        MafChatClientFactory(),
+        AzureIdentityCredentialProvider(),
+    ).build()
 
 
 def main() -> None:

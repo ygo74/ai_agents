@@ -177,11 +177,77 @@ py -3.12 -m venv .venvs\mail-agent-maf
 Copy-Item .env.example .env
 ```
 
-### Mock mode - no Gmail, no mail credentials
+Add the `azure` extra when authenticating to Azure OpenAI with Entra ID:
+`pip install -e ".[maf,azure,dev]"`.
+
+### Model provider - OpenAI or Azure OpenAI
+
+`AGENT_CHAT_PROVIDER` selects the provider. Only the client object changes: the
+agent, the skills, the MCP contract and the confirmation policy are identical.
+
+```bash
+# .env - OpenAI
+AGENT_CHAT_PROVIDER=openai
+OPENAI_API_KEY=<key>
+OPENAI_CHAT_MODEL=gpt-4o-mini
+```
+
+```bash
+# .env - Azure OpenAI with a key
+AGENT_CHAT_PROVIDER=azure_openai
+AZURE_OPENAI_ENDPOINT=https://<resource>.openai.azure.com
+AZURE_OPENAI_CHAT_MODEL=<deployment name>
+AZURE_OPENAI_API_KEY=<key>
+```
+
+```bash
+# .env - Azure OpenAI with Entra ID, no key at all
+AGENT_CHAT_PROVIDER=azure_openai
+AZURE_OPENAI_ENDPOINT=https://<resource>.openai.azure.com
+AZURE_OPENAI_CHAT_MODEL=<deployment name>
+AZURE_OPENAI_CREDENTIAL=azure_cli
+```
+
+`AZURE_OPENAI_CHAT_MODEL` is the **deployment** name. `AZURE_OPENAI_ENDPOINT`
+accepts the resource URL as well as the complete `.../openai/v1` form shown by
+the portal: the trailing segment is normalised, so the path is never duplicated.
+`AZURE_OPENAI_BASE_URL` is deliberately refused - the client cannot combine it
+with an endpoint, and it would silently fall back to the OpenAI path where the
+Azure key is never read. `AZURE_OPENAI_CREDENTIAL` accepts `api_key`,
+`azure_cli` or `default`.
+
+There is no separate Azure client to install: the installed Agent Framework
+serves both providers through the same `agent_framework.openai` clients, and the
+Python `AzureOpenAI*` classes were removed from `agent_framework.azure`. Azure is
+reached by passing explicit routing inputs.
+
+The provider is declared rather than deduced for one concrete reason: the
+unified client stays on OpenAI whenever `OPENAI_API_KEY` is set, even when every
+`AZURE_OPENAI_*` variable is filled in - which is exactly what copying
+`.env.example` produces. Deducing it would silently ignore an Azure deployment.
+`tests/integration/test_chat_client_selection.py` pins that behaviour.
+
+No key is ever read, stored or logged by the application. With `api_key` the
+framework client resolves it from the environment; with Entra ID it receives a
+credential object and exchanges it for a token itself.
+
+`.env` is loaded into the process environment at startup without overriding
+anything already set, so a real environment variable always wins over the file
+and both the settings and the chat client see the same values.
+
+### Mock mode - fake MCP, no Gmail, no mail credentials
+
+The repository already contains a deterministic fake for the Mail MCP boundary:
+`InMemoryMailTools` implements the same typed `MailTools` contract that a future
+MCP client will implement. It is not a Gmail emulator and it does not start a
+network MCP server; it is an in-process test double backed by a JSON mailbox.
+The agent, skills and confirmation policy use it through the same contract as
+the future Mail MCP implementation.
 
 ```powershell
 $env:MAIL_AGENT_MODE = "mock"
 $env:OPENAI_API_KEY  = "<your key>"
+$env:OPENAI_CHAT_MODEL = "gpt-4o-mini"
 .\.venvs\mail-agent-maf\Scripts\python.exe -m ai_agent_lab.application.mail
 ```
 
@@ -210,6 +276,36 @@ Agent > Email sent.
 The mailbox comes from `data/mail/sample_mailbox.json`. It contains a project
 conversation, an invoice, a newsletter, a prompt-injection attempt and a second
 mailbox used to test isolation.
+
+To use another deterministic mailbox, provide a JSON file with the same
+`mailboxes` structure and set its path relative to the repository root:
+
+```powershell
+$env:MAIL_AGENT_MODE = "mock"
+$env:MAIL_AGENT_MOCK_DATASET = "data/mail/my_mailbox.json"
+$env:OPENAI_CHAT_MODEL = "gpt-4o-mini"
+.\.venvs\mail-agent-maf\Scripts\python.exe -m ai_agent_lab.application.mail
+```
+
+### VS Code debug
+
+The repository includes a ready-to-use configuration in
+`.vscode/launch.json`. Select **Debug Mail Agent (mock MCP)** in the Run and
+Debug view and press **F5**. It uses
+`.venvs\mail-agent-maf\Scripts\python.exe`, starts the module
+`ai_agent_lab.application.mail` and forces the local mock MCP implementation.
+
+Create `.env` from `.env.example` first and set the model provider credentials
+there. The launch configuration does not contain credentials.
+
+The interactive CLI uses Microsoft Agent Framework and therefore needs the
+configured model provider key. The fake MCP itself needs no key, network access
+or mail credentials. The contract and agent scenarios use scripted doubles and
+can be run completely offline:
+
+```powershell
+.\.venvs\mail-agent-maf\Scripts\python.exe -m pytest tests\contract tests\agent tests\security -q
+```
 
 ### MCP mode
 
