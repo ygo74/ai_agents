@@ -1,0 +1,42 @@
+# A mail MCP server implementing our contract natively, over stdio.
+#
+# This is the reference shape: a server that speaks our tool names and returns
+# JSON matching the domain models. The local server double used by the tests
+# implements it, and a server built on EWS or Microsoft Graph would too.
+#
+# Because it covers the whole contract, nothing is missing from `capabilities`.
+server: local
+transport: stdio
+command: python
+args:
+  - -m
+  - ai_agent_lab.infrastructure.mcp.reference_server
+
+# It answers our own tool names with the contract payloads, so no translation
+# is needed. A server built on EWS declaring the same dialect works unchanged.
+dialect: native
+
+capabilities:
+  - search_mail
+  - get_mail
+  - get_thread
+  - list_labels
+  - create_draft
+  - send_mail
+  - mark_read
+  - archive_mail
+  - apply_label
+  - remove_label
+
+# A native server needs no translation: each alias is the logical name itself.
+tools:
+  search_mail: search_mail
+  get_mail: get_mail
+  get_thread: get_thread
+  list_labels: list_labels
+  create_draft: create_draft
+  send_mail: send_mail
+  mark_read: mark_read
+  archive_mail: archive_mail
+  apply_label: apply_label
+  remove_label: remove_label

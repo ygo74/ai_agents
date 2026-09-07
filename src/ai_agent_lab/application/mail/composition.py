@@ -14,6 +14,7 @@ adapter and the confirmation policy - not a wrapper around an agent.
 
 from __future__ import annotations
 
+from collections.abc import Iterator
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -24,7 +25,7 @@ from ai_agent_lab.agents.mail.converters import MailSearchRequestFactory
 from ai_agent_lab.agents.mail.read_capabilities import MailReadCapabilities
 from ai_agent_lab.agents.mail.results import MailToolResultRenderer
 from ai_agent_lab.agents.mail.write_capabilities import MailWriteCapabilities
-from ai_agent_lab.agents.registry import SkillRegistry
+from ai_agent_lab.agents.registry import SkillDescriptor, SkillRegistry
 from ai_agent_lab.application.mail.confirmation_presenter import MailConfirmationPresenter
 from ai_agent_lab.application.mail.skills_factory import MailSkills, MailSkillsFactory
 from ai_agent_lab.domain.mail.permissions import MailPermission
@@ -50,7 +51,7 @@ from ai_agent_lab.infrastructure.inmemory.confirmation_ledger import InMemoryCon
 from ai_agent_lab.infrastructure.inmemory.dataset import MailDatasetLoader
 from ai_agent_lab.infrastructure.inmemory.draft_store import InMemoryDraftStore
 from ai_agent_lab.infrastructure.observability.audit import InMemoryAuditTrail, LoggingAuditTrail
-from ai_agent_lab.mcp.mail.catalog import MailToolCatalog
+from ai_agent_lab.mcp.mail.catalog import MailToolCatalog, MailToolName
 from ai_agent_lab.mcp.mail.contracts import MailTools
 from ai_agent_lab.mcp.mail.floor import MailSecurityFloor
 from ai_agent_lab.skills.mail.categories import MailCategoryCatalog
@@ -72,6 +73,11 @@ class MailAgentRuntime:
     confirmation_ledger: InMemoryConfirmationLedger
     audit: InMemoryAuditTrail
     mail_tools: MailTools
+    provider: MailToolsProvider
+
+    async def aclose(self) -> None:
+        """Release whatever the backend holds open, such as an MCP session."""
+        await self.provider.aclose()
 
 
 class MailAgentCompositionRoot:
@@ -98,12 +104,13 @@ class MailAgentCompositionRoot:
         user = self._user_context(session_id)
         policy = self._policy()
         audit = InMemoryAuditTrail()
-        mail_tools = self._mail_tools()
+        provider = MailToolsProvider(self._settings, MailDatasetLoader())
+        mail_tools = self._mail_tools(provider)
         skills = self._skills(manifest, mail_tools, policy, audit, user)
 
         draft_store = InMemoryDraftStore()
         ledger = InMemoryConfirmationLedger()
-        registry = self._registry(manifest, skills, draft_store, ledger)
+        registry = self._registry(manifest, skills, draft_store, ledger, self._served(provider))
         tools = SkillToolAdapter(MailToolResultRenderer(), policy).to_tools(registry, user)
 
         return MailAgentRuntime(
@@ -124,7 +131,16 @@ class MailAgentCompositionRoot:
             confirmation_ledger=ledger,
             audit=audit,
             mail_tools=mail_tools,
+            provider=provider,
         )
+
+    def _served(self, provider: MailToolsProvider) -> frozenset[MailToolName]:
+        """Return the capabilities the configured backend can actually serve.
+
+        This reads the delivered binding, never the connection, so it holds even
+        when a test supplies its own mail tools.
+        """
+        return provider.capabilities(base_path=self._base_path)
 
     def _skills(
         self,
@@ -162,8 +178,14 @@ class MailAgentCompositionRoot:
         skills: MailSkills,
         draft_store: InMemoryDraftStore,
         ledger: InMemoryConfirmationLedger,
+        served: frozenset[MailToolName],
     ) -> SkillRegistry:
-        """Bind the delivered manifests to the code that runs them."""
+        """Bind the delivered manifests to the code that runs them.
+
+        A capability the bound server cannot serve is left out rather than
+        advertised: a tool the model can select but no server can honour turns
+        into a refusal in the middle of a conversation.
+        """
         broker = ConfirmationBroker(UnattendedApprovalAuthority(), ledger)
         read_capabilities = MailReadCapabilities(
             manifest,
@@ -183,7 +205,24 @@ class MailAgentCompositionRoot:
             draft_store,
             broker,
         )
-        return SkillRegistry((*read_capabilities.descriptors(), *write_capabilities.descriptors()))
+        descriptors = (*read_capabilities.descriptors(), *write_capabilities.descriptors())
+        return SkillRegistry(tuple(self._servable(descriptors, served)))
+
+    @staticmethod
+    def _servable(
+        descriptors: tuple[SkillDescriptor, ...],
+        served: frozenset[MailToolName],
+    ) -> Iterator[SkillDescriptor]:
+        """Keep the capabilities the bound server declares it can serve.
+
+        A capability whose name is not a catalogued MCP tool - an analysis run
+        by the agent itself - depends on no server and is always kept.
+        """
+        catalogued = {name.value: name for name in MailToolName}
+        for descriptor in descriptors:
+            required = catalogued.get(descriptor.tool_name)
+            if required is None or required in served:
+                yield descriptor
 
     def _policy(self) -> ConfirmationPolicy:
         """Build the confirmation policy from the configured preferences."""
@@ -200,11 +239,11 @@ class MailAgentCompositionRoot:
             permissions=MailPermission.declared(),
         )
 
-    def _mail_tools(self) -> MailTools:
+    def _mail_tools(self, provider: MailToolsProvider) -> MailTools:
         """Build the mail MCP implementation for the configured mode."""
         if self._mail_tools_override is not None:
             return self._mail_tools_override
-        return MailToolsProvider(self._settings, MailDatasetLoader()).build(base_path=self._base_path)
+        return provider.build(base_path=self._base_path)
 
     def _reasoner(self) -> TextReasoner:
         """Build the reasoner used by the analysis skills."""

@@ -26,8 +26,9 @@ from ai_agent_lab.infrastructure.config.manifests import (
     ConfigurationError,
     SkillManifestLoader,
 )
-from ai_agent_lab.infrastructure.config.mcp_binding import McpBindingError, McpToolBindingLoader
-from ai_agent_lab.mcp.mail.catalog import MailToolCatalog
+from ai_agent_lab.infrastructure.config.mcp_binding import McpBindingError, McpServerBindingLoader
+from ai_agent_lab.infrastructure.config.settings import McpTransport
+from ai_agent_lab.mcp.mail.catalog import MailToolCatalog, MailToolName
 from ai_agent_lab.mcp.mail.floor import MailSecurityFloor
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
@@ -204,37 +205,68 @@ class TestRefusedConfiguration:
 
 
 class TestMcpBinding:
-    """A skill names a logical tool; the binding names the deployed one."""
+    """A server declares what it can serve and how it names its tools."""
 
-    def test_the_delivered_binding_covers_every_catalogued_tool(self):
-        binding = McpToolBindingLoader(delivered(), MailToolCatalog()).load("mail")
+    def test_the_official_gmail_binding_loads(self):
+        binding = McpServerBindingLoader(delivered()).load("gmail")
 
-        assert set(binding.as_mapping()) == {name.value for name in MailToolCatalog().names()}
+        assert binding.transport is McpTransport.HTTP
+        assert binding.url.startswith("https://")
+
+    def test_the_local_binding_covers_the_whole_contract(self):
+        binding = McpServerBindingLoader(delivered()).load("local")
+
+        assert binding.capabilities == set(MailToolCatalog().names())
+
+    @pytest.mark.security
+    def test_gmail_does_not_declare_sending(self):
+        """The official server has no send tool, and the binding says so.
+
+        Declaring it would advertise a capability to the model that no tool can
+        honour, and the failure would surface as a refusal mid-conversation.
+        Recorded from the live server: 23 tools, none of which sends.
+        """
+        binding = McpServerBindingLoader(delivered()).load("gmail")
+
+        assert not binding.supports(MailToolName.SEND_MAIL)
+        assert binding.supports(MailToolName.GET_THREAD)
+        assert binding.supports(MailToolName.GET_MAIL)
 
     def test_it_resolves_the_remote_name_of_a_tool(self):
-        binding = McpToolBindingLoader(delivered(), MailToolCatalog()).load("mail")
+        binding = McpServerBindingLoader(delivered()).load("gmail")
 
-        assert binding.remote_name(MailToolCatalog().names()[0])
+        assert binding.remote("update_message_labels") == "update_message_labels"
+        assert binding.remote("search_threads") == "search_threads"
 
-    def test_a_partial_binding_is_refused(self, tmp_path):
+    def test_an_alias_the_server_never_named_is_refused(self):
+        binding = McpServerBindingLoader(delivered()).load("gmail")
+
+        with pytest.raises(McpBindingError, match="send_gmail"):
+            binding.remote("send_gmail")
+
+    def test_a_dialect_needing_an_undeclared_tool_fails_early(self):
+        binding = McpServerBindingLoader(delivered()).load("gmail")
+
+        with pytest.raises(McpBindingError, match="missing tool names"):
+            binding.require_aliases(("get_thread", "send_everything"))
+
+    def test_an_unknown_capability_is_refused(self, tmp_path):
         (tmp_path / "mcp").mkdir()
-        (tmp_path / "mcp" / "mail.yaml").write_text(
-            "server: partial\ntools:\n  search_mail: remote_search\n", encoding="utf-8"
+        (tmp_path / "mcp" / "x.yaml").write_text(
+            "server: x\ntransport: stdio\ncommand: python\n"
+            "capabilities:\n  - delete_everything\ntools:\n  a: b\n",
+            encoding="utf-8",
         )
 
-        loader = McpToolBindingLoader(ConfigurationDirectory(tmp_path), MailToolCatalog())
+        with pytest.raises(McpBindingError, match="unknown capabilities"):
+            McpServerBindingLoader(ConfigurationDirectory(tmp_path)).load("x")
 
-        with pytest.raises(McpBindingError, match="no binding for"):
-            loader.load("mail")
-
-    def test_a_binding_naming_an_unknown_tool_is_refused(self, tmp_path):
+    def test_an_http_server_without_an_endpoint_is_refused(self, tmp_path):
         (tmp_path / "mcp").mkdir()
-        catalogued = "\n".join(f"  {name.value}: {name.value}" for name in MailToolCatalog().names())
-        (tmp_path / "mcp" / "mail.yaml").write_text(
-            f"server: extra\ntools:\n{catalogued}\n  delete_everything: rm\n", encoding="utf-8"
+        (tmp_path / "mcp" / "x.yaml").write_text(
+            "server: x\ntransport: http\ncapabilities:\n  - get_thread\ntools:\n  a: b\n",
+            encoding="utf-8",
         )
 
-        loader = McpToolBindingLoader(ConfigurationDirectory(tmp_path), MailToolCatalog())
-
-        with pytest.raises(McpBindingError, match="unknown tools"):
-            loader.load("mail")
+        with pytest.raises(McpBindingError, match="requires 'url'"):
+            McpServerBindingLoader(ConfigurationDirectory(tmp_path)).load("x")

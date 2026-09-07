@@ -1,0 +1,46 @@
+# Our own mail MCP server, backed by the Gmail REST API.
+#
+# Why not config/mcp/gmail.yaml, the official Google server? Because it is behind
+# the Google Workspace Developer Preview Program, which a personal account
+# cannot join. The REST API it sits on is generally available.
+#
+# The agent is unchanged either way: it talks MCP over stdio and never sees a
+# Google credential. The token lives in the server process alone.
+server: gmail-api
+transport: stdio
+command: python
+args:
+  - -m
+  - ai_agent_lab.infrastructure.mcp.reference_server
+  - --backend
+  - gmail
+
+# It answers our own tool names with the contract payloads.
+dialect: native
+
+# Full coverage, sending included - which the official server does not offer.
+# Read and drafts need gmail.readonly and gmail.compose; the four label
+# operations additionally need gmail.modify.
+capabilities:
+  - search_mail
+  - get_mail
+  - get_thread
+  - list_labels
+  - create_draft
+  - send_mail
+  - mark_read
+  - archive_mail
+  - apply_label
+  - remove_label
+
+tools:
+  search_mail: search_mail
+  get_mail: get_mail
+  get_thread: get_thread
+  list_labels: list_labels
+  create_draft: create_draft
+  send_mail: send_mail
+  mark_read: mark_read
+  archive_mail: archive_mail
+  apply_label: apply_label
+  remove_label: remove_label

@@ -61,6 +61,23 @@ def make_thread(*messages: MailMessage) -> MailThread:
     return MailThread(thread_id=first.thread_id, subject=first.subject, messages=messages)
 
 
+@pytest.fixture(autouse=True)
+def deterministic_backend(monkeypatch):
+    """Keep the suite independent of the developer's ``.env``.
+
+    Environment variables win over the file, so declaring the backend here makes
+    every test run against the deterministic dataset whatever a machine happens
+    to be configured for. A test that needs another backend overrides these.
+
+    Real OAuth credentials are removed for the same reason: no test may reach a
+    live mail server, even by accident.
+    """
+    monkeypatch.setenv("MAIL_AGENT_MODE", "mock")
+    monkeypatch.setenv("MAIL_MCP_SERVER", "local")
+    for name in ("MAIL_MCP_OAUTH_CLIENT_ID", "MAIL_MCP_OAUTH_CLIENT_SECRET"):
+        monkeypatch.delenv(name, raising=False)
+
+
 @pytest.fixture
 def owner() -> UserContext:
     """A mailbox owner holding every mail permission."""

@@ -133,7 +133,12 @@ class ChatClientSettings(BaseSettings):
 
 
 class MailMcpSettings(BaseSettings):
-    """Connection settings of the mail MCP server."""
+    """Connection settings of the mail MCP server.
+
+    Where the server lives and which tools it exposes are delivered in
+    ``config/mcp/<server>.yaml``; only the choice of server and the timeout are
+    environment concerns.
+    """
 
     model_config = SettingsConfigDict(
         env_prefix="MAIL_MCP_",
@@ -142,15 +147,8 @@ class MailMcpSettings(BaseSettings):
         extra="ignore",
     )
 
-    transport: McpTransport = McpTransport.STDIO
-    command: str = ""
-    args: str = ""
-    url: str = ""
+    server: str = "local"
     request_timeout_seconds: int = 30
-
-    def command_args(self) -> tuple[str, ...]:
-        """Arguments passed to a stdio MCP server."""
-        return tuple(part for part in self.args.split() if part)
 
 
 def _names(value: str) -> frozenset[str]:

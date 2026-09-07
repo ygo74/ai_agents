@@ -10,7 +10,7 @@ from pathlib import Path
 from agent_framework import SupportsChatGetResponse
 
 from ai_agent_lab.application.chat_client import ConfiguredChatClientFactory
-from ai_agent_lab.application.mail.composition import MailAgentCompositionRoot
+from ai_agent_lab.application.mail.composition import MailAgentCompositionRoot, MailAgentRuntime
 from ai_agent_lab.application.mail.console import Console, ConsoleConfirmationPrompt
 from ai_agent_lab.application.mail.session import MailAgentSession
 from ai_agent_lab.domain.errors import DomainError
@@ -34,12 +34,20 @@ Examples:
 class MailAgentCli:
     """Reads user turns from the console and prints the agent answers."""
 
-    def __init__(self, session: MailAgentSession, console: Console) -> None:
+    def __init__(self, session: MailAgentSession, console: Console, runtime: MailAgentRuntime) -> None:
         self._session = session
         self._console = console
+        self._runtime = runtime
 
     async def run(self) -> None:
-        """Run the conversation until the user leaves."""
+        """Run the conversation until the user leaves, then release the backend."""
+        try:
+            await self._converse()
+        finally:
+            await self._runtime.aclose()
+
+    async def _converse(self) -> None:
+        """Read and answer turns until the user leaves."""
         self._console.write(_BANNER)
         while True:
             try:
@@ -85,7 +93,7 @@ def build_cli(
 
     console = Console()
     session = MailAgentSession(runtime, console, ConsoleConfirmationPrompt(console), MafApprovalTranslator())
-    return MailAgentCli(session, console)
+    return MailAgentCli(session, console, runtime)
 
 
 def build_chat_client() -> SupportsChatGetResponse:

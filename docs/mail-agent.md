@@ -298,14 +298,22 @@ $env:OPENAI_CHAT_MODEL = "gpt-4o-mini"
 
 ### VS Code debug
 
-The repository includes a ready-to-use configuration in
-`.vscode/launch.json`. Select **Debug Mail Agent (mock MCP)** in the Run and
-Debug view and press **F5**. It uses
-`.venvs\mail-agent-maf\Scripts\python.exe`, starts the module
-`ai_agent_lab.application.mail` and forces the local mock MCP implementation.
+`.vscode/launch.json` provides four configurations, all using
+`.venvs\mail-agent-maf\Scripts\python.exe`:
+
+| Configuration | What it forces |
+|---|---|
+| **Mail Agent (.env decides)** | nothing — the backend comes from `.env` |
+| **Mail Agent (force mock dataset)** | `MAIL_AGENT_MODE=mock` |
+| **Mail Agent (force local MCP server)** | `MAIL_AGENT_MODE=mcp`, `MAIL_MCP_SERVER=local` |
+| **Authorise against the Gmail MCP server** | runs the one-off consent |
+
+The `env` block of a launch configuration **overrides** `envFile`, so the two
+"force" configurations win over `.env` by design. Pick **(.env decides)** when
+you want the file to be the single source of truth.
 
 Create `.env` from `.env.example` first and set the model provider credentials
-there. The launch configuration does not contain credentials.
+there. No launch configuration contains a credential.
 
 The interactive CLI uses Microsoft Agent Framework and therefore needs the
 configured model provider key. The fake MCP itself needs no key, network access
@@ -318,10 +326,19 @@ can be run completely offline:
 
 ### MCP mode
 
-`MAIL_AGENT_MODE=mcp` is wired through `MailToolsProvider` and currently fails
-with an explicit message: the Gmail-backed Mail MCP server is the next
-deliverable. When it exists, only `McpMailTools` is added; the agent, the skills
-and the scenarios do not change. That is the point of the mode split.
+`MAIL_AGENT_MODE=mcp` runs the agent against a real mail MCP server, selected by
+`MAIL_MCP_SERVER`. The reference server needs nothing but the repository:
+
+```powershell
+$env:MAIL_AGENT_MODE = "mcp"
+$env:MAIL_MCP_SERVER = "local"
+.\.venvs\mail-agent-maf\Scripts\python.exe -m ai_agent_lab.application.mail
+```
+
+The agent, the skills and the scenarios are identical in both modes; only the
+object built by the provider changes. Which servers exist, what the official
+Google Gmail server can and cannot do, and how to plug in another one are
+covered in [mail-mcp-servers.md](./mail-mcp-servers.md).
 
 ## 7. Testing
 
@@ -360,7 +377,9 @@ three different implementations.
 
 ## 9. Known limitations
 
-- The Gmail Mail MCP server does not exist yet; only the mock mode runs.
+- The official Gmail server has no send tool and no per-message retrieval, so
+  those capabilities are not offered when it is the bound server. See
+  [mail-mcp-servers.md](./mail-mcp-servers.md).
 - Drafts and confirmation preferences live in memory, for the lifetime of a
   process.
 - A summary is produced from fenced content but is itself relayed to the agent

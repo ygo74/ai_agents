@@ -31,8 +31,10 @@ frameworks, not to build the same business logic three times.
 
 | Agent | Framework | State |
 |---|---|---|
-| Mail Agent | Microsoft Agent Framework 1.17 | Working in mock mode. See [docs/mail-agent.md](./docs/mail-agent.md). |
-| Mail MCP server (Gmail) | - | Next deliverable. |
+| Mail Agent | Microsoft Agent Framework 1.17 | Working. See [docs/mail-agent.md](./docs/mail-agent.md). |
+| Mail MCP | our server, on the Gmail REST API | Working against a real mailbox, full coverage. |
+| Mail MCP | our server, on a dataset | Working over stdio, validated by the conformance suite. |
+| Mail MCP | official Google Gmail server | Bound and capability-checked; blocked by Workspace Developer Preview enrolment. |
 | Mail Agent | LangChain, CrewAI | Not started. The skills are ready to be reused. |
 
 ## Layout
@@ -104,6 +106,7 @@ No test needs a network, an API key or a mailbox.
 | [docs/architecture.md](./docs/architecture.md) | Layers, dependency rule, runtime modes. |
 | [docs/agent-design.md](./docs/agent-design.md) | What an agent is, framework adapters, confirmation model. |
 | [docs/mcp-design.md](./docs/mcp-design.md) | Tool contracts, tool surface, error translation. |
+| [docs/mail-mcp-servers.md](./docs/mail-mcp-servers.md) | Which mail MCP servers are supported, and how to plug in another. |
 | [docs/configuration.md](./docs/configuration.md) | What is delivered as configuration, and what stays in code. |
 | [docs/mail-agent.md](./docs/mail-agent.md) | The Mail Agent: capabilities, skills, security, how to run it. |
 

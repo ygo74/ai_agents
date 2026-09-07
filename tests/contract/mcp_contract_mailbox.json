@@ -1,0 +1,44 @@
+{
+  "_comment": "Mailbox of the MCP conformance suite. It mirrors the fixture of the in-memory contract test, so both implementations are judged on identical data.",
+  "mailboxes": [
+    {
+      "owner_id": "owner",
+      "labels": [
+        { "label_id": "INBOX", "name": "Inbox", "is_system": true },
+        { "label_id": "PROJECT", "name": "Project" }
+      ],
+      "messages": [
+        {
+          "message_id": "m1",
+          "thread_id": "t1",
+          "subject": "Project Alpha review",
+          "body": "Please review the architecture document before Friday.",
+          "sender": { "address": "john@example.com" },
+          "to": [{ "address": "owner@example.com" }],
+          "sent_at": "2026-09-01T09:00:00+00:00",
+          "is_read": false
+        },
+        {
+          "message_id": "m2",
+          "thread_id": "t1",
+          "subject": "Re: Project Alpha review",
+          "body": "Please review the architecture document before Friday.",
+          "sender": { "address": "john@example.com" },
+          "to": [{ "address": "owner@example.com" }],
+          "sent_at": "2026-09-01T15:00:00+00:00",
+          "is_read": true
+        },
+        {
+          "message_id": "m3",
+          "thread_id": "t2",
+          "subject": "Invoice 42",
+          "body": "Your invoice is available.",
+          "sender": { "address": "billing@supplier.example.com" },
+          "to": [{ "address": "owner@example.com" }],
+          "sent_at": "2026-09-02T09:00:00+00:00",
+          "is_read": false
+        }
+      ]
+    }
+  ]
+}
