@@ -38,6 +38,7 @@ from ai_agent_lab.mail.inmemory.dataset import MailDatasetLoader
 from ai_agent_lab.mail.inmemory.draft_store import InMemoryDraftStore
 from ai_agent_lab.mail.inmemory.mail_tools import InMemoryMailTools
 from ai_agent_lab.mail.mail_errors import MailAccessDeniedError, MailToolError
+from ai_agent_lab.mail.security_floor import MailSecurityFloor
 from ai_agent_lab.mail.skills.gating import GatedMailOperationRunner
 from ai_agent_lab.mail.skills.management_skill import MailManagementSkill
 from ai_agent_lab.mail.skills.search_skill import MailReadSkill, MailSearchSkill
@@ -64,7 +65,7 @@ def audit():
 @pytest.fixture
 def runner(audit):
     """Runner applying the default confirmation policy."""
-    policy = ConfiguredConfirmationPolicy(InMemoryConfirmationPreferenceStore())
+    policy = ConfiguredConfirmationPolicy(InMemoryConfirmationPreferenceStore(), MailSecurityFloor().build())
     return GatedMailOperationRunner(MailToolCatalog(), policy, ConfirmationGate(policy), LoggingAuditTrail(audit))
 
 
@@ -96,7 +97,7 @@ class TestCrossMailboxAccess:
             await MailReadSkill(mail_tools).read_message("m-alpha-1", stranger)
 
     async def test_a_user_cannot_alter_another_mailbox(self, mail_tools, runner):
-        skill = MailManagementSkill(mail_tools, mail_tools, runner)
+        skill = MailManagementSkill(mail_tools, mail_tools, mail_tools, runner)
         request = skill.build_confirmation_request(MailToolName.ARCHIVE_MAIL, "m-alpha-1", OTHER_USER)
         decision = ConfirmationDecision(request_id=request.request_id, approved=True, decided_by="other-user")
 
@@ -125,7 +126,7 @@ class TestConfirmationBypass:
         assert mail_tools.mailbox_of(LOCAL_USER).sent == ()
 
     async def test_a_confirmation_cannot_be_replayed_across_operations(self, mail_tools, runner):
-        management = MailManagementSkill(mail_tools, mail_tools, runner)
+        management = MailManagementSkill(mail_tools, mail_tools, mail_tools, runner)
         send = SendMailSkill(mail_tools, mail_tools, runner)
         harmless = management.build_confirmation_request(
             MailToolName.MARK_READ, "m-alpha-1", LOCAL_USER, is_read=True
@@ -176,7 +177,7 @@ class TestConfirmationBypass:
         store = InMemoryConfirmationPreferenceStore(
             {"local-user": ConfirmationPreferences(auto_approved_tools=frozenset({MailToolName.SEND_MAIL.value}))}
         )
-        policy = ConfiguredConfirmationPolicy(store)
+        policy = ConfiguredConfirmationPolicy(store, MailSecurityFloor().build())
         runner = GatedMailOperationRunner(MailToolCatalog(), policy, ConfirmationGate(policy), audit)
 
         with pytest.raises(ConfirmationRequiredError):

@@ -4,6 +4,13 @@ One session is opened for the lifetime of a conversation and closed when it
 ends. Opening a connection per call would pay the initialisation handshake -
 and, over HTTP, a token exchange - on every message the user reads.
 
+One session, and exactly one. A model routinely calls two mail tools in the same
+turn, and the framework runs them concurrently. Without a guard, each of them
+opens its own transport; the losers are then garbage collected from whichever
+task happens to run last, and anyio refuses to unwind a cancel scope outside the
+task that entered it. The visible symptom is not a warning: the transport dies
+mid-turn and the mailbox appears to be unavailable.
+
 Transport failures are translated at this boundary. Nothing above ever sees an
 anyio cancellation, an HTTP status or a broken pipe: it sees a mail tool that
 could not be reached.
@@ -11,6 +18,7 @@ could not be reached.
 
 from __future__ import annotations
 
+import asyncio
 import sys
 from contextlib import AsyncExitStack
 from datetime import timedelta
@@ -41,13 +49,20 @@ class McpConnection:
         self._auth = auth
         self._stack: AsyncExitStack | None = None
         self._session: ClientSession | None = None
+        self._opening = asyncio.Lock()
 
     async def session(self) -> ClientSession:
-        """Return the open session, connecting the first time it is needed."""
+        """Return the open session, connecting the first time it is needed.
+
+        The check is repeated inside the lock: several callers can pass the
+        first one together, and only the first through the door may connect.
+        """
         if self._session is not None:
             return self._session
-        self._session = await self._connect()
-        return self._session
+        async with self._opening:
+            if self._session is None:
+                self._session = await self._connect()
+            return self._session
 
     async def aclose(self) -> None:
         """Close the session and release the transport."""

@@ -1,0 +1,31 @@
+# Capability delivered to the Mail Agent.
+tool_name: delete_label
+implementation: mail.delete_label
+
+# The model selects tools from this text, so it is part of the contract.
+#
+# It names remove_label explicitly: "remove the Invoices label" almost always
+# means one message, and a model that reached for this one instead would strip
+# the label from the whole mailbox.
+description: >-
+  Delete a label from the mailbox. The label is also detached from every message
+  that carried it, and which messages those were is not recorded anywhere. This
+  is irreversible and requires an explicit confirmation from the user. To take a
+  label off a single message, use remove_label instead. Labels belonging to the
+  mail system cannot be deleted.
+
+# Security posture. The risk floor enforced in code cannot be lowered here.
+#
+# HIGH because it is irreversible and its blast radius is the whole mailbox, not
+# one message. Nothing forces the confirmation in code, so a deployment that
+# trusts its agent can set confirmation_required to false - deliberately.
+operation:
+  type: WRITE
+  risk: HIGH
+  permission: mail:manage
+  confirmation_required: true
+
+# Logical MCP tools this capability is allowed to use.
+mcp_tools:
+  - delete_label
+  - list_labels

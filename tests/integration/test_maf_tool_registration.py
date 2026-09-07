@@ -23,6 +23,7 @@ from ai_agent_lab.mail.catalog import MailToolName
 from ai_agent_lab.mail.config.settings import MailAgentSettings
 from ai_agent_lab.mail.domain.permissions import MailPermission
 from ai_agent_lab.mail.inmemory.reasoner import ScriptedTextReasoner
+from ai_agent_lab.mail.security_floor import MailSecurityFloor
 
 REPOSITORY_ROOT_MARKER = "data"
 
@@ -55,7 +56,8 @@ def tools_of(runtime, settings: MailAgentSettings | None = None):
     """Expose the agent capabilities as framework tools."""
     resolved = settings or MailAgentSettings()
     policy = ConfiguredConfirmationPolicy(
-        InMemoryConfirmationPreferenceStore({resolved.user_id: resolved.confirmation_preferences()})
+        InMemoryConfirmationPreferenceStore({resolved.user_id: resolved.confirmation_preferences()}),
+        MailSecurityFloor().build(),
     )
     from ai_agent_lab.mail.capabilities.results import MailToolResultRenderer
 
@@ -132,7 +134,8 @@ class TestApprovalModeFollowsConfiguration:
         stranger = UserContext(user_id="somebody-else", session_id="s", permissions=MailPermission.declared())
 
         policy = ConfiguredConfirmationPolicy(
-            InMemoryConfirmationPreferenceStore({settings.user_id: settings.confirmation_preferences()})
+            InMemoryConfirmationPreferenceStore({settings.user_id: settings.confirmation_preferences()}),
+            MailSecurityFloor().build(),
         )
         from ai_agent_lab.mail.capabilities.results import MailToolResultRenderer
 

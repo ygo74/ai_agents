@@ -17,7 +17,7 @@ from ai_agent_lab.core.manifests import AgentManifest
 from ai_agent_lab.core.reasoning.ports import TextReasoner
 from ai_agent_lab.core.security.audit import AuditTrail
 from ai_agent_lab.core.security.confirmation import ConfirmationGate, ConfirmationPolicy
-from ai_agent_lab.mail.catalog import MailToolCatalog
+from ai_agent_lab.mail.catalog import MailOperations
 from ai_agent_lab.mail.domain.ports import MailboxOwnerDirectory
 from ai_agent_lab.mail.skills.action_extraction_skill import MailActionExtractionSkill
 from ai_agent_lab.mail.skills.analysis import MailAnalysisMapper
@@ -59,7 +59,7 @@ class MailSkillsFactory:
         self,
         mail_tools: MailTools,
         reasoner: TextReasoner,
-        catalog: MailToolCatalog,
+        operations: MailOperations,
         policy: ConfirmationPolicy,
         audit: AuditTrail,
         owner_directory: MailboxOwnerDirectory,
@@ -69,7 +69,7 @@ class MailSkillsFactory:
     ) -> None:
         self._mail_tools = mail_tools
         self._reasoner = reasoner
-        self._catalog = catalog
+        self._operations = operations
         self._policy = policy
         self._audit = audit
         self._owner_directory = owner_directory
@@ -81,7 +81,7 @@ class MailSkillsFactory:
         """Assemble every mail skill."""
         mapper = MailAnalysisMapper(self._category_catalog)
         runner = GatedMailOperationRunner(
-            self._catalog,
+            self._operations,
             self._policy,
             ConfirmationGate(self._policy),
             self._audit,
@@ -120,7 +120,7 @@ class MailSkillsFactory:
                 self._prompt(DRAFT_MAIL_REPLY),
             ),
             send=SendMailSkill(self._mail_tools, self._mail_tools, runner),
-            management=MailManagementSkill(self._mail_tools, self._mail_tools, runner),
+            management=MailManagementSkill(self._mail_tools, self._mail_tools, self._mail_tools, runner),
         )
 
     def _prompt(self, tool_name: str) -> str:

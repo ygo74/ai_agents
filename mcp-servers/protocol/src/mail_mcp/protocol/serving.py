@@ -1,6 +1,6 @@
 """The tool surface a mail MCP server exposes.
 
-Both servers in this repository register exactly these ten tools, with these
+Both servers in this repository register exactly these twelve tools, with these
 argument names and these payloads. Writing that once is what makes the reference
 server a meaningful conformance target: if it and the Gmail server disagreed on
 the shape of a tool, matching one would not mean matching the other.
@@ -30,6 +30,7 @@ MailboxOwner = Annotated[str, Field(description="Identifier of the mailbox owner
 MessageId = Annotated[str, Field(description="Identifier of a message.")]
 ThreadId = Annotated[str, Field(description="Identifier of a conversation.")]
 LabelId = Annotated[str, Field(description="Identifier of a label.")]
+LabelName = Annotated[str, Field(description="Name of a label, as the mailbox owner would read it.")]
 
 _ACKNOWLEDGED = "ok"
 
@@ -69,6 +70,14 @@ class Mailbox(Protocol):
 
     async def list_labels(self) -> wire.Labels:
         """Return the labels available in the mailbox."""
+        ...
+
+    async def create_label(self, name: str) -> wire.CreatedLabel:
+        """Make a label exist, returning whether it had to be created."""
+        ...
+
+    async def delete_label(self, label_id: str) -> None:
+        """Delete a label, detaching it from every message carrying it."""
         ...
 
     async def create_draft(self, draft: wire.Draft) -> wire.Draft:
@@ -141,13 +150,14 @@ def reporting[**P, R](tool: Callable[P, Awaitable[R]]) -> Callable[P, Awaitable[
 
 
 class MailToolSurface:
-    """Registers the ten mail tools on an MCP server."""
+    """Registers the twelve mail tools on an MCP server."""
 
     def __init__(self, directory: MailboxDirectory, *, name: str) -> None:
         self._directory = directory
         self._server = FastMCP(name)
         self._register_read()
-        self._register_write()
+        self._register_message_writes()
+        self._register_label_lifecycle()
 
     @property
     def server(self) -> FastMCP:
@@ -206,8 +216,8 @@ class MailToolSurface:
         async def list_labels(owner: MailboxOwner) -> wire.Labels:
             return await self._directory.resolve(owner).list_labels()
 
-    def _register_write(self) -> None:
-        """Expose the tools that change something."""
+    def _register_message_writes(self) -> None:
+        """Expose the tools that change a message."""
 
         @self._server.tool(description="Save a prepared message as a draft. Delivers nothing.")
         @reporting
@@ -241,6 +251,36 @@ class MailToolSurface:
         @reporting
         async def remove_label(owner: MailboxOwner, message_id: MessageId, label_id: LabelId) -> str:
             await self._directory.resolve(owner).remove_label(message_id, label_id)
+            return _ACKNOWLEDGED
+
+    def _register_label_lifecycle(self) -> None:
+        """Expose the tools that change which labels the mailbox has.
+
+        These are separate from the message tools because they act on the
+        structure of the mailbox rather than on anything in it: creating one
+        affects no message, and deleting one affects every message carrying it.
+        """
+
+        @self._server.tool(
+            description=(
+                "Make a label exist in the mailbox, so messages can be filed under it. "
+                "Returns the label; if one with that name already exists it is returned unchanged "
+                "and nothing is created."
+            )
+        )
+        @reporting
+        async def create_label(owner: MailboxOwner, name: LabelName) -> wire.CreatedLabel:
+            return await self._directory.resolve(owner).create_label(name)
+
+        @self._server.tool(
+            description=(
+                "Delete a label from the mailbox. The label is also detached from every message "
+                "carrying it. Irreversible. System labels cannot be deleted."
+            )
+        )
+        @reporting
+        async def delete_label(owner: MailboxOwner, label_id: LabelId) -> str:
+            await self._directory.resolve(owner).delete_label(label_id)
             return _ACKNOWLEDGED
 
 

@@ -39,7 +39,7 @@ namespace root.
 
 ## The protocol is a shortcut, not a condition
 
-`mail_mcp.protocol` carries the ten tool names, the wire payloads and the error
+`mail_mcp.protocol` carries the twelve tool names, the wire payloads and the error
 codes. Nothing but `str`, `datetime`, `int` and `bool` — no domain model, no
 security metadata, no untrusted-content wrapper.
 
@@ -48,7 +48,7 @@ in its binding, and it works. That is an offer to server authors, never a
 requirement.
 
 `mail_mcp.protocol.serving` goes further and hands a server the ready-made
-FastMCP surface for the ten tools. Both of our servers use it, which is what
+FastMCP surface for the twelve tools. Both of our servers use it, which is what
 makes the reference server a meaningful conformance target: it and the Gmail
 server cannot drift apart.
 

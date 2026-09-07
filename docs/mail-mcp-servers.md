@@ -25,8 +25,14 @@ Each server is described by a delivered file, `config/mcp/<server>.yaml`.
 | Protocol | none | MCP over stdio | MCP over stdio | MCP over HTTP |
 | Server | — | ours | **ours** | Google |
 | Credentials | none | none | OAuth 2.0 | OAuth 2.0 |
-| Coverage | 10/10 | 10/10 | **10/10** | 8/10 |
+| Coverage | 12/12 | 12/12 | **12/12** | 10/12 |
 | Usable today | yes | yes | **yes** | Workspace preview only |
+
+The two the official Google server lacks are `send_mail` and `delete_label`. It
+is not a defect on either side: it is what a binding is for. The agent, the
+skills and the delivered skill packages are identical whichever server is bound,
+and the two capabilities are simply never offered to the model against `gmail`.
+`tests/integration/test_capability_exposure.py` holds that claim.
 
 ### `gmail-api` — our server, on the Gmail REST API
 
@@ -50,6 +56,35 @@ Agent -> Skills -> MCP tools -> our MCP server (stdio) -> Gmail REST API
 
 The agent is unchanged. It never sees a Google credential, and the MCP boundary
 the whole architecture rests on is intact.
+
+#### One trap worth knowing about
+
+Gmail's `label:` search operator matches the **name** a person reads, while
+every other label operation — applying, removing, deleting — takes an
+**identifier**. Putting an identifier after `label:` is not an error: Gmail
+matches nothing and reports an empty mailbox, so a broken filter looks exactly
+like a mailbox with no such messages.
+
+This server therefore passes labels as the `labelIds` request parameter, which
+is identifier-based and exact. The official Google server accepts only a query
+string, so its dialect resolves the identifiers to names first.
+`tests/contract/test_mail_tools_contract.py` pins the behaviour on both.
+
+#### When Google says "not now"
+
+A mailbox search fans out into one request per message, so a single rate limit
+or dropped connection would fail a search that was seconds from succeeding.
+Reads are retried three times with a growing, slightly randomised delay — the
+randomness matters, because requests that failed together would otherwise come
+back in step and repeat the burst that rate-limited them.
+
+Only `429` and `5xx`, plus transport failures, are retried. They all mean
+nothing happened.
+
+**Writes are never retried.** A request that timed out may still have been
+applied, and sending it again could file a message twice or create a second
+draft. Reporting a failure that did not happen is a nuisance; performing an
+operation twice without being asked is a defect.
 
 #### Setting it up
 
@@ -216,13 +251,16 @@ before the Gmail-backed agent can read anything.
 | Capability | Status |
 |---|---|
 | `send_mail` | **absent by design.** Google's model is that a draft is prepared and the person sends it from Gmail. |
-| `get_mail` | absent. There is no per-message retrieval; a conversation is read whole with `get_thread`. |
+| `delete_label` | **absent.** The server creates labels — `create_label` — but offers no deletion of any kind. |
 | `search_mail` | present, but searches **threads** rather than messages. |
+| `get_mail` | present as `get_message`, although the published guide omits it. Recorded from the live server. |
 
 The binding declares only what the server can serve, and the agent offers the
-model nothing else. Ask the Gmail-backed agent to send an email and there is no
-tool to select — rather than a tool that fails halfway through a conversation.
-`tests/integration/test_capability_exposure.py` pins that.
+model nothing else. Ask the Gmail-backed agent to send an email, or to delete a
+label, and there is no tool to select — rather than a tool that fails halfway
+through a conversation. `tests/integration/test_capability_exposure.py` pins
+that, including the fact that the same agent *does* offer label deletion against
+`gmail-api`.
 
 Why not a community server? The two popular ones return **prose formatted for a
 language model**: no message identifiers inside threads, no read state, no

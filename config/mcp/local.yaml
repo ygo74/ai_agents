@@ -27,6 +27,8 @@ capabilities:
   - archive_mail
   - apply_label
   - remove_label
+  - create_label
+  - delete_label
 
 # A native server needs no translation: each alias is the logical name itself.
 tools:
@@ -40,3 +42,5 @@ tools:
   archive_mail: archive_mail
   apply_label: apply_label
   remove_label: remove_label
+  create_label: create_label
+  delete_label: delete_label

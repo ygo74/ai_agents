@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import sys
 import uuid
 from pathlib import Path
 
@@ -29,6 +30,8 @@ Examples:
   Summarise the conversation about Project Alpha.
   Draft a reply to John saying I will review the document tomorrow.
 """
+
+_logger = logging.getLogger(__name__)
 
 
 class MailAgentCli:
@@ -62,11 +65,22 @@ class MailAgentCli:
             await self._answer(message)
 
     async def _answer(self, message: str) -> None:
-        """Run one turn, reporting a domain failure instead of crashing."""
+        """Run one turn, reporting a failure instead of ending the session.
+
+        A domain failure is expected and named. Anything else - the model
+        provider refusing a request, a transport giving up - is not, but it is
+        still one turn of a conversation the user is in the middle of. Losing
+        the session over it, along with every draft prepared in it, helps
+        nobody. The detail goes to the log; the user gets a sentence.
+        """
         try:
             answer = await self._session.ask(message)
         except DomainError as error:
             self._console.write(f"\nAgent > the request could not be completed: {error}\n")
+            return
+        except Exception as error:
+            _logger.exception("turn failed")
+            self._console.write(f"\nAgent > that turn failed ({type(error).__name__}). Nothing was changed.\n")
             return
         self._console.write(f"\nAgent > {answer}\n")
 
@@ -108,7 +122,29 @@ def build_chat_client() -> SupportsChatGetResponse:
 
 def main() -> None:
     """Entry point of the ``mail-agent`` console script."""
+    _prefer_utf8()
     asyncio.run(build_cli().run())
+
+
+def _prefer_utf8() -> None:
+    """Ask the terminal for UTF-8, so real mail subjects render as written.
+
+    Mail comes with accents, emoji and every script there is. A modern terminal
+    handles them once the streams are UTF-8; a legacy Windows code page cannot,
+    and :class:`Console` degrades those characters rather than losing the line.
+    This only removes the need to.
+
+    Failing is fine: a stream that cannot be reconfigured is one that was
+    already redirected or wrapped, and the fallback still applies.
+    """
+    for stream in (sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if reconfigure is None:
+            continue
+        try:
+            reconfigure(encoding="utf-8")
+        except (OSError, ValueError):
+            continue
 
 
 if __name__ == "__main__":

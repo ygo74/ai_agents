@@ -93,6 +93,25 @@ class TestGmailExposesWhatItCanServe:
         assert MailToolName.APPLY_LABEL.value in names
         assert MailToolName.ARCHIVE_MAIL.value in names
 
+    @pytest.mark.security
+    def test_label_deletion_is_not_offered(self, monkeypatch):
+        """The official server can create a label but not delete one.
+
+        This is the sharpest illustration of why capabilities are declared per
+        server: the same agent, the same skills and the same configuration
+        offer label deletion against our own Gmail server and withhold it here.
+        """
+        names = exposed(monkeypatch, mode="mcp", server="gmail")
+
+        assert MailToolName.CREATE_LABEL.value in names
+        assert MailToolName.DELETE_LABEL.value not in names
+
+    def test_label_deletion_is_offered_by_our_own_gmail_server(self, monkeypatch):
+        names = exposed(monkeypatch, mode="mcp", server="gmail-api")
+
+        assert MailToolName.CREATE_LABEL.value in names
+        assert MailToolName.DELETE_LABEL.value in names
+
     def test_analysis_capabilities_never_depend_on_a_server(self, monkeypatch):
         """Summarising and classifying run on retrieved content, not on a tool."""
         names = exposed(monkeypatch, mode="mcp", server="gmail")

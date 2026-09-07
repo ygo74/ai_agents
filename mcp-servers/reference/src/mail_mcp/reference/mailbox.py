@@ -21,6 +21,7 @@ from pydantic import ValidationError
 
 from mail_mcp.protocol import payloads as wire
 from mail_mcp.protocol.errors import AccessDeniedError, NotFoundError, ProtocolError
+from mail_mcp.protocol.rules import require_deletable
 
 
 class InMemoryMailbox:
@@ -89,6 +90,28 @@ class InMemoryMailbox:
         """Return the labels available in the mailbox."""
         return wire.Labels(labels=self._labels)
 
+    async def create_label(self, name: str) -> wire.CreatedLabel:
+        """Make a label exist, returning whether it had to be created."""
+        existing = self._label_named(name)
+        if existing is not None:
+            return wire.CreatedLabel(label=existing, created=False)
+        label = wire.Label(label_id=self._mint(name), name=name, is_system=False)
+        self._labels = (*self._labels, label)
+        return wire.CreatedLabel(label=label, created=True)
+
+    async def delete_label(self, label_id: str) -> None:
+        """Delete a label, detaching it from every message carrying it.
+
+        The detachment is the part worth reproducing: a caller that deleted a
+        label here and found messages still carrying it would be testing
+        against a mailbox no real one behaves like.
+        """
+        require_deletable(self._require_label(label_id))
+        self._labels = tuple(label for label in self._labels if label.label_id != label_id)
+        for message in list(self._messages.values()):
+            if label_id in message.label_ids:
+                self._replace(message.model_copy(update={"label_ids": _without(message.label_ids, label_id)}))
+
     async def create_draft(self, draft: wire.Draft) -> wire.Draft:
         """Persist a draft without delivering anything."""
         stored = draft.model_copy(update={"draft_id": draft.draft_id or f"draft-{uuid.uuid4().hex[:8]}"})
@@ -125,8 +148,7 @@ class InMemoryMailbox:
         """Detach a label from a message."""
         self._require_label(label_id)
         message = self._require(message_id)
-        remaining = tuple(existing for existing in message.label_ids if existing != label_id)
-        self._replace(message.model_copy(update={"label_ids": remaining}))
+        self._replace(message.model_copy(update={"label_ids": _without(message.label_ids, label_id)}))
 
     def _require(self, message_id: str) -> wire.Message:
         """Return a message, or report that it does not exist."""
@@ -135,11 +157,37 @@ class InMemoryMailbox:
             raise NotFoundError("message", message_id)
         return message
 
-    def _require_label(self, label_id: str) -> None:
-        """Refuse a label the mailbox does not define."""
-        if any(label.label_id == label_id for label in self._labels):
-            return
+    def _require_label(self, label_id: str) -> wire.Label:
+        """Return a label, or refuse one the mailbox does not define."""
+        for label in self._labels:
+            if label.label_id == label_id:
+                return label
         raise NotFoundError("label", label_id)
+
+    def _label_named(self, name: str) -> wire.Label | None:
+        """Return the label carrying a name, if the mailbox has one.
+
+        The comparison ignores case, because a mailbox owner reading "Invoices"
+        and "invoices" sees one label, and creating the second would be a
+        surprise rather than a service.
+        """
+        folded = name.casefold()
+        return next((label for label in self._labels if label.name.casefold() == folded), None)
+
+    def _mint(self, name: str) -> str:
+        """Return an identifier no label in this mailbox already uses.
+
+        Two different names can slugify to the same identifier - "Project Alpha"
+        and "Project/Alpha" - so the derived value is only a starting point.
+        """
+        taken = {label.label_id for label in self._labels}
+        candidate = _label_id(name)
+        if candidate not in taken:
+            return candidate
+        suffix = 2
+        while f"{candidate}_{suffix}" in taken:
+            suffix += 1
+        return f"{candidate}_{suffix}"
 
     def _replace(self, message: wire.Message) -> None:
         """Store a modified message in place of the previous one."""
@@ -251,7 +299,7 @@ class _Query:
         """Check the criteria bearing on the state and the date of a message."""
         if self._unread_only and message.is_read:
             return False
-        if self._label_ids and not any(label_id in message.label_ids for label_id in self._label_ids):
+        if not all(label_id in message.label_ids for label_id in self._label_ids):
             return False
         if self._date_from is not None and message.sent_at < self._date_from:
             return False
@@ -264,6 +312,23 @@ def _contains_keywords(message: wire.Message, keywords: str) -> bool:
     """Whether every keyword appears in the subject or the body."""
     haystack = f"{message.subject} {message.body}".casefold()
     return all(keyword in haystack for keyword in keywords.casefold().split())
+
+
+def _without(label_ids: tuple[str, ...], removed: str) -> tuple[str, ...]:
+    """Return the label identifiers with one of them taken out."""
+    return tuple(label_id for label_id in label_ids if label_id != removed)
+
+
+def _label_id(name: str) -> str:
+    """Mint an identifier for a new label.
+
+    Real mail systems mint opaque ones, and a caller must never assume the
+    identifier can be read back as a name. It is derived deterministically here
+    all the same: this server exists to be reproducible, and a random
+    identifier would make two runs of the same test differ.
+    """
+    slug = "".join(character if character.isalnum() else "_" for character in name).strip("_").upper()
+    return f"LBL_{slug}" if slug else "LBL_UNNAMED"
 
 
 def _header_of(message: wire.Message) -> wire.Header:

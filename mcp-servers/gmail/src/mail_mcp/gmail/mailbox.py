@@ -14,7 +14,7 @@ from datetime import datetime
 from email.message import EmailMessage
 from typing import Any
 
-from mail_mcp.gmail.api import GmailApiClient
+from mail_mcp.gmail.api import GmailApiClient, GmailConflictError
 from mail_mcp.gmail.messages import (
     INBOX_LABEL,
     UNREAD_LABEL,
@@ -24,6 +24,7 @@ from mail_mcp.gmail.messages import (
 from mail_mcp.gmail.query import GmailQuery
 from mail_mcp.protocol import payloads as wire
 from mail_mcp.protocol.errors import NotFoundError, ProtocolError
+from mail_mcp.protocol.rules import require_deletable
 
 _METADATA_HEADERS = ("Subject", "From", "To", "Cc", "Date")
 
@@ -67,6 +68,11 @@ class GmailMailbox:
         Gmail answers a query with identifiers only, so each hit needs its own
         request. They are issued concurrently and bounded: sequentially, a page
         of twenty would take longer than a caller is willing to wait.
+
+        Labels travel as ``labelIds`` rather than inside the query, because the
+        ``label:`` operator matches a name and a caller holds an identifier.
+        Gmail narrows on each one, so several labels mean messages carrying all
+        of them.
         """
         listing = await self._client.get(
             "/messages",
@@ -75,13 +81,13 @@ class GmailMailbox:
                 sender=sender,
                 recipient=recipient,
                 subject_contains=subject_contains,
-                label_ids=label_ids,
                 date_from=date_from,
                 date_to=date_to,
                 unread_only=unread_only,
                 has_attachments=has_attachments,
             )
             or None,
+            labelIds=list(label_ids) or None,
             maxResults=limit,
         )
         identifiers = [str(item["id"]) for item in listing.get("messages") or ()]
@@ -114,6 +120,27 @@ class GmailMailbox:
         """Return the labels available in the mailbox."""
         listing = await self._client.get("/labels")
         return wire.Labels(labels=tuple(self._labels.to_wire(item) for item in listing.get("labels") or ()))
+
+    async def create_label(self, name: str) -> wire.CreatedLabel:
+        """Make a label exist, returning whether it had to be created.
+
+        Gmail refuses a duplicate name outright, so the mailbox is read first.
+        The refusal is still handled: a label created between the read and the
+        write is a race, not a failure the caller should see.
+        """
+        existing = await self._label_named(name)
+        if existing is not None:
+            return wire.CreatedLabel(label=existing, created=False)
+        try:
+            created = await self._client.post("/labels", {"name": name})
+        except GmailConflictError:
+            return await self._existing(name)
+        return wire.CreatedLabel(label=self._labels.to_wire(created), created=True)
+
+    async def delete_label(self, label_id: str) -> None:
+        """Delete a label. Gmail detaches it from every message carrying it."""
+        require_deletable(await self._require_label(label_id))
+        await self._client.delete(f"/labels/{label_id}")
 
     async def create_draft(self, draft: wire.Draft) -> wire.Draft:
         """Persist a draft without delivering anything."""
@@ -164,16 +191,34 @@ class GmailMailbox:
         """Release the HTTP connection pool."""
         await self._client.aclose()
 
-    async def _require_label(self, label_id: str) -> None:
-        """Refuse a label the mailbox does not define.
+    async def _require_label(self, label_id: str) -> wire.Label:
+        """Return a label, or refuse one the mailbox does not define.
 
         Gmail accepts an unknown label identifier silently, which would report
         success for an operation that changed nothing.
         """
         labels = await self.list_labels()
-        if any(label.label_id == label_id for label in labels.labels):
-            return
-        raise NotFoundError("label", label_id)
+        found = next((label for label in labels.labels if label.label_id == label_id), None)
+        if found is None:
+            raise NotFoundError("label", label_id)
+        return found
+
+    async def _label_named(self, name: str) -> wire.Label | None:
+        """Return the label carrying a name, if the mailbox has one.
+
+        The comparison ignores case, because a mailbox owner reading "Invoices"
+        and "invoices" sees one label, and Gmail refuses the second anyway.
+        """
+        folded = name.casefold()
+        labels = await self.list_labels()
+        return next((label for label in labels.labels if label.name.casefold() == folded), None)
+
+    async def _existing(self, name: str) -> wire.CreatedLabel:
+        """Return the label Gmail says already exists."""
+        found = await self._label_named(name)
+        if found is None:
+            raise ProtocolError(f"Gmail reports label {name!r} exists but does not list it")
+        return wire.CreatedLabel(label=found, created=False)
 
     async def _modify(self, message_id: str, *, add: list[str] | None = None, remove: list[str] | None = None) -> None:
         """Apply one atomic label change."""

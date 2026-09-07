@@ -18,6 +18,7 @@ from ai_agent_lab.core.security.context import UserContext
 from ai_agent_lab.mail.domain.models import (
     MailDraft,
     MailLabel,
+    MailLabelOutcome,
     MailMessage,
     MailSearchRequest,
     MailSearchResult,
@@ -89,7 +90,7 @@ class MailSendTools(Protocol):
 
 @runtime_checkable
 class MailOrganisationTools(Protocol):
-    """Mailbox housekeeping operations."""
+    """Mailbox housekeeping operations on a message."""
 
     async def set_read_state(self, message_id: str, is_read: bool, user: UserContext) -> None:
         """Mark a message as read or unread."""
@@ -109,11 +110,42 @@ class MailOrganisationTools(Protocol):
 
 
 @runtime_checkable
+class MailLabelTools(Protocol):
+    """Changes to which labels a mailbox has.
+
+    Separate from :class:`MailOrganisationTools` because these act on the shape
+    of the mailbox rather than on a message in it. A skill that files messages
+    needs one; a skill that curates the label set needs the other.
+    """
+
+    async def create_label(self, name: str, user: UserContext) -> MailLabelOutcome:
+        """Make a label exist, reporting whether it had to be created.
+
+        Asking for a label that already exists is not an error: it is what a
+        caller organising a mailbox does most of the time.
+        """
+        ...
+
+    async def delete_label(self, label_id: str, user: UserContext) -> None:
+        """Delete a label, detaching it from every message carrying it.
+
+        This is irreversible. Callers must have obtained an explicit user
+        confirmation before invoking it.
+
+        Raises:
+            MailNotFoundError: no such label for this user.
+            MailAccessDeniedError: the label belongs to the mail system itself.
+        """
+        ...
+
+
+@runtime_checkable
 class MailTools(
     MailReadTools,
     MailDraftTools,
     MailSendTools,
     MailOrganisationTools,
+    MailLabelTools,
     Protocol,
 ):
     """The complete mail MCP surface."""

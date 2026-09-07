@@ -9,9 +9,11 @@ user, without touching business code:
 
 ``always_confirm`` (per user)  >  ``auto_approve`` (per user)  >  descriptor default
 
-A configurable risk floor sits above all of that: operations at or above
-``non_overridable_risk`` always require confirmation, so a preference file can
-never silently disarm sending an email.
+Above all of that sits the security floor, and only the floor. Risk level says
+how much an operation costs; the floor says what a configuration may not touch.
+Letting the risk level decide both would mean that raising an operation to HIGH
+- an honest description of its impact - silently took it away from the person
+who owns the mailbox.
 """
 
 from __future__ import annotations
@@ -28,6 +30,7 @@ from ai_agent_lab.core.security.errors import (
     ConfirmationRejectedError,
     ConfirmationRequiredError,
 )
+from ai_agent_lab.core.security.floor import SecurityFloor
 from ai_agent_lab.core.security.operations import RiskLevel, ToolOperationDescriptor
 
 _RISK_SEVERITY: Mapping[RiskLevel, int] = {
@@ -95,22 +98,33 @@ class ConfirmationPolicy(Protocol):
         """Return ``True`` when the operation must be confirmed by the user."""
         ...
 
+    def is_overridable(self, tool_name: str) -> bool:
+        """Whether anybody may decide for themselves about this operation.
+
+        An interface offering a standing answer needs to know this before it
+        offers one, and only the policy can answer it.
+        """
+        ...
+
 
 class ConfiguredConfirmationPolicy:
     """Confirmation policy combining tool defaults and user preferences."""
 
-    def __init__(
-        self,
-        preference_store: ConfirmationPreferenceStore,
-        *,
-        non_overridable_risk: RiskLevel = RiskLevel.HIGH,
-    ) -> None:
+    def __init__(self, preference_store: ConfirmationPreferenceStore, floor: SecurityFloor) -> None:
+        """Build the policy.
+
+        The floor is required rather than defaulted. A security control with a
+        permissive default is one forgotten argument away from disarming
+        itself, and the omission would be invisible until an email left the
+        mailbox unannounced. Pass ``SecurityFloor(())`` to mean "nothing is
+        protected", so that saying it is a decision somebody wrote down.
+        """
         self._preference_store = preference_store
-        self._non_overridable_severity = _RISK_SEVERITY[non_overridable_risk]
+        self._floor = floor
 
     def requires_confirmation(self, operation: ToolOperationDescriptor, user: UserContext) -> bool:
         """Return ``True`` when the operation must be confirmed by the user."""
-        if _RISK_SEVERITY[operation.risk_level] >= self._non_overridable_severity:
+        if self._floor.confirmation_is_mandatory(operation.tool_name):
             return True
 
         preferences = self._preference_store.preferences_for(user.user_id)
@@ -119,6 +133,14 @@ class ConfiguredConfirmationPolicy:
             return chosen
 
         return operation.confirmation_required_by_default
+
+    def is_overridable(self, tool_name: str) -> bool:
+        """Whether a user may decide for themselves about this operation.
+
+        Offering somebody a choice they do not have would be worse than not
+        offering it, so the interface asks before proposing one.
+        """
+        return not self._floor.confirmation_is_mandatory(tool_name)
 
 
 class ConfirmationDetail(BaseModel):

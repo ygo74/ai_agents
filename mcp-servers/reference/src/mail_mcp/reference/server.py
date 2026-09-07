@@ -1,7 +1,7 @@
 """A mail MCP server implementing the protocol, over stdio.
 
 Its purpose is not to be a product. It is the reference implementation of the
-mail tool surface: it exposes the ten tools of :mod:`mail_mcp.protocol`, returns
+mail tool surface: it exposes the twelve tools of :mod:`mail_mcp.protocol`, returns
 the protocol payloads, and is backed by a deterministic dataset rather than by
 any real mail system.
 
@@ -10,7 +10,7 @@ That makes two things possible:
 - a real MCP client can be exercised over a real protocol stack, with no network,
   no credentials and no mailbox, so a conformance suite runs offline;
 - a server built on EWS or Microsoft Graph has something concrete to match. If it
-  answers these ten tools with these payloads, a caller works against it without
+  answers these twelve tools with these payloads, a caller works against it without
   a single line of adaptation.
 
 Mailbox isolation is deliberately reproduced: a server is the authority on who

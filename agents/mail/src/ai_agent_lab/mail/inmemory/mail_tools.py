@@ -17,10 +17,12 @@ from collections.abc import Iterable, Mapping
 from datetime import UTC, datetime
 
 from ai_agent_lab.core.security.context import UserContext
+from ai_agent_lab.core.security.untrusted import UntrustedOrigin, untrusted
 from ai_agent_lab.mail.domain.enums import MailSortOrder
 from ai_agent_lab.mail.domain.models import (
     MailDraft,
     MailLabel,
+    MailLabelOutcome,
     MailMessage,
     MailSearchRequest,
     MailSearchResult,
@@ -102,6 +104,48 @@ class Mailbox:
             raise MailNotFoundError("label", label_id)
         return found
 
+    def label_named(self, name: str) -> MailLabel | None:
+        """Return the label carrying a name, if this mailbox has one.
+
+        The comparison ignores case: a mailbox owner reading "Invoices" and
+        "invoices" sees one label, not two.
+        """
+        folded = name.casefold()
+        return next((label for label in self._labels.values() if label.name.expose().casefold() == folded), None)
+
+    def add_label(self, label: MailLabel) -> MailLabel:
+        """Store a new label."""
+        self._labels[label.label_id] = label
+        return label
+
+    def drop_label(self, label_id: str) -> None:
+        """Delete a label and detach it from every message carrying it.
+
+        The detachment is what a real mail system does, so a caller that tested
+        against this mailbox and then met a real one finds no surprise.
+        """
+        del self._labels[label_id]
+        for message in list(self._messages.values()):
+            if label_id not in message.label_ids:
+                continue
+            remaining = tuple(existing for existing in message.label_ids if existing != label_id)
+            self.replace(message.model_copy(update={"label_ids": remaining}))
+
+    def mint_label_id(self, name: str) -> str:
+        """Return an identifier no label in this mailbox already uses.
+
+        Derived from the name so a run is reproducible, and disambiguated
+        because two names can reduce to the same value.
+        """
+        slug = "".join(character if character.isalnum() else "_" for character in name).strip("_").upper()
+        candidate = f"LBL_{slug}" if slug else "LBL_UNNAMED"
+        if candidate not in self._labels:
+            return candidate
+        suffix = 2
+        while f"{candidate}_{suffix}" in self._labels:
+            suffix += 1
+        return f"{candidate}_{suffix}"
+
 
 class InMemoryMailTools:
     """Mail MCP contract served from in-memory mailboxes."""
@@ -180,6 +224,29 @@ class InMemoryMailTools:
         remaining = tuple(existing for existing in message.label_ids if existing != label_id)
         mailbox.replace(message.model_copy(update={"label_ids": remaining}))
 
+    async def create_label(self, name: str, user: UserContext) -> MailLabelOutcome:
+        """Make a label exist, reporting whether it had to be created."""
+        mailbox = self._mailbox_of(user)
+        existing = mailbox.label_named(name)
+        if existing is not None:
+            return MailLabelOutcome(label=existing, created=False)
+        label = mailbox.add_label(
+            MailLabel(
+                label_id=mailbox.mint_label_id(name),
+                name=untrusted(name, UntrustedOrigin.MAIL_LABEL),
+                is_system=False,
+            )
+        )
+        return MailLabelOutcome(label=label, created=True)
+
+    async def delete_label(self, label_id: str, user: UserContext) -> None:
+        """Delete a label, detaching it from every message carrying it."""
+        mailbox = self._mailbox_of(user)
+        label = mailbox.require_label(label_id)
+        if label.is_system:
+            raise MailAccessDeniedError(f"label {label.name.expose()!r} is a system label and cannot be deleted")
+        mailbox.drop_label(label_id)
+
     def mailbox_of(self, user: UserContext) -> Mailbox:
         """Expose a mailbox for assertions in tests and demos."""
         return self._mailbox_of(user)
@@ -222,7 +289,7 @@ class MailSearchMatcher:
         """Check the criteria bearing on the state and the date of a message."""
         if request.unread_only and message.is_read:
             return False
-        if request.label_ids and not any(label_id in message.label_ids for label_id in request.label_ids):
+        if not all(label_id in message.label_ids for label_id in request.label_ids):
             return False
         if request.date_from is not None and message.sent_at < request.date_from:
             return False

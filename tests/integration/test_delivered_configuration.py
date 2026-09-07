@@ -103,7 +103,7 @@ class TestDeliveredMailConfiguration:
         manifest = AgentManifestLoader(delivered(), skill_loader()).load("mail")
 
         assert manifest.name == "mail-agent"
-        assert len(manifest.skills) == 13
+        assert len(manifest.skills) == 15
 
     def test_the_instructions_come_from_the_delivered_file(self):
         manifest = AgentManifestLoader(delivered(), skill_loader()).load("mail")

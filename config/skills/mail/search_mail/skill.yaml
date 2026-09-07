@@ -6,7 +6,9 @@ implementation: mail.search
 description: >-
   Search the mailbox and return message headers. Supports sender, recipient, subject,
   free-text keywords, label, date range, unread state and attachment filters, alone or
-  combined. Returns previews only, never message bodies. Has no side effect.
+  combined. Labels are given as identifiers from the label listing, and several labels
+  narrow the search to messages carrying all of them. Returns previews only, never
+  message bodies. Has no side effect.
 
 # Security posture. The risk floor enforced in code cannot be lowered here.
 operation:

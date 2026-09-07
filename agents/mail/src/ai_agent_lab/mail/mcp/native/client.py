@@ -22,6 +22,7 @@ from ai_agent_lab.core.security.context import UserContext
 from ai_agent_lab.mail.domain.models import (
     MailDraft,
     MailLabel,
+    MailLabelOutcome,
     MailMessage,
     MailSearchRequest,
     MailSearchResult,
@@ -133,6 +134,15 @@ class McpMailTools:
     async def remove_label(self, message_id: str, label_id: str, user: UserContext) -> None:
         """Detach a label from a message."""
         await self._acknowledge(MailToolName.REMOVE_LABEL, user, message_id=message_id, label_id=label_id)
+
+    async def create_label(self, name: str, user: UserContext) -> MailLabelOutcome:
+        """Make a label exist, reporting whether it had to be created."""
+        payload = await self._call(MailToolName.CREATE_LABEL, user, name=name, expected=wire.CreatedLabel)
+        return self._mapper.label_outcome(payload)
+
+    async def delete_label(self, label_id: str, user: UserContext) -> None:
+        """Delete a label, detaching it from every message carrying it."""
+        await self._acknowledge(MailToolName.DELETE_LABEL, user, label_id=label_id)
 
     async def _call[PayloadT: wire.Payload](
         self,

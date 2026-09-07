@@ -30,6 +30,7 @@ from ai_agent_lab.mail.domain.models import (
     MailDraft,
     MailHeader,
     MailLabel,
+    MailLabelOutcome,
     MailMessage,
     MailSearchRequest,
     MailSearchResult,
@@ -49,6 +50,7 @@ from ai_agent_lab.mail.mcp.google.payloads import (
     INBOX_LABEL,
     UNREAD_LABEL,
     GmailDraft,
+    GmailLabel,
     GmailLabelList,
     GmailMessage,
     GmailPayload,
@@ -63,6 +65,7 @@ REQUIRED_ALIASES = (
     "get_thread",
     "list_labels",
     "create_draft",
+    "create_label",
     "update_message_labels",
 )
 
@@ -88,12 +91,17 @@ class GmailMailTools:
         self._queries = query_builder or GmailQueryBuilder()
 
     async def search(self, request: MailSearchRequest, user: UserContext) -> MailSearchResult:
-        """Return the message headers matching a structured query."""
+        """Return the message headers matching a structured query.
+
+        This server filters through the query string alone, and its ``label:``
+        operator matches names. The identifiers the request carries are
+        therefore resolved to names first.
+        """
         payload = await self._call(
             "search_threads",
             user,
             GmailThreadList,
-            query=self._queries.build(request),
+            query=self._queries.build(request, await self._label_names(request, user)),
             pageSize=request.limit,
             view=_METADATA_VIEW,
         )
@@ -104,6 +112,13 @@ class GmailMailTools:
             total_count=max(len(headers), payload.estimated_total),
             truncated=len(headers) > len(page) or bool(payload.next_page_token),
         )
+
+    async def _label_names(self, request: MailSearchRequest, user: UserContext) -> dict[str, str]:
+        """Return the name of each label the request filters on."""
+        if not request.label_ids:
+            return {}
+        labels = await self.list_labels(user)
+        return {label.label_id: label.name.expose() for label in labels if label.label_id in request.label_ids}
 
     async def get_message(self, message_id: str, user: UserContext) -> MailMessage:
         """Return one complete message."""
@@ -188,6 +203,38 @@ class GmailMailTools:
     async def remove_label(self, message_id: str, label_id: str, user: UserContext) -> None:
         """Detach a label from a message."""
         await self._update_labels(message_id, user, remove=(label_id,))
+
+    async def create_label(self, name: str, user: UserContext) -> MailLabelOutcome:
+        """Make a label exist, reporting whether it had to be created.
+
+        The server refuses a duplicate name, so the mailbox is read first. That
+        also gives back the identifier of the existing label, which is what a
+        caller wanting to file a message actually needs.
+        """
+        existing = await self._label_named(name, user)
+        if existing is not None:
+            return MailLabelOutcome(label=existing, created=False)
+        payload = await self._call("create_label", user, GmailLabel, displayName=name)
+        return MailLabelOutcome(label=payload.to_domain(), created=True)
+
+    async def delete_label(self, label_id: str, user: UserContext) -> None:
+        """Refuse to delete: the official Gmail server exposes no delete tool.
+
+        Unreachable in practice, because the binding does not declare the
+        capability and the agent therefore never offers it. It exists so the
+        type holds, and so a misconfigured binding fails with an explanation
+        rather than an attribute error.
+        """
+        del label_id, user
+        raise MailToolUnavailableError(
+            "the official Gmail MCP server has no label deletion tool. Delete the label from Gmail."
+        )
+
+    async def _label_named(self, name: str, user: UserContext) -> MailLabel | None:
+        """Return the label carrying a name, if the mailbox has one."""
+        folded = name.casefold()
+        labels = await self.list_labels(user)
+        return next((label for label in labels if label.name.expose().casefold() == folded), None)
 
     async def _update_labels(
         self,

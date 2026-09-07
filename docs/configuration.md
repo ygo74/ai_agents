@@ -56,10 +56,103 @@ mcp_tools:
 `SKILL.md` next to it carries the reasoning instructions. A deterministic
 capability has no `SKILL.md`: it has nothing to say to a model.
 
-`implementation` is a stable key, so the name advertised to the model can be
-changed - translated, disambiguated - without touching a line of Python. A
-manifest naming an unknown key, an unknown permission or an undelivered package
-is refused at load time.
+`implementation` identifies the logical implementation in the delivered
+configuration. It is metadata for the binding and documentation; the current
+composition root deliberately binds the typed Python implementation explicitly,
+rather than importing an arbitrary class named by configuration. This keeps the
+composition strongly typed and prevents a configuration file from loading
+untrusted code.
+
+The name advertised to the model can therefore be changed independently from
+the Python class, but the corresponding capability binding must still exist in
+the agent code. An unknown permission, an invalid security declaration or an
+undelivered package is refused at load time.
+
+## Configuration capability versus Python skill
+
+There are two related but distinct concepts:
+
+1. A **delivered capability package**, such as
+   `config/skills/mail/classify_mail/`, declares how an operation is exposed:
+   its tool name, description, security posture, permitted logical MCP tools
+   and, when needed, reasoning instructions in `SKILL.md`.
+2. A **Python domain skill**, such as
+   `agents/mail/src/ai_agent_lab/mail/skills/classification_skill.py`,
+   implements the business behavior. It receives typed collaborators through
+   dependency injection and does not know which MCP server is behind them.
+
+The relationship is assembled in the composition root, not by letting YAML
+instantiate arbitrary Python objects:
+
+```text
+config/agents/mail/agent.yaml
+    |
+    +--> config/skills/mail/classify_mail/skill.yaml
+    |       +--> security metadata and tool description
+    |       +--> mcp_tools: [get_mail]
+    |
+    +--> config/skills/mail/classify_mail/SKILL.md
+            +--> reasoning instructions
+
+AgentManifestLoader
+    |
+    v
+AgentManifest.skill("classify_mail")
+    |
+    +--> MailSkillsFactory
+    |       +--> MailClassificationSkill(...)
+    |       +--> injects the SKILL.md prompt
+    |
+    +--> MailReadCapabilities
+            +--> ClassifyMailInput
+            +--> MailClassificationSkill.classify_messages
+            +--> SkillDescriptor.from_manifest(...)
+```
+
+For `classify_mail`, the runtime call is:
+
+```text
+MAF FunctionTool "classify_mail"
+    -> SkillToolAdapter
+    -> MailReadCapabilities._classify
+    -> MailClassificationSkill.classify_messages
+    -> MailTools.get_message
+    -> TextReasoner
+    -> MailClassificationsResult
+```
+
+The Python skill is therefore used when the framework invokes the capability
+selected by the model. The skill retrieves messages through the `MailTools`
+port, builds fenced untrusted context, combines the injected `SKILL.md`
+instructions with the injected category catalogue, calls the framework-neutral
+`TextReasoner` port and maps the result to typed domain models.
+
+The MCP dependency declared in `skill.yaml` is a logical contract, not a direct
+network call. The configured MCP binding and dialect provide the `MailTools`
+implementation. Consequently, the same `MailClassificationSkill` can run with
+the in-memory mock, the reference MCP server, Gmail or an EWS dialect without
+changing the skill.
+
+The distinction is intentional:
+
+```text
+skill.yaml / SKILL.md
+    = delivery, model-facing description, security and reasoning instructions
+
+mail/skills/*.py
+    = typed, reusable domain behavior
+
+mail/capabilities/*.py
+    = binding from the delivered capability to the domain skill
+
+framework adapter
+    = conversion of the descriptor into FunctionTool, LangChain tool, etc.
+```
+
+This is also why `classify_mail` does not apply a mailbox label. Classification
+is a read-only domain operation implemented by `MailClassificationSkill`;
+`apply_label` is a separate capability implemented through
+`MailManagementSkill`, with its own manifest, policy and confirmation behavior.
 
 ## Security
 

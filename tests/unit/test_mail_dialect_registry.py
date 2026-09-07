@@ -19,6 +19,7 @@ from ai_agent_lab.mail.catalog import MailToolName
 from ai_agent_lab.mail.domain.models import (
     MailDraft,
     MailLabel,
+    MailLabelOutcome,
     MailMessage,
     MailSearchRequest,
     MailSearchResult,
@@ -79,6 +80,12 @@ class BluebirdMailTools:
         raise NotImplementedError
 
     async def remove_label(self, message_id: str, label_id: str, user: UserContext) -> None:
+        raise NotImplementedError
+
+    async def create_label(self, name: str, user: UserContext) -> MailLabelOutcome:
+        raise NotImplementedError
+
+    async def delete_label(self, label_id: str, user: UserContext) -> None:
         raise NotImplementedError
 
 

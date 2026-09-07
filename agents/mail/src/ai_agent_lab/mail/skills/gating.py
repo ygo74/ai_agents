@@ -24,29 +24,34 @@ from ai_agent_lab.core.security.confirmation import (
 from ai_agent_lab.core.security.context import UserContext
 from ai_agent_lab.core.security.errors import ConfirmationRejectedError, SecurityError
 from ai_agent_lab.core.security.operations import ToolOperationDescriptor
-from ai_agent_lab.mail.catalog import MailToolCatalog, MailToolName
+from ai_agent_lab.mail.catalog import MailOperations, MailToolName
 
 ResultT = TypeVar("ResultT")
 
 
 class GatedMailOperationRunner:
-    """Runs a state-changing mail operation under the confirmation policy."""
+    """Runs a state-changing mail operation under the confirmation policy.
+
+    The posture comes from :class:`MailOperations`, the same source the
+    framework adapter reads. Consulting a different one would let a capability
+    be both never asked about and always refused.
+    """
 
     def __init__(
         self,
-        catalog: MailToolCatalog,
+        operations: MailOperations,
         policy: ConfirmationPolicy,
         gate: ConfirmationGate,
         audit: AuditTrail,
     ) -> None:
-        self._catalog = catalog
+        self._operations = operations
         self._policy = policy
         self._gate = gate
         self._audit = audit
 
     def requires_confirmation(self, tool: MailToolName, user: UserContext) -> bool:
         """Whether the user must approve this operation before it runs."""
-        return self._policy.requires_confirmation(self._catalog.descriptor(tool), user)
+        return self._policy.requires_confirmation(self._operations.descriptor(tool), user)
 
     def build_confirmation_request(
         self,
@@ -60,7 +65,7 @@ class GatedMailOperationRunner:
         """Build the request shown to the user before they decide."""
         return ConfirmationRequest(
             request_id=f"cfm-{uuid.uuid4().hex[:12]}",
-            operation=self._catalog.descriptor(tool),
+            operation=self._operations.descriptor(tool),
             requested_for=user.user_id,
             title=title,
             target=target,
@@ -78,7 +83,7 @@ class GatedMailOperationRunner:
         decision: ConfirmationDecision | None = None,
     ) -> ResultT:
         """Authorise, run and audit one state-changing operation."""
-        descriptor = self._catalog.descriptor(tool)
+        descriptor = self._operations.descriptor(tool)
         try:
             self._gate.ensure_approved(descriptor, user, request, decision)
         except SecurityError as error:

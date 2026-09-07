@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from typing import Any, Literal
 
 from agent_framework import FunctionTool
@@ -15,6 +16,8 @@ ApprovalMode = Literal["always_require", "never_require"]
 
 _ALWAYS_REQUIRE: ApprovalMode = "always_require"
 _NEVER_REQUIRE: ApprovalMode = "never_require"
+
+_logger = logging.getLogger(__name__)
 
 
 class SkillToolAdapter:
@@ -73,7 +76,19 @@ class SkillToolAdapter:
 
         The model needs to know the operation did not happen and why, so it can
         tell the user instead of assuming success.
+
+        It is also logged here, and that matters more than it looks. Returning
+        this text is a normal return as far as the framework is concerned, so
+        its own log says "Function apply_label succeeded". An operator watching
+        the console would otherwise read a column of successes and wonder why
+        nothing changed in the mailbox.
         """
+        _logger.warning(
+            "capability %s did not run: %s: %s",
+            descriptor.tool_name,
+            type(error).__name__,
+            error,
+        )
         return (
             f'The capability "{descriptor.tool_name}" did not run.\n'
             f"Reason ({type(error).__name__}): {error}\n"

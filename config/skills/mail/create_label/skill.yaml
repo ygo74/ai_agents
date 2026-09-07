@@ -1,0 +1,29 @@
+# Capability delivered to the Mail Agent.
+tool_name: create_label
+implementation: mail.create_label
+
+# The model selects tools from this text, so it is part of the contract.
+#
+# It says what happens on a duplicate name because the alternative is an agent
+# that stops and asks: filing messages means meeting existing labels constantly.
+description: >-
+  Make a label exist in the mailbox, so messages can be filed under it. Use this
+  before applying a label that does not appear in the label listing. If a label
+  with that name already exists it is returned unchanged and nothing is created.
+  Creates no message and sends nothing.
+
+# Security posture. The risk floor enforced in code cannot be lowered here.
+#
+# Creating a label changes the mailbox but destroys nothing, and deleting it
+# undoes it, so no confirmation is asked by default. Set confirmation_required
+# to true to gate it.
+operation:
+  type: WRITE
+  risk: LOW
+  permission: mail:manage
+  confirmation_required: false
+
+# Logical MCP tools this capability is allowed to use.
+mcp_tools:
+  - create_label
+  - list_labels

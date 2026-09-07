@@ -32,6 +32,8 @@ capabilities:
   - archive_mail
   - apply_label
   - remove_label
+  - create_label
+  - delete_label
 
 tools:
   search_mail: search_mail
@@ -44,3 +46,5 @@ tools:
   archive_mail: archive_mail
   apply_label: apply_label
   remove_label: remove_label
+  create_label: create_label
+  delete_label: delete_label

@@ -43,6 +43,16 @@ class SecurityFloor:
     def __init__(self, floors: Iterable[OperationFloor]) -> None:
         self._by_tool = {floor.tool_name: floor for floor in floors}
 
+    def confirmation_is_mandatory(self, tool_name: str) -> bool:
+        """Whether no configuration may remove the confirmation of an operation.
+
+        This is the single answer to "may a deployment, or a person, decide
+        otherwise". Asking the risk level instead would conflate how much an
+        operation costs with who is allowed to choose.
+        """
+        floor = self._by_tool.get(tool_name)
+        return floor is not None and floor.confirmation_always_required
+
     def enforce(self, descriptor: ToolOperationDescriptor) -> None:
         """Refuse a descriptor that sits below the floor of its operation."""
         floor = self._by_tool.get(descriptor.tool_name)

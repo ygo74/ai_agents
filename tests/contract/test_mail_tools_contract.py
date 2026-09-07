@@ -185,6 +185,95 @@ class MailToolsContractTests:
         with pytest.raises(MailNotFoundError):
             await mail_tools.archive("does-not-exist", OWNER)
 
+    async def test_create_label_makes_a_usable_label(self, mail_tools):
+        outcome = await mail_tools.create_label("Invoices", OWNER)
+
+        assert outcome.created
+        assert outcome.label.name.expose() == "Invoices"
+        assert not outcome.label.is_system
+
+        await mail_tools.apply_label("m1", outcome.label.label_id, OWNER)
+
+        assert outcome.label.label_id in (await mail_tools.get_message("m1", OWNER)).label_ids
+
+    async def test_create_label_lists_the_new_label(self, mail_tools):
+        outcome = await mail_tools.create_label("Invoices", OWNER)
+
+        listed = await mail_tools.list_labels(OWNER)
+
+        assert outcome.label.label_id in {label.label_id for label in listed}
+
+    async def test_create_label_returns_the_existing_one_rather_than_failing(self, mail_tools):
+        """Asking for a label that exists is what filing messages looks like."""
+        first = await mail_tools.create_label("Invoices", OWNER)
+        second = await mail_tools.create_label("Invoices", OWNER)
+
+        assert not second.created
+        assert second.label.label_id == first.label.label_id
+
+    async def test_create_label_does_not_duplicate_on_a_different_case(self, mail_tools):
+        first = await mail_tools.create_label("Invoices", OWNER)
+        second = await mail_tools.create_label("invoices", OWNER)
+
+        assert not second.created
+        assert second.label.label_id == first.label.label_id
+
+    async def test_delete_label_detaches_it_from_every_message(self, mail_tools):
+        """The blast radius of a deletion is the whole mailbox, not one message."""
+        outcome = await mail_tools.create_label("Invoices", OWNER)
+        label_id = outcome.label.label_id
+        await mail_tools.apply_label("m1", label_id, OWNER)
+        await mail_tools.apply_label("m3", label_id, OWNER)
+
+        await mail_tools.delete_label(label_id, OWNER)
+
+        assert label_id not in (await mail_tools.get_message("m1", OWNER)).label_ids
+        assert label_id not in (await mail_tools.get_message("m3", OWNER)).label_ids
+        assert label_id not in {label.label_id for label in await mail_tools.list_labels(OWNER)}
+
+    async def test_delete_label_rejects_an_unknown_label(self, mail_tools):
+        with pytest.raises(MailNotFoundError):
+            await mail_tools.delete_label("NOPE", OWNER)
+
+    async def test_search_by_label_finds_the_messages_carrying_it(self, mail_tools):
+        """Filing a message and finding it again is one workflow, not two."""
+        outcome = await mail_tools.create_label("Invoices", OWNER)
+        await mail_tools.apply_label("m3", outcome.label.label_id, OWNER)
+
+        found = await mail_tools.search(MailSearchRequest(label_ids=(outcome.label.label_id,)), OWNER)
+
+        assert {header.message_id for header in found.headers} == {"m3"}
+
+    async def test_search_by_several_labels_narrows(self, mail_tools):
+        """Several labels mean messages carrying all of them, as Gmail does."""
+        invoices = (await mail_tools.create_label("Invoices", OWNER)).label
+        urgent = (await mail_tools.create_label("Urgent", OWNER)).label
+        await mail_tools.apply_label("m1", invoices.label_id, OWNER)
+        await mail_tools.apply_label("m3", invoices.label_id, OWNER)
+        await mail_tools.apply_label("m3", urgent.label_id, OWNER)
+
+        found = await mail_tools.search(
+            MailSearchRequest(label_ids=(invoices.label_id, urgent.label_id)),
+            OWNER,
+        )
+
+        assert {header.message_id for header in found.headers} == {"m3"}
+
+    async def test_search_by_a_label_no_message_carries_finds_nothing(self, mail_tools):
+        outcome = await mail_tools.create_label("Empty", OWNER)
+
+        found = await mail_tools.search(MailSearchRequest(label_ids=(outcome.label.label_id,)), OWNER)
+
+        assert found.headers == ()
+
+    @pytest.mark.security
+    async def test_a_system_label_cannot_be_deleted(self, mail_tools):
+        """Deleting INBOX is not organising a mailbox, it is breaking one."""
+        with pytest.raises(MailAccessDeniedError):
+            await mail_tools.delete_label("INBOX", OWNER)
+
+        assert "INBOX" in {label.label_id for label in await mail_tools.list_labels(OWNER)}
+
     @pytest.mark.security
     async def test_a_user_cannot_read_another_mailbox(self, mail_tools):
         with pytest.raises(MailAccessDeniedError):
@@ -199,6 +288,14 @@ class MailToolsContractTests:
     async def test_a_user_cannot_write_to_another_mailbox(self, mail_tools):
         with pytest.raises(MailAccessDeniedError):
             await mail_tools.archive("m1", INTRUDER)
+
+    @pytest.mark.security
+    async def test_a_user_cannot_change_the_labels_of_another_mailbox(self, mail_tools):
+        with pytest.raises(MailAccessDeniedError):
+            await mail_tools.create_label("Intrusion", INTRUDER)
+
+        with pytest.raises(MailAccessDeniedError):
+            await mail_tools.delete_label("PROJECT", INTRUDER)
 
 
 class TestInMemoryMailToolsContract(MailToolsContractTests):

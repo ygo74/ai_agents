@@ -17,6 +17,7 @@ from ai_agent_lab.mail.domain.models import (
     MailDraft,
     MailHeader,
     MailLabel,
+    MailLabelOutcome,
     MailMessage,
     MailParticipant,
     MailSearchResult,
@@ -60,6 +61,10 @@ class MailWireMapper:
     def labels(self, payload: wire.Labels) -> tuple[MailLabel, ...]:
         """Rebuild every label of a mailbox."""
         return tuple(self.label(item) for item in payload.labels)
+
+    def label_outcome(self, payload: wire.CreatedLabel) -> MailLabelOutcome:
+        """Rebuild the outcome of asking for a label to exist."""
+        return MailLabelOutcome(label=self.label(payload.label), created=payload.created)
 
     def header(self, payload: wire.Header) -> MailHeader:
         """Rebuild a search hit, fencing the subject."""

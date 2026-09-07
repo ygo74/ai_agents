@@ -96,6 +96,19 @@ class MailLabel(DomainModel):
     is_system: bool = False
 
 
+class MailLabelOutcome(DomainModel):
+    """The outcome of asking for a label to exist.
+
+    ``created`` separates a label that was made from one that was already there.
+    Both are successes, and a caller filing messages will meet the second
+    constantly, but they are different events and the difference is worth
+    reporting rather than flattening.
+    """
+
+    label: MailLabel
+    created: bool
+
+
 class MailHeader(DomainModel):
     """Lightweight preview of a message, as returned by a search.
 

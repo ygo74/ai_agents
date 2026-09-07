@@ -18,6 +18,7 @@ from ai_agent_lab.core.security.errors import (
     ConfirmationRejectedError,
     ConfirmationRequiredError,
 )
+from ai_agent_lab.core.security.floor import OperationFloor, SecurityFloor
 from ai_agent_lab.core.security.operations import (
     OperationType,
     RiskLevel,
@@ -25,6 +26,7 @@ from ai_agent_lab.core.security.operations import (
 )
 from ai_agent_lab.core.security.permissions import Permission
 from ai_agent_lab.mail.domain.permissions import MailPermission
+from ai_agent_lab.mail.security_floor import MailSecurityFloor
 
 
 def descriptor(
@@ -62,7 +64,7 @@ def policy_with(preferences: ConfirmationPreferences | None = None) -> Configure
     store = InMemoryConfirmationPreferenceStore(
         {"owner": preferences} if preferences is not None else None,
     )
-    return ConfiguredConfirmationPolicy(store)
+    return ConfiguredConfirmationPolicy(store, MailSecurityFloor().build())
 
 
 class TestConfiguredConfirmationPolicy:
@@ -86,10 +88,12 @@ class TestConfiguredConfirmationPolicy:
         assert not policy.requires_confirmation(ARCHIVE_OP, owner)
 
     @pytest.mark.security
-    def test_high_risk_writes_cannot_be_auto_approved(self, owner):
+    def test_an_operation_on_the_security_floor_cannot_be_auto_approved(self, owner):
+        """Sending is on the floor, so no preference can disarm it."""
         policy = policy_with(ConfirmationPreferences(auto_approved_tools=frozenset({"send_mail"})))
 
         assert policy.requires_confirmation(SEND_OP, owner)
+        assert not policy.is_overridable("send_mail")
 
     def test_always_confirm_wins_over_auto_approve(self, owner):
         policy = policy_with(
@@ -110,18 +114,35 @@ class TestConfiguredConfirmationPolicy:
         store = InMemoryConfirmationPreferenceStore(
             {"owner": ConfirmationPreferences(auto_approved_tools=frozenset({"mark_read"}))}
         )
-        policy = ConfiguredConfirmationPolicy(store)
+        policy = ConfiguredConfirmationPolicy(store, MailSecurityFloor().build())
 
         assert not policy.requires_confirmation(MARK_READ_OP, owner)
         assert policy.requires_confirmation(MARK_READ_OP, reader)
 
-    def test_risk_floor_is_configurable(self, owner):
+    def test_the_floor_decides_what_a_preference_may_not_touch(self, owner):
+        """A deployment can protect anything it wants, by declaring a floor."""
         store = InMemoryConfirmationPreferenceStore(
             {"owner": ConfirmationPreferences(auto_approved_tools=frozenset({"archive_mail"}))}
         )
-        policy = ConfiguredConfirmationPolicy(store, non_overridable_risk=RiskLevel.MEDIUM)
+        floor = SecurityFloor((OperationFloor(tool_name="archive_mail", minimum_risk=RiskLevel.MEDIUM),))
+        policy = ConfiguredConfirmationPolicy(store, floor)
 
         assert policy.requires_confirmation(ARCHIVE_OP, owner)
+        assert not policy.is_overridable("archive_mail")
+
+    @pytest.mark.security
+    def test_a_high_risk_operation_off_the_floor_stays_the_owner_s_choice(self, owner):
+        """Risk says what an operation costs, not who is allowed to decide.
+
+        Deleting a label is high risk and irreversible, and it is still the
+        mailbox owner's mailbox. Conflating the two would mean that describing
+        an operation honestly took it away from them.
+        """
+        delete_label = descriptor("delete_label", risk_level=RiskLevel.HIGH, default=True)
+        policy = policy_with(ConfirmationPreferences(auto_approved_tools=frozenset({"delete_label"})))
+
+        assert policy.is_overridable("delete_label")
+        assert not policy.requires_confirmation(delete_label, owner)
 
 
 def request_for(

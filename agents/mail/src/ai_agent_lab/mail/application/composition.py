@@ -45,7 +45,7 @@ from ai_agent_lab.mail.capabilities.converters import MailSearchRequestFactory
 from ai_agent_lab.mail.capabilities.read_capabilities import MailReadCapabilities
 from ai_agent_lab.mail.capabilities.results import MailToolResultRenderer
 from ai_agent_lab.mail.capabilities.write_capabilities import MailWriteCapabilities
-from ai_agent_lab.mail.catalog import MailToolCatalog, MailToolName
+from ai_agent_lab.mail.catalog import DeliveredMailOperations, MailToolName
 from ai_agent_lab.mail.config.mailbox_directory import ConfiguredMailboxOwnerDirectory
 from ai_agent_lab.mail.config.settings import ChatClientSettings, MailAgentSettings
 from ai_agent_lab.mail.domain.permissions import MailPermission
@@ -70,6 +70,7 @@ class MailAgentRuntime:
     agent: Agent
     skills: MailSkills
     presenter: MailConfirmationPresenter
+    policy: ConfirmationPolicy
     confirmation_ledger: InMemoryConfirmationLedger
     audit: InMemoryAuditTrail
     mail_tools: MailTools
@@ -128,6 +129,7 @@ class MailAgentCompositionRoot:
             ),
             skills=skills,
             presenter=MailConfirmationPresenter(skills, draft_store),
+            policy=policy,
             confirmation_ledger=ledger,
             audit=audit,
             mail_tools=mail_tools,
@@ -154,7 +156,7 @@ class MailAgentCompositionRoot:
         return MailSkillsFactory(
             mail_tools=mail_tools,
             reasoner=self._reasoner(),
-            catalog=MailToolCatalog(),
+            operations=DeliveredMailOperations(manifest),
             policy=policy,
             audit=LoggingAuditTrail(audit),
             owner_directory=ConfiguredMailboxOwnerDirectory({user.user_id: self._settings.user_email}),
@@ -225,11 +227,16 @@ class MailAgentCompositionRoot:
                 yield descriptor
 
     def _policy(self) -> ConfirmationPolicy:
-        """Build the confirmation policy from the configured preferences."""
+        """Build the confirmation policy from the configured preferences.
+
+        The same floor guards the manifest at load time and the preferences at
+        run time, so what a delivered file may not weaken, a person may not
+        either.
+        """
         store = InMemoryConfirmationPreferenceStore(
             {self._settings.user_id: self._settings.confirmation_preferences()}
         )
-        return ConfiguredConfirmationPolicy(store)
+        return ConfiguredConfirmationPolicy(store, MailSecurityFloor().build())
 
     def _user_context(self, session_id: str) -> UserContext:
         """Build the identity every operation of this session carries."""

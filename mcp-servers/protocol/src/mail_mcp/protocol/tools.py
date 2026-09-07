@@ -22,3 +22,5 @@ class MailToolName(StrEnum):
     ARCHIVE_MAIL = "archive_mail"
     APPLY_LABEL = "apply_label"
     REMOVE_LABEL = "remove_label"
+    CREATE_LABEL = "create_label"
+    DELETE_LABEL = "delete_label"

@@ -18,10 +18,13 @@ from ai_agent_lab.core.security.context import UserContext
 from ai_agent_lab.mail.capabilities.confirmation_broker import ConfirmationBroker
 from ai_agent_lab.mail.capabilities.results import (
     DraftPreparedResult,
+    LabelOperationAcknowledged,
     MailSentResult,
     OperationAcknowledged,
 )
 from ai_agent_lab.mail.capabilities.tool_inputs import (
+    CreateLabelInput,
+    DeleteLabelInput,
     DraftReferenceInput,
     DraftReplyInput,
     LabelInput,
@@ -79,6 +82,8 @@ class MailWriteCapabilities:
             self._archive(),
             self._apply_label(),
             self._remove_label(),
+            self._create_label(),
+            self._delete_label(),
         )
 
     def _draft_reply(self) -> SkillDescriptor:
@@ -190,6 +195,50 @@ class MailWriteCapabilities:
 
         return self._housekeeping_descriptor(MailToolName.REMOVE_LABEL, LabelInput, invoke)
 
+    def _create_label(self) -> SkillDescriptor:
+        """Make a label exist in the mailbox."""
+
+        async def invoke(payload: BaseModel, user: UserContext) -> BaseModel:
+            name = CreateLabelInput.model_validate(payload).name
+            outcome = await self._run_label_change(
+                tool=MailToolName.CREATE_LABEL,
+                label=name,
+                user=user,
+                run=lambda request, decision: self._management_skill.create_label(
+                    name, user, request=request, decision=decision
+                ),
+            )
+            return LabelOperationAcknowledged(
+                tool_name=MailToolName.CREATE_LABEL.value,
+                label_id=outcome.label.label_id,
+                label_name=outcome.label.name.expose(),
+                detail="created" if outcome.created else "already existed, nothing was created",
+            )
+
+        return self._housekeeping_descriptor(MailToolName.CREATE_LABEL, CreateLabelInput, invoke)
+
+    def _delete_label(self) -> SkillDescriptor:
+        """Delete a label from the mailbox."""
+
+        async def invoke(payload: BaseModel, user: UserContext) -> BaseModel:
+            label_id = DeleteLabelInput.model_validate(payload).label_id
+            await self._run_label_change(
+                tool=MailToolName.DELETE_LABEL,
+                label=label_id,
+                user=user,
+                run=lambda request, decision: self._management_skill.delete_label(
+                    label_id, user, request=request, decision=decision
+                ),
+            )
+            return LabelOperationAcknowledged(
+                tool_name=MailToolName.DELETE_LABEL.value,
+                label_id=label_id,
+                label_name="",
+                detail="deleted, and detached from every message that carried it",
+            )
+
+        return self._housekeeping_descriptor(MailToolName.DELETE_LABEL, DeleteLabelInput, invoke)
+
     def _bind(
         self,
         tool_name: str,
@@ -234,6 +283,26 @@ class MailWriteCapabilities:
         )
         await run(request, decision)
         return OperationAcknowledged(tool_name=tool.value, message_id=message_id, detail=detail)
+
+    async def _run_label_change[ResultT](
+        self,
+        *,
+        tool: MailToolName,
+        label: str,
+        user: UserContext,
+        run: Callable[[ConfirmationRequest | None, ConfirmationDecision | None], Awaitable[ResultT]],
+    ) -> ResultT:
+        """Confirm if needed, then change which labels the mailbox has.
+
+        The confirmation names the label rather than a message, so the answer
+        the user gives can be matched to the operation it was asked for.
+        """
+        request, decision = await self._broker.resolve(
+            required=self._management_skill.requires_confirmation(tool, user),
+            build_request=lambda: self._management_skill.build_label_confirmation_request(tool, label, user),
+            user=user,
+        )
+        return await run(request, decision)
 
     async def _compose(self, selection: DraftReplyInput, user: UserContext) -> MailDraft:
         """Draft a reply over whichever scope was requested."""

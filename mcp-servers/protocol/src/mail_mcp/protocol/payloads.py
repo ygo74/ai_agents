@@ -141,3 +141,16 @@ class Labels(Payload):
     """The labels of a mailbox."""
 
     labels: tuple[Label, ...] = ()
+
+
+class CreatedLabel(Payload):
+    """The outcome of asking for a label to exist.
+
+    ``created`` distinguishes a label that was made from one that was already
+    there. Asking for a label that exists is not an error - a caller organising
+    a mailbox will do it constantly - but it is not the same event, and the
+    caller is entitled to know which one happened.
+    """
+
+    label: Label
+    created: bool

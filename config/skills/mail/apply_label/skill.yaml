@@ -11,7 +11,7 @@ operation:
   type: WRITE
   risk: MEDIUM
   permission: mail:manage
-  confirmation_required: true
+  confirmation_required: false
 
 # Logical MCP tools this capability is allowed to use.
 mcp_tools:

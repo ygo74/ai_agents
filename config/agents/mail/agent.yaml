@@ -24,3 +24,5 @@ skills:
   - archive_mail
   - apply_label
   - remove_label
+  - create_label
+  - delete_label

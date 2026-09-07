@@ -82,10 +82,24 @@ class MailSentResult(MailToolResult):
 
 
 class OperationAcknowledged(MailToolResult):
-    """Acknowledgement of a housekeeping operation."""
+    """Acknowledgement of a housekeeping operation on a message."""
 
     tool_name: str
     message_id: str
+    detail: str
+
+
+class LabelOperationAcknowledged(MailToolResult):
+    """Acknowledgement of a change to the label set of the mailbox.
+
+    Separate from :class:`OperationAcknowledged` because these operations name
+    no message: creating a label touches none, and deleting one touches every
+    message that carried it.
+    """
+
+    tool_name: str
+    label_id: str
+    label_name: str
     detail: str
 
 

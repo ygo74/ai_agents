@@ -28,7 +28,10 @@ class SearchMailInput(MailToolInput):
     sender: str | None = Field(default=None, description="Email address of the sender.")
     recipient: str | None = Field(default=None, description="Email address of a recipient.")
     subject_contains: str | None = Field(default=None, description="Text that must appear in the subject.")
-    label_ids: list[str] = Field(default_factory=list, description="Restrict to messages carrying any of these labels.")
+    label_ids: list[str] = Field(
+        default_factory=list,
+        description="Restrict to messages carrying all of these labels. Use identifiers, not names.",
+    )
     date_from: str | None = Field(default=None, description="ISO-8601 lower bound of the sent date, inclusive.")
     date_to: str | None = Field(default=None, description="ISO-8601 upper bound of the sent date, inclusive.")
     unread_only: bool = Field(default=False, description="Keep only unread messages.")
@@ -96,6 +99,24 @@ class LabelInput(MailToolInput):
     """Designation of a label applied to a message."""
 
     message_id: str = Field(description="Identifier of the message.")
+    label_id: str = Field(description="Identifier of the label, as returned by the label listing.")
+
+
+class CreateLabelInput(MailToolInput):
+    """Name of a label that should exist in the mailbox."""
+
+    name: str = Field(
+        min_length=1,
+        description=(
+            "Name of the label, as the mailbox owner would read it. Some mail systems read a "
+            "forward slash as a hierarchy, so 'Projects/Alpha' may become a sub-label of 'Projects'."
+        ),
+    )
+
+
+class DeleteLabelInput(MailToolInput):
+    """Designation of a label to delete from the mailbox."""
+
     label_id: str = Field(description="Identifier of the label, as returned by the label listing.")
 
 

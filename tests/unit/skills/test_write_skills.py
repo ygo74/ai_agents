@@ -20,7 +20,9 @@ from ai_agent_lab.core.security.errors import (
     ConfirmationMismatchError,
     ConfirmationRejectedError,
     ConfirmationRequiredError,
+    SecurityError,
 )
+from ai_agent_lab.core.security.operations import RiskLevel
 from ai_agent_lab.core.security.untrusted import UntrustedOrigin, untrusted
 from ai_agent_lab.mail.catalog import MailToolCatalog, MailToolName
 from ai_agent_lab.mail.config.mailbox_directory import ConfiguredMailboxOwnerDirectory
@@ -28,6 +30,7 @@ from ai_agent_lab.mail.domain.errors import NoReplyRecipientError
 from ai_agent_lab.mail.domain.models import EmailAddress, MailDraft
 from ai_agent_lab.mail.domain.permissions import MailPermission
 from ai_agent_lab.mail.inmemory.reasoner import ScriptedTextReasoner
+from ai_agent_lab.mail.security_floor import MailSecurityFloor
 from ai_agent_lab.mail.skills.analysis import MailReplyOutput
 from ai_agent_lab.mail.skills.gating import GatedMailOperationRunner
 from ai_agent_lab.mail.skills.management_skill import MailManagementSkill
@@ -56,7 +59,7 @@ def preference_store():
 @pytest.fixture
 def runner(audit, preference_store):
     """Runner enforcing the confirmation policy and writing the audit trail."""
-    policy = ConfiguredConfirmationPolicy(preference_store)
+    policy = ConfiguredConfirmationPolicy(preference_store, MailSecurityFloor().build())
     return GatedMailOperationRunner(MailToolCatalog(), policy, ConfirmationGate(policy), audit)
 
 
@@ -69,7 +72,7 @@ def send_skill(mail_tools, runner):
 @pytest.fixture
 def management_skill(mail_tools, runner):
     """The housekeeping skill under test."""
-    return MailManagementSkill(mail_tools, mail_tools, runner)
+    return MailManagementSkill(mail_tools, mail_tools, mail_tools, runner)
 
 
 @pytest.fixture
@@ -255,7 +258,7 @@ class TestSendMailSkill:
         preference_store.set_preferences(
             "owner", ConfirmationPreferences(auto_approved_tools=frozenset({MailToolName.SEND_MAIL.value}))
         )
-        policy = ConfiguredConfirmationPolicy(preference_store)
+        policy = ConfiguredConfirmationPolicy(preference_store, MailSecurityFloor().build())
         runner = GatedMailOperationRunner(MailToolCatalog(), policy, ConfirmationGate(policy), audit)
         skill = SendMailSkill(mail_tools, mail_tools, runner)
 
@@ -373,9 +376,9 @@ class TestMailManagementSkill:
         preference_store.set_preferences(
             "owner", ConfirmationPreferences(auto_approved_tools=frozenset({MailToolName.MARK_READ.value}))
         )
-        policy = ConfiguredConfirmationPolicy(preference_store)
+        policy = ConfiguredConfirmationPolicy(preference_store, MailSecurityFloor().build())
         runner = GatedMailOperationRunner(MailToolCatalog(), policy, ConfirmationGate(policy), audit)
-        skill = MailManagementSkill(mail_tools, mail_tools, runner)
+        skill = MailManagementSkill(mail_tools, mail_tools, mail_tools, runner)
 
         await skill.set_read_state("m1", True, owner)
 
@@ -411,3 +414,77 @@ class TestMailManagementSkill:
         request = skill.build_confirmation_request(tool, message_id, user, **kwargs)
         decision = ConfirmationDecision(request_id=request.request_id, approved=True, decided_by=user.user_id)
         await skill.set_read_state(message_id, kwargs["is_read"], user, request=request, decision=decision)
+
+
+class TestLabelLifecycle:
+    """Creating and deleting labels, gated like every other write."""
+
+    async def test_creating_a_label_needs_no_confirmation_by_default(self, management_skill, owner):
+        """Creating a label destroys nothing, so it is not gated out of the box."""
+        outcome = await management_skill.create_label("Invoices", owner)
+
+        assert outcome.created
+        assert outcome.label.name.expose() == "Invoices"
+
+    async def test_creating_a_label_can_be_gated_by_preferences(
+        self, mail_tools, audit, preference_store, owner
+    ):
+        """A deployment that wants the model to ask can say so, in configuration."""
+        preference_store.set_preferences(
+            "owner", ConfirmationPreferences(always_confirm_tools=frozenset({MailToolName.CREATE_LABEL.value}))
+        )
+        policy = ConfiguredConfirmationPolicy(preference_store, MailSecurityFloor().build())
+        runner = GatedMailOperationRunner(MailToolCatalog(), policy, ConfirmationGate(policy), audit)
+        skill = MailManagementSkill(mail_tools, mail_tools, mail_tools, runner)
+
+        with pytest.raises(ConfirmationRequiredError):
+            await skill.create_label("Invoices", owner)
+
+    @pytest.mark.security
+    async def test_deleting_a_label_refuses_to_run_unconfirmed(self, management_skill, mail_tools, owner):
+        with pytest.raises(ConfirmationRequiredError):
+            await management_skill.delete_label("PROJECT", owner)
+
+        assert "PROJECT" in {label.label_id for label in await mail_tools.list_labels(owner)}
+
+    async def test_deleting_a_label_after_approval(self, management_skill, mail_tools, owner):
+        request = management_skill.build_label_confirmation_request(MailToolName.DELETE_LABEL, "PROJECT", owner)
+        decision = ConfirmationDecision(request_id=request.request_id, approved=True, decided_by="owner")
+
+        await management_skill.delete_label("PROJECT", owner, request=request, decision=decision)
+
+        assert "PROJECT" not in {label.label_id for label in await mail_tools.list_labels(owner)}
+
+    @pytest.mark.security
+    async def test_the_confirmation_names_the_label_it_is_about(self, management_skill, owner):
+        """The presenter and the capability must name the same target.
+
+        Otherwise the answer the user gives could be matched to a different
+        operation than the one they were shown.
+        """
+        request = management_skill.build_label_confirmation_request(MailToolName.DELETE_LABEL, "PROJECT", owner)
+
+        assert request.target == "PROJECT"
+        assert any(detail.value == "PROJECT" for detail in request.details)
+        assert request.operation.risk_level is RiskLevel.HIGH
+
+    @pytest.mark.security
+    async def test_a_deletion_approval_cannot_be_replayed_on_another_label(
+        self, management_skill, mail_tools, owner
+    ):
+        approved = management_skill.build_label_confirmation_request(MailToolName.DELETE_LABEL, "PROJECT", owner)
+        decision = ConfirmationDecision(request_id=approved.request_id, approved=True, decided_by="owner")
+        other = management_skill.build_label_confirmation_request(MailToolName.DELETE_LABEL, "INBOX", owner)
+
+        with pytest.raises(SecurityError):
+            await management_skill.delete_label("INBOX", owner, request=other, decision=decision)
+
+        assert "INBOX" in {label.label_id for label in await mail_tools.list_labels(owner)}
+
+    async def test_a_blocked_deletion_is_audited(self, management_skill, audit, owner):
+        with pytest.raises(ConfirmationRequiredError):
+            await management_skill.delete_label("PROJECT", owner)
+
+        entry = audit.records_for(MailToolName.DELETE_LABEL.value)[0]
+        assert entry.outcome is AuditOutcome.BLOCKED
+        assert entry.target_id == "PROJECT"
