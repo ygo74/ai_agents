@@ -14,8 +14,8 @@ from __future__ import annotations
 from collections.abc import Iterable
 from dataclasses import dataclass
 
-from ai_agent_lab.domain.security.errors import SecurityError
-from ai_agent_lab.domain.security.operations import RiskLevel, ToolOperationDescriptor
+from ai_agent_lab.core.security.errors import SecurityError
+from ai_agent_lab.core.security.operations import RiskLevel, ToolOperationDescriptor
 
 _SEVERITY = {RiskLevel.LOW: 0, RiskLevel.MEDIUM: 1, RiskLevel.HIGH: 2}
 

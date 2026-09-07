@@ -22,11 +22,11 @@ from typing import Any
 
 from mcp import ClientSession
 
-from ai_agent_lab.infrastructure.config.directory import ConfigurationDirectory
-from ai_agent_lab.infrastructure.config.mcp_binding import McpServerBinding, McpServerBindingLoader
-from ai_agent_lab.infrastructure.config.settings import ENV_FILE, McpTransport
-from ai_agent_lab.infrastructure.mcp.connection import McpConnection
-from ai_agent_lab.infrastructure.mcp.oauth import MailOAuthProvider
+from ai_agent_lab.core.config.directory import ConfigurationDirectory
+from ai_agent_lab.mail.config.settings import ENV_FILE
+from ai_agent_lab.mail.mcp.binding import McpServerBinding, McpServerBindingLoader, McpTransport
+from ai_agent_lab.mail.mcp.connection import McpConnection
+from ai_agent_lab.mail.mcp.oauth import MailOAuthProvider
 
 DEFAULT_OUTPUT = Path("docs/mcp-discovery")
 
@@ -72,7 +72,7 @@ class ToolDiscovery:
 
 
 def main() -> None:
-    """Entry point of ``python -m ai_agent_lab.infrastructure.mcp.discover``."""
+    """Entry point of ``python -m ai_agent_lab.mail.application.discover``."""
     parser = argparse.ArgumentParser(description="Record what a mail MCP server exposes.")
     parser.add_argument("--server", default="gmail", help="binding name under config/mcp/")
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
@@ -94,7 +94,7 @@ def main() -> None:
 
 def _load_environment() -> None:
     """Make the delivered configuration visible before anything reads it."""
-    from ai_agent_lab.infrastructure.config.environment import EnvironmentFile
+    from ai_agent_lab.core.config.environment import EnvironmentFile
 
     EnvironmentFile(Path(ENV_FILE)).load()
 

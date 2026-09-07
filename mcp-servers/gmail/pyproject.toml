@@ -1,0 +1,27 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "mail-mcp-gmail"
+version = "0.1.0"
+description = "Mail MCP server backed by the Gmail REST API"
+requires-python = ">=3.12"
+
+# No agent, no framework. This server is a process of its own, and the Google
+# credential lives in it alone.
+dependencies = [
+    "mail-mcp-protocol[serving]",
+    "mcp>=1.24,<2",
+    "httpx>=0.27",
+    "pydantic>=2,<3",
+    "pydantic-settings>=2,<3",
+    "python-dotenv>=1,<2",
+]
+
+[project.scripts]
+mail-mcp-gmail = "mail_mcp.gmail.server:main"
+mail-mcp-gmail-authorise = "mail_mcp.gmail.authorise:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/mail_mcp"]

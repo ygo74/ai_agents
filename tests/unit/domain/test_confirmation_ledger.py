@@ -10,20 +10,20 @@ from __future__ import annotations
 
 import pytest
 
-from ai_agent_lab.domain.mail.permissions import MailPermission
-from ai_agent_lab.domain.security.confirmation import (
+from ai_agent_lab.core.security.confirmation import (
     ConfirmationDecision,
     ConfirmationKey,
     ConfirmationOutcome,
     ConfirmationRequest,
 )
-from ai_agent_lab.domain.security.context import UserContext
-from ai_agent_lab.domain.security.operations import (
+from ai_agent_lab.core.security.context import UserContext
+from ai_agent_lab.core.security.operations import (
     OperationType,
     RiskLevel,
     ToolOperationDescriptor,
 )
-from ai_agent_lab.infrastructure.inmemory.confirmation_ledger import InMemoryConfirmationLedger
+from ai_agent_lab.mail.domain.permissions import MailPermission
+from ai_agent_lab.mail.inmemory.confirmation_ledger import InMemoryConfirmationLedger
 
 OWNER = UserContext(user_id="owner", session_id="s1", permissions=MailPermission.declared())
 INTRUDER = UserContext(user_id="intruder", session_id="s2", permissions=MailPermission.declared())

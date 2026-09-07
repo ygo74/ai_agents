@@ -12,24 +12,23 @@ from pathlib import Path
 
 import pytest
 
-from ai_agent_lab.domain.mail.permissions import MailPermission
-from ai_agent_lab.domain.security.floor import SecurityFloorViolationError
-from ai_agent_lab.domain.security.operations import OperationType, RiskLevel
-from ai_agent_lab.domain.security.permissions import PermissionRegistry, UnknownPermissionError
-from ai_agent_lab.infrastructure.config.directory import (
+from ai_agent_lab.core.config.directory import (
     CONFIG_DIR_VARIABLE,
     ConfigurationDirectory,
     ConfigurationNotFoundError,
 )
-from ai_agent_lab.infrastructure.config.manifests import (
+from ai_agent_lab.core.config.manifests import (
     AgentManifestLoader,
     ConfigurationError,
     SkillManifestLoader,
 )
-from ai_agent_lab.infrastructure.config.mcp_binding import McpBindingError, McpServerBindingLoader
-from ai_agent_lab.infrastructure.config.settings import McpTransport
-from ai_agent_lab.mcp.mail.catalog import MailToolCatalog, MailToolName
-from ai_agent_lab.mcp.mail.floor import MailSecurityFloor
+from ai_agent_lab.core.security.floor import SecurityFloorViolationError
+from ai_agent_lab.core.security.operations import OperationType, RiskLevel
+from ai_agent_lab.core.security.permissions import PermissionRegistry, UnknownPermissionError
+from ai_agent_lab.mail.catalog import MailToolCatalog, MailToolName
+from ai_agent_lab.mail.domain.permissions import MailPermission
+from ai_agent_lab.mail.mcp.binding import McpBindingError, McpServerBindingLoader, McpTransport
+from ai_agent_lab.mail.security_floor import MailSecurityFloor
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 

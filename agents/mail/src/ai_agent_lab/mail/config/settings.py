@@ -13,11 +13,19 @@ from pathlib import Path
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from ai_agent_lab.domain.security.confirmation import ConfirmationPreferences
+from ai_agent_lab.core.config.chat import AzureCredentialMode, ChatProvider
+from ai_agent_lab.core.config.environment import ENV_FILE
+from ai_agent_lab.core.security.confirmation import ConfirmationPreferences
 
-# Every settings class reads the same file, and so does the chat client, so a
-# key placed there is found wherever it is needed.
-ENV_FILE = ".env"
+__all__ = [
+    "ENV_FILE",
+    "AzureCredentialMode",
+    "ChatClientSettings",
+    "ChatProvider",
+    "MailAgentMode",
+    "MailAgentSettings",
+    "MailMcpSettings",
+]
 
 
 class MailAgentMode(StrEnum):
@@ -25,32 +33,6 @@ class MailAgentMode(StrEnum):
 
     MOCK = "mock"
     MCP = "mcp"
-
-
-class ChatProvider(StrEnum):
-    """Which model provider backs the agent."""
-
-    OPENAI = "openai"
-    AZURE_OPENAI = "azure_openai"
-
-
-class AzureCredentialMode(StrEnum):
-    """How the agent authenticates against Azure OpenAI.
-
-    ``API_KEY`` leaves the key to the framework client, which reads it from the
-    environment. The other modes use Entra ID, so no key exists at all.
-    """
-
-    API_KEY = "api_key"
-    AZURE_CLI = "azure_cli"
-    DEFAULT = "default"
-
-
-class McpTransport(StrEnum):
-    """How the MCP client reaches the mail server."""
-
-    STDIO = "stdio"
-    HTTP = "http"
 
 
 class MailAgentSettings(BaseSettings):

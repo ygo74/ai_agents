@@ -16,8 +16,9 @@ import uuid
 from collections.abc import Iterable, Mapping
 from datetime import UTC, datetime
 
-from ai_agent_lab.domain.mail.enums import MailSortOrder
-from ai_agent_lab.domain.mail.models import (
+from ai_agent_lab.core.security.context import UserContext
+from ai_agent_lab.mail.domain.enums import MailSortOrder
+from ai_agent_lab.mail.domain.models import (
     MailDraft,
     MailLabel,
     MailMessage,
@@ -27,8 +28,7 @@ from ai_agent_lab.domain.mail.models import (
     MailSendResult,
     MailThread,
 )
-from ai_agent_lab.domain.security.context import UserContext
-from ai_agent_lab.mcp.mail.errors import MailAccessDeniedError, MailNotFoundError
+from ai_agent_lab.mail.mail_errors import MailAccessDeniedError, MailNotFoundError
 
 
 class Mailbox:

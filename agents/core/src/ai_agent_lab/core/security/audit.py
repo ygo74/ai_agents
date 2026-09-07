@@ -14,7 +14,7 @@ from typing import Protocol, runtime_checkable
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from ai_agent_lab.domain.security.operations import OperationType, RiskLevel
+from ai_agent_lab.core.security.operations import OperationType, RiskLevel
 
 
 class AuditOutcome(StrEnum):

@@ -4,8 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from ai_agent_lab.domain.mail.permissions import MailPermission
-from ai_agent_lab.domain.security.confirmation import (
+from ai_agent_lab.core.security.confirmation import (
     ConfiguredConfirmationPolicy,
     ConfirmationDecision,
     ConfirmationGate,
@@ -13,18 +12,19 @@ from ai_agent_lab.domain.security.confirmation import (
     ConfirmationRequest,
     InMemoryConfirmationPreferenceStore,
 )
-from ai_agent_lab.domain.security.errors import (
+from ai_agent_lab.core.security.errors import (
     AuthorizationError,
     ConfirmationMismatchError,
     ConfirmationRejectedError,
     ConfirmationRequiredError,
 )
-from ai_agent_lab.domain.security.operations import (
+from ai_agent_lab.core.security.operations import (
     OperationType,
     RiskLevel,
     ToolOperationDescriptor,
 )
-from ai_agent_lab.domain.security.permissions import Permission
+from ai_agent_lab.core.security.permissions import Permission
+from ai_agent_lab.mail.domain.permissions import MailPermission
 
 
 def descriptor(

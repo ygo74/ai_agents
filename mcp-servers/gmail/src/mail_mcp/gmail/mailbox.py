@@ -1,10 +1,8 @@
-"""The mail contract, served by the Gmail REST API.
+"""The mailbox this server serves, backed by the Gmail REST API.
 
-This is what our own mail MCP server runs on. It covers the whole contract,
-sending included, which the official Gmail MCP server does not offer.
-
-The query syntax is shared with the official-server dialect: a mailbox query is
-the same regardless of which door we knock on.
+Everything here speaks the protocol on one side and Gmail on the other. It knows
+nothing of agents, skills or domain models: a caller decides what a message
+means.
 """
 
 from __future__ import annotations
@@ -12,30 +10,20 @@ from __future__ import annotations
 import asyncio
 import base64
 from collections.abc import Sequence
+from datetime import datetime
 from email.message import EmailMessage
 from typing import Any
 
-from ai_agent_lab.domain.mail.enums import MailSortOrder
-from ai_agent_lab.domain.mail.models import (
-    MailDraft,
-    MailLabel,
-    MailMessage,
-    MailSearchRequest,
-    MailSearchResult,
-    MailSendRequest,
-    MailSendResult,
-    MailThread,
-)
-from ai_agent_lab.domain.security.context import UserContext
-from ai_agent_lab.infrastructure.gmail.api import GmailApiClient
-from ai_agent_lab.infrastructure.gmail.messages import (
+from mail_mcp.gmail.api import GmailApiClient
+from mail_mcp.gmail.messages import (
     INBOX_LABEL,
     UNREAD_LABEL,
     GmailLabelReader,
     GmailMessageReader,
 )
-from ai_agent_lab.infrastructure.mcp.gmail.query import GmailQueryBuilder
-from ai_agent_lab.mcp.mail.errors import MailNotFoundError, MailToolProtocolError
+from mail_mcp.gmail.query import GmailQuery
+from mail_mcp.protocol import payloads as wire
+from mail_mcp.protocol.errors import NotFoundError, ProtocolError
 
 _METADATA_HEADERS = ("Subject", "From", "To", "Cc", "Date")
 
@@ -43,85 +31,92 @@ _METADATA_HEADERS = ("Subject", "From", "To", "Cc", "Date")
 _CONCURRENT_READS = 8
 
 
-class GmailApiMailTools:
-    """Mail contract implemented against the Gmail REST API."""
+class GmailMailbox:
+    """Serves the mail protocol from a real Gmail mailbox."""
 
     def __init__(
         self,
         client: GmailApiClient,
         *,
-        query_builder: GmailQueryBuilder | None = None,
+        query: GmailQuery | None = None,
         messages: GmailMessageReader | None = None,
         labels: GmailLabelReader | None = None,
     ) -> None:
         self._client = client
-        self._queries = query_builder or GmailQueryBuilder()
+        self._query = query or GmailQuery()
         self._messages = messages or GmailMessageReader()
         self._labels = labels or GmailLabelReader()
 
-    async def search(self, request: MailSearchRequest, user: UserContext) -> MailSearchResult:
-        """Return the message headers matching a structured query.
+    async def search(
+        self,
+        *,
+        keywords: str | None = None,
+        sender: str | None = None,
+        recipient: str | None = None,
+        subject_contains: str | None = None,
+        label_ids: Sequence[str] = (),
+        date_from: datetime | None = None,
+        date_to: datetime | None = None,
+        unread_only: bool = False,
+        has_attachments: bool | None = None,
+        limit: int = 20,
+        sort_order: wire.SortOrder = wire.SortOrder.NEWEST_FIRST,
+    ) -> wire.SearchResult:
+        """Return the message headers matching a query.
 
         Gmail answers a query with identifiers only, so each hit needs its own
-        request. They are issued concurrently and bounded: sequentially, a
-        default page of twenty would take longer than a caller is willing to
-        wait, and unbounded, it would hammer the API.
+        request. They are issued concurrently and bounded: sequentially, a page
+        of twenty would take longer than a caller is willing to wait.
         """
-        del user
         listing = await self._client.get(
             "/messages",
-            q=self._queries.build(request) or None,
-            maxResults=request.limit,
+            q=self._query.build(
+                keywords=keywords,
+                sender=sender,
+                recipient=recipient,
+                subject_contains=subject_contains,
+                label_ids=label_ids,
+                date_from=date_from,
+                date_to=date_to,
+                unread_only=unread_only,
+                has_attachments=has_attachments,
+            )
+            or None,
+            maxResults=limit,
         )
         identifiers = [str(item["id"]) for item in listing.get("messages") or ()]
-        messages = await self._metadata_of(identifiers)
-        headers = [message.to_header() for message in messages]
+        headers = list(await self._headers_of(identifiers))
         headers.sort(
             key=lambda header: header.sent_at,
-            reverse=request.sort_order is MailSortOrder.NEWEST_FIRST,
+            reverse=sort_order is wire.SortOrder.NEWEST_FIRST,
         )
         estimate = int(listing.get("resultSizeEstimate", len(headers)))
-        return MailSearchResult(
+        return wire.SearchResult(
             headers=tuple(headers),
             total_count=max(estimate, len(headers)),
             truncated=bool(listing.get("nextPageToken")),
         )
 
-    async def _metadata_of(self, identifiers: Sequence[str]) -> tuple[MailMessage, ...]:
-        """Read the headers of several messages at once."""
-        limit = asyncio.Semaphore(_CONCURRENT_READS)
-
-        async def read(identifier: str) -> MailMessage:
-            async with limit:
-                return await self._metadata(identifier)
-
-        return tuple(await asyncio.gather(*(read(identifier) for identifier in identifiers)))
-
-    async def get_message(self, message_id: str, user: UserContext) -> MailMessage:
+    async def get_message(self, message_id: str) -> wire.Message:
         """Return one complete message."""
-        del user
-        resource = await self._client.get(f"/messages/{message_id}", format="full")
-        return self._messages.to_domain(resource)
+        return self._messages.to_wire(await self._client.get(f"/messages/{message_id}", format="full"))
 
-    async def get_thread(self, thread_id: str, user: UserContext) -> MailThread:
+    async def get_thread(self, thread_id: str) -> wire.Thread:
         """Return a full conversation, oldest message first."""
-        del user
         resource = await self._client.get(f"/threads/{thread_id}", format="full")
-        messages = tuple(self._messages.to_domain(item) for item in resource.get("messages") or ())
+        messages = tuple(self._messages.to_wire(item) for item in resource.get("messages") or ())
         if not messages:
-            raise MailNotFoundError("thread", thread_id)
+            raise NotFoundError("thread", thread_id)
         ordered = tuple(sorted(messages, key=lambda message: message.sent_at))
-        return MailThread(thread_id=thread_id, subject=ordered[0].subject, messages=ordered)
+        return wire.Thread(thread_id=thread_id, subject=ordered[0].subject, messages=ordered)
 
-    async def list_labels(self, user: UserContext) -> tuple[MailLabel, ...]:
+    async def list_labels(self) -> wire.Labels:
         """Return the labels available in the mailbox."""
-        del user
         listing = await self._client.get("/labels")
-        return tuple(self._labels.to_domain(item) for item in listing.get("labels") or ())
+        return wire.Labels(labels=tuple(self._labels.to_wire(item) for item in listing.get("labels") or ()))
 
-    async def create_draft(self, draft: MailDraft, user: UserContext) -> MailDraft:
+    async def create_draft(self, draft: wire.Draft) -> wire.Draft:
         """Persist a draft without delivering anything."""
-        del user
         created = await self._client.post("/drafts", {"message": self._encoded(draft)})
         return draft.model_copy(
             update={
@@ -130,53 +125,55 @@ class GmailApiMailTools:
             }
         )
 
-    async def send(self, request: MailSendRequest, user: UserContext) -> MailSendResult:
+    async def send(self, draft: wire.Draft) -> wire.SendResult:
         """Deliver a draft to its recipients."""
-        del user
-        sent = await self._client.post("/messages/send", self._encoded(request.draft))
+        sent = await self._client.post("/messages/send", self._encoded(draft))
         message_id = str(sent.get("id", ""))
         if not message_id:
-            raise MailToolProtocolError("Gmail accepted the message but returned no identifier")
+            raise ProtocolError("Gmail accepted the message but returned no identifier")
         delivered = await self._client.get(f"/messages/{message_id}", format="metadata")
-        return MailSendResult(
+        return wire.SendResult(
             message_id=message_id,
             thread_id=str(sent.get("threadId", "")) or None,
-            sent_at=self._messages.to_domain(delivered).sent_at,
+            sent_at=self._messages.to_wire(delivered).sent_at,
         )
 
-    async def set_read_state(self, message_id: str, is_read: bool, user: UserContext) -> None:
+    async def set_read_state(self, message_id: str, is_read: bool) -> None:
         """Mark a message as read or unread, which Gmail expresses as a label."""
-        del user
         await self._modify(
             message_id,
             remove=[UNREAD_LABEL] if is_read else [],
             add=[] if is_read else [UNREAD_LABEL],
         )
 
-    async def archive(self, message_id: str, user: UserContext) -> None:
+    async def archive(self, message_id: str) -> None:
         """Remove a message from the inbox without deleting it."""
-        del user
         await self._modify(message_id, remove=[INBOX_LABEL])
 
-    async def apply_label(self, message_id: str, label_id: str, user: UserContext) -> None:
+    async def apply_label(self, message_id: str, label_id: str) -> None:
         """Attach a label to a message."""
-        await self._require_label(label_id, user)
+        await self._require_label(label_id)
         await self._modify(message_id, add=[label_id])
 
-    async def remove_label(self, message_id: str, label_id: str, user: UserContext) -> None:
+    async def remove_label(self, message_id: str, label_id: str) -> None:
         """Detach a label from a message."""
-        await self._require_label(label_id, user)
+        await self._require_label(label_id)
         await self._modify(message_id, remove=[label_id])
 
-    async def _require_label(self, label_id: str, user: UserContext) -> None:
+    async def aclose(self) -> None:
+        """Release the HTTP connection pool."""
+        await self._client.aclose()
+
+    async def _require_label(self, label_id: str) -> None:
         """Refuse a label the mailbox does not define.
 
         Gmail accepts an unknown label identifier silently, which would report
         success for an operation that changed nothing.
         """
-        if any(label.label_id == label_id for label in await self.list_labels(user)):
+        labels = await self.list_labels()
+        if any(label.label_id == label_id for label in labels.labels):
             return
-        raise MailNotFoundError("label", label_id)
+        raise NotFoundError("label", label_id)
 
     async def _modify(self, message_id: str, *, add: list[str] | None = None, remove: list[str] | None = None) -> None:
         """Apply one atomic label change."""
@@ -185,26 +182,31 @@ class GmailApiMailTools:
             {"addLabelIds": add or [], "removeLabelIds": remove or []},
         )
 
-    async def _metadata(self, message_id: str) -> MailMessage:
-        """Read the headers of one message, without its body."""
-        resource = await self._client.get(
-            f"/messages/{message_id}",
-            format="metadata",
-            metadataHeaders=list(_METADATA_HEADERS),
-        )
-        return self._messages.to_domain(resource)
+    async def _headers_of(self, identifiers: Sequence[str]) -> tuple[wire.Header, ...]:
+        """Read the headers of several messages at once."""
+        limit = asyncio.Semaphore(_CONCURRENT_READS)
+
+        async def read(identifier: str) -> wire.Header:
+            async with limit:
+                resource = await self._client.get(
+                    f"/messages/{identifier}",
+                    format="metadata",
+                    metadataHeaders=list(_METADATA_HEADERS),
+                )
+                return self._messages.to_header(resource)
+
+        return tuple(await asyncio.gather(*(read(identifier) for identifier in identifiers)))
 
     @staticmethod
-    def _encoded(draft: MailDraft) -> dict[str, Any]:
+    def _encoded(draft: wire.Draft) -> dict[str, Any]:
         """Render a draft as the RFC 2822 message Gmail expects."""
         message = EmailMessage()
-        message["To"] = ", ".join(address.value for address in draft.to)
+        message["To"] = ", ".join(draft.to)
         if draft.cc:
-            message["Cc"] = ", ".join(address.value for address in draft.cc)
-        message["Subject"] = draft.subject.expose()
-        message.set_content(draft.body.expose())
-        raw = base64.urlsafe_b64encode(message.as_bytes()).decode()
-        payload: dict[str, Any] = {"raw": raw}
+            message["Cc"] = ", ".join(draft.cc)
+        message["Subject"] = draft.subject
+        message.set_content(draft.body)
+        payload: dict[str, Any] = {"raw": base64.urlsafe_b64encode(message.as_bytes()).decode()}
         if draft.thread_id:
             payload["threadId"] = draft.thread_id
         return payload

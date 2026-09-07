@@ -16,17 +16,24 @@ file plus a dialect class, and no change to a skill or to the agent.
 from __future__ import annotations
 
 from collections.abc import Iterable, Mapping
+from enum import StrEnum
 from pathlib import Path
 from typing import Any
 
 import yaml
 
-from ai_agent_lab.infrastructure.config.directory import ConfigurationDirectory
-from ai_agent_lab.infrastructure.config.settings import McpTransport
-from ai_agent_lab.mcp.mail.catalog import MailToolName
-from ai_agent_lab.mcp.mail.errors import MailToolProtocolError
+from ai_agent_lab.core.config.directory import ConfigurationDirectory
+from ai_agent_lab.mail.catalog import MailToolName
+from ai_agent_lab.mail.mail_errors import MailToolProtocolError
 
 MCP_DIRECTORY = "mcp"
+
+
+class McpTransport(StrEnum):
+    """How an MCP client reaches a mail server."""
+
+    STDIO = "stdio"
+    HTTP = "http"
 
 
 class McpBindingError(MailToolProtocolError):

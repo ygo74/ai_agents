@@ -4,18 +4,18 @@ from __future__ import annotations
 
 import pytest
 
-from ai_agent_lab.domain.mail.enums import ActionOrigin, ConfidenceLevel, MailCategory
-from ai_agent_lab.domain.reasoning.errors import ReasoningOutputError
-from ai_agent_lab.infrastructure.inmemory.reasoner import ScriptedTextReasoner
-from ai_agent_lab.skills.mail.action_extraction_skill import MailActionExtractionSkill
-from ai_agent_lab.skills.mail.analysis import (
+from ai_agent_lab.core.reasoning.errors import ReasoningOutputError
+from ai_agent_lab.mail.domain.enums import ActionOrigin, ConfidenceLevel, MailCategory
+from ai_agent_lab.mail.inmemory.reasoner import ScriptedTextReasoner
+from ai_agent_lab.mail.skills.action_extraction_skill import MailActionExtractionSkill
+from ai_agent_lab.mail.skills.analysis import (
     MailActionsOutput,
     MailClassificationOutput,
     MailSummaryOutput,
 )
-from ai_agent_lab.skills.mail.classification_skill import MailClassificationSkill
-from ai_agent_lab.skills.mail.errors import EmptyMailSelectionError, UngroundedMailResultError
-from ai_agent_lab.skills.mail.summary_skill import MailSummarySkill
+from ai_agent_lab.mail.skills.classification_skill import MailClassificationSkill
+from ai_agent_lab.mail.skills.errors import EmptyMailSelectionError, UngroundedMailResultError
+from ai_agent_lab.mail.skills.summary_skill import MailSummarySkill
 
 SUMMARY_ANSWER = {
     "summary": "John asks for a review of the Project Alpha architecture document.",
@@ -240,8 +240,8 @@ class TestMailClassificationSkill:
     async def test_falls_back_when_the_category_is_not_offered(
         self, mail_tools, context_builder, category_catalog, envelope_builder
     ):
-        from ai_agent_lab.skills.mail.analysis import MailAnalysisMapper
-        from ai_agent_lab.skills.mail.categories import MailCategoryCatalog
+        from ai_agent_lab.mail.skills.analysis import MailAnalysisMapper
+        from ai_agent_lab.mail.skills.categories import MailCategoryCatalog
 
         restricted = MailCategoryCatalog(
             {MailCategory.FYI: "Information only.", MailCategory.OTHER: "Anything else."}
@@ -320,14 +320,14 @@ class TestMailActionExtractionSkill:
         assert [action.description for action in explicit] == ["Review the architecture document"]
 
     async def test_extracts_from_a_search_result(self, action_skill, owner):
-        from ai_agent_lab.domain.mail.models import MailSearchRequest
+        from ai_agent_lab.mail.domain.models import MailSearchRequest
 
         actions = await action_skill.extract_from_search(MailSearchRequest(keywords="architecture"), owner)
 
         assert len(actions) == 2
 
     async def test_returns_nothing_when_the_search_matches_nothing(self, action_skill, owner):
-        from ai_agent_lab.domain.mail.models import MailSearchRequest
+        from ai_agent_lab.mail.domain.models import MailSearchRequest
 
         actions = await action_skill.extract_from_search(MailSearchRequest(keywords="zzzz"), owner)
 
@@ -362,7 +362,7 @@ class TestMailActionExtractionSkill:
 
 def owner_context():
     """Build a mailbox owner context outside of a fixture."""
-    from ai_agent_lab.domain.mail.permissions import MailPermission
-    from ai_agent_lab.domain.security.context import UserContext
+    from ai_agent_lab.core.security.context import UserContext
+    from ai_agent_lab.mail.domain.permissions import MailPermission
 
     return UserContext(user_id="owner", session_id="s1", permissions=MailPermission.declared())

@@ -10,9 +10,9 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 
-from ai_agent_lab.domain.mail.models import MailMessage, MailParticipant
-from ai_agent_lab.domain.reasoning.ports import UntrustedSection
-from ai_agent_lab.domain.security.untrusted import UntrustedOrigin, UntrustedText, untrusted
+from ai_agent_lab.core.reasoning.ports import UntrustedSection
+from ai_agent_lab.core.security.untrusted import UntrustedOrigin, UntrustedText, untrusted
+from ai_agent_lab.mail.domain.models import MailMessage, MailParticipant
 
 _TRUNCATION_NOTICE = "\n[... truncated ...]"
 

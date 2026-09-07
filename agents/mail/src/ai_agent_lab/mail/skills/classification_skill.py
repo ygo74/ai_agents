@@ -4,15 +4,15 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
-from ai_agent_lab.domain.mail.models import MailClassification, MailMessage
-from ai_agent_lab.domain.mail.permissions import MailPermission
-from ai_agent_lab.domain.reasoning.ports import ReasoningRequest, TextReasoner
-from ai_agent_lab.domain.security.context import UserContext
-from ai_agent_lab.mcp.mail.contracts import MailReadTools
-from ai_agent_lab.skills.mail.analysis import MailAnalysisMapper, MailClassificationOutput
-from ai_agent_lab.skills.mail.categories import MailCategoryCatalog
-from ai_agent_lab.skills.mail.context import MailContextBuilder
-from ai_agent_lab.skills.mail.errors import EmptyMailSelectionError
+from ai_agent_lab.core.reasoning.ports import ReasoningRequest, TextReasoner
+from ai_agent_lab.core.security.context import UserContext
+from ai_agent_lab.mail.domain.models import MailClassification, MailMessage
+from ai_agent_lab.mail.domain.permissions import MailPermission
+from ai_agent_lab.mail.skills.analysis import MailAnalysisMapper, MailClassificationOutput
+from ai_agent_lab.mail.skills.categories import MailCategoryCatalog
+from ai_agent_lab.mail.skills.context import MailContextBuilder
+from ai_agent_lab.mail.skills.errors import EmptyMailSelectionError
+from ai_agent_lab.mail.tools_port import MailReadTools
 
 
 class MailClassificationSkill:

@@ -82,7 +82,7 @@ the whole architecture rests on is intact.
 4. Consent once:
 
    ```powershell
-   .\.venvs\mail-agent-maf\Scripts\python.exe -m ai_agent_lab.infrastructure.gmail.authorise
+   .\.venvs\mail-agent-maf\Scripts\python.exe -m mail_mcp.gmail.authorise
    ```
 
    The command reports the scopes actually granted and reads the labels back, so
@@ -152,7 +152,7 @@ Response shapes are not specified by MCP and Google does not publish theirs, so
 they are asked for rather than assumed:
 
 ```powershell
-.\.venvs\mail-agent-maf\Scripts\python.exe -m ai_agent_lab.infrastructure.mcp.discover --server gmail
+.\.venvs\mail-agent-maf\Scripts\python.exe -m ai_agent_lab.mail.application.discover --server gmail
 ```
 
 The browser opens for consent once, the token is stored, and the tool schemas
@@ -166,7 +166,7 @@ Consent happens in a browser and takes as long as a person takes, so it is not
 done inside a tool call:
 
 ```powershell
-.\.venvs\mail-agent-maf\Scripts\python.exe -m ai_agent_lab.infrastructure.mcp.authorise --server gmail
+.\.venvs\mail-agent-maf\Scripts\python.exe -m ai_agent_lab.mail.application.authorise --server gmail
 ```
 
 The browser opens, you approve, the token is stored in
@@ -234,8 +234,8 @@ anchored to real messages. One of them is also archived and forces
 
 ### `local` — the reference server
 
-`ai_agent_lab.infrastructure.mcp.reference_server` speaks our own tool names and
-returns the payloads of `ai_agent_lab.mcp.mail.payloads`. It is backed by the
+`mail_mcp.reference.server` speaks our own tool names and
+returns the payloads of `mail_mcp.protocol.payloads`. It is backed by the
 same dataset as the mock mode, so it needs no network, no credentials and no
 mailbox.
 
@@ -245,7 +245,7 @@ the reference a new server can be written against.
 ```powershell
 $env:MAIL_AGENT_MODE = "mcp"
 $env:MAIL_MCP_SERVER = "local"
-.\.venvs\mail-agent-maf\Scripts\python.exe -m ai_agent_lab.application.mail
+.\.venvs\mail-agent-maf\Scripts\python.exe -m ai_agent_lab.mail.application
 ```
 
 ## Plugging in another server, such as one backed by EWS
@@ -296,7 +296,7 @@ a server's vocabulary is allowed to appear.
 
 ### The payload contract
 
-`ai_agent_lab.mcp.mail.payloads` is the wire format: validated models, plain
+`mail_mcp.protocol.payloads` is the wire format: validated models, plain
 strings for free text, ISO-8601 timestamps. A client wraps free text as
 untrusted content on the way in, so a server never has to think about it.
 

@@ -55,7 +55,7 @@ domain  <-  mcp  <-  skills  <-  agents  <-  frameworks  <-  application
 ```
 
 Dependencies point inwards only. This is enforced by
-`tests/architecture/test_layer_boundaries.py`, which fails the build when:
+`tests/architecture/test_distribution_boundaries.py`, which fails the build when:
 
 - `domain`, `mcp`, `skills` or `agents` import an agent framework;
 - any layer other than `infrastructure` imports an enterprise system SDK
@@ -133,23 +133,28 @@ root wires a different implementation.
 ## 8. Repository layout
 
 ```text
-src/ai_agent_lab/
-  domain/          mail/  security/  reasoning/
-  mcp/             mail/
-  skills/          mail/
-  agents/          mail/
-  frameworks/      microsoft_agent_framework/
-  infrastructure/  mcp/  inmemory/  config/  observability/
-  application/     mail/
+agents/
+  core/      src/ai_agent_lab/core/   security/  reasoning/  config/  observability/
+  maf/       src/ai_agent_lab/maf/    Microsoft Agent Framework adapter
+  mail/      src/ai_agent_lab/mail/   domain/  skills/  capabilities/  mcp/  application/
+mcp-servers/
+  protocol/  src/mail_mcp/protocol/   wire payloads, tool names, error codes
+  gmail/     src/mail_mcp/gmail/      Gmail REST API server
+  reference/ src/mail_mcp/reference/  dataset-backed server
 tests/
   unit/  contract/  integration/  agent/  security/  architecture/
 data/mail/         deterministic mailbox datasets
 scenarios/mail/    reproducible agent scenarios
 ```
 
-The architectural folders live under a single `ai_agent_lab` root package
-because publishing them as top-level modules would shadow third-party
-distributions - in particular the `mcp` package used by the MCP client.
+Two namespaces, and the boundary between them is the point: `mail_mcp` never
+imports `ai_agent_lab`. A server we write and a server written elsewhere are
+both reached through a dialect on the agent side, so neither is privileged. See
+[repository-structure.md](./repository-structure.md).
+
+Within each namespace the packages sit under a single root - `ai_agent_lab`,
+`mail_mcp` - because publishing them as top-level modules would shadow
+third-party distributions, in particular the `mcp` package used by the client.
 
 ## 9. Environments
 
@@ -160,5 +165,6 @@ dependencies never leak into a comparison:
 .venvs/mail-agent-maf/     Mail Agent + Microsoft Agent Framework
 ```
 
-The core distribution (`pip install -e .`) is framework free. Framework
-dependencies are installed through extras (`.[maf]`).
+`ai_agent_lab.core` is framework free; only `ai_agent_lab.maf` depends on an
+agentic framework. Install everything in editable mode with
+`python -m scripts.install`.

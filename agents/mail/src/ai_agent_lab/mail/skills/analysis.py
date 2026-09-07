@@ -16,8 +16,8 @@ from datetime import UTC, datetime
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from ai_agent_lab.domain.mail.enums import ActionOrigin, ConfidenceLevel, MailCategory
-from ai_agent_lab.domain.mail.models import (
+from ai_agent_lab.mail.domain.enums import ActionOrigin, ConfidenceLevel, MailCategory
+from ai_agent_lab.mail.domain.models import (
     EmailAddress,
     MailAction,
     MailClassification,
@@ -25,8 +25,8 @@ from ai_agent_lab.domain.mail.models import (
     MailSourceReference,
     MailSummary,
 )
-from ai_agent_lab.skills.mail.categories import MailCategoryCatalog
-from ai_agent_lab.skills.mail.errors import UngroundedMailResultError
+from ai_agent_lab.mail.skills.categories import MailCategoryCatalog
+from ai_agent_lab.mail.skills.errors import UngroundedMailResultError
 
 _MAX_REASON_LENGTH = 280
 

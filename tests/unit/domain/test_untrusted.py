@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from ai_agent_lab.domain.security.untrusted import UntrustedOrigin, UntrustedText, untrusted
+from ai_agent_lab.core.security.untrusted import UntrustedOrigin, UntrustedText, untrusted
 
 
 class TestUntrustedText:
@@ -30,7 +30,7 @@ class TestUntrustedText:
 
     @pytest.mark.security
     def test_embedding_model_repr_never_reveals_the_payload(self):
-        from ai_agent_lab.domain.reasoning.ports import UntrustedSection
+        from ai_agent_lab.core.reasoning.ports import UntrustedSection
 
         section = UntrustedSection(label="body", content=untrusted("leak me", UntrustedOrigin.MAIL_BODY))
 

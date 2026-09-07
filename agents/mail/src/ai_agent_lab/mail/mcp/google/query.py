@@ -10,7 +10,7 @@ from __future__ import annotations
 from collections.abc import Iterator
 from datetime import datetime
 
-from ai_agent_lab.domain.mail.models import MailSearchRequest
+from ai_agent_lab.mail.domain.models import MailSearchRequest
 
 _DATE_FORMAT = "%Y/%m/%d"
 

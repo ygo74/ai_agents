@@ -4,13 +4,16 @@ from __future__ import annotations
 
 from pydantic import BaseModel
 
-from ai_agent_lab.agents.mail.converters import MailSearchRequestFactory
-from ai_agent_lab.agents.mail.results import (
+from ai_agent_lab.core.manifests import AgentManifest
+from ai_agent_lab.core.registry import SkillDescriptor, SkillInvocation
+from ai_agent_lab.core.security.context import UserContext
+from ai_agent_lab.mail.capabilities.converters import MailSearchRequestFactory
+from ai_agent_lab.mail.capabilities.results import (
     MailActionsResult,
     MailClassificationsResult,
     MailLabelsResult,
 )
-from ai_agent_lab.agents.mail.tool_inputs import (
+from ai_agent_lab.mail.capabilities.tool_inputs import (
     ClassifyMailInput,
     ExtractActionsInput,
     MessageInput,
@@ -19,17 +22,14 @@ from ai_agent_lab.agents.mail.tool_inputs import (
     SearchMailInput,
     ThreadInput,
 )
-from ai_agent_lab.agents.registry import SkillDescriptor, SkillInvocation
-from ai_agent_lab.domain.mail.models import MailAction
-from ai_agent_lab.domain.manifests import AgentManifest
-from ai_agent_lab.domain.security.context import UserContext
-from ai_agent_lab.mcp.mail.catalog import MailToolName
-from ai_agent_lab.skills.mail.action_extraction_skill import MailActionExtractionSkill
-from ai_agent_lab.skills.mail.classification_skill import MailClassificationSkill
-from ai_agent_lab.skills.mail.errors import EmptyMailSelectionError
-from ai_agent_lab.skills.mail.management_skill import MailManagementSkill
-from ai_agent_lab.skills.mail.search_skill import MailReadSkill, MailSearchSkill
-from ai_agent_lab.skills.mail.summary_skill import MailSummarySkill
+from ai_agent_lab.mail.catalog import MailToolName
+from ai_agent_lab.mail.domain.models import MailAction
+from ai_agent_lab.mail.skills.action_extraction_skill import MailActionExtractionSkill
+from ai_agent_lab.mail.skills.classification_skill import MailClassificationSkill
+from ai_agent_lab.mail.skills.errors import EmptyMailSelectionError
+from ai_agent_lab.mail.skills.management_skill import MailManagementSkill
+from ai_agent_lab.mail.skills.search_skill import MailReadSkill, MailSearchSkill
+from ai_agent_lab.mail.skills.summary_skill import MailSummarySkill
 
 SUMMARISE_MAIL = "summarise_mail"
 CLASSIFY_MAIL = "classify_mail"

@@ -1,53 +1,12 @@
-[build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
-
-[project]
-name = "ai-agent-lab"
-version = "0.1.0"
-description = "Enterprise AI agent laboratory - Mail Agent proof of concept"
-readme = "README.md"
-requires-python = ">=3.12"
-
-# The core distribution stays framework-free on purpose: domain models, skills
-# and MCP contracts must never depend on an agentic framework.
-dependencies = [
-    "pydantic>=2,<3",
-    "pydantic-settings>=2,<3",
-    "python-dotenv>=1,<2",
-    "pyyaml>=6,<7",
-]
-
-[project.optional-dependencies]
-# Microsoft Agent Framework adapter (src/frameworks/microsoft_agent_framework).
-maf = [
-    "agent-framework-core>=1.17,<2",
-    "agent-framework-openai>=1.14,<2",
-    "mcp>=1.24,<2",
-]
-# Entra ID authentication for Azure OpenAI. Azure OpenAI itself needs no extra
-# client: the installed Agent Framework serves it through the same
-# `agent_framework.openai` clients, selected by explicit routing inputs.
-azure = [
-    "azure-identity>=1.19,<2",
-]
-dev = [
-    "pytest>=8,<9",
-    "pytest-asyncio>=0.24,<2",
-    "ruff>=0.9",
-    "mypy>=1.14",
-    "types-pyyaml>=6,<7",
-]
-
-[project.scripts]
-mail-agent = "ai_agent_lab.application.mail.cli_entrypoint:main"
-
-# The architecture layers (agents, skills, mcp, domain, application,
-# infrastructure, frameworks) live under a single `ai_agent_lab` root package.
-# Exposing them as top-level modules would shadow third-party distributions,
-# most notably `mcp`.
-[tool.hatch.build.targets.wheel]
-packages = ["src/ai_agent_lab"]
+# Configuration of the repository tooling. Deliberately not a distribution.
+#
+# The code lives in six distributions under `agents/` and `mcp-servers/`, each
+# with its own pyproject. This file only carries the settings that must be the
+# same everywhere: the linter, the type checker and the test runner.
+#
+# Install everything for development with:
+#   python -m scripts.install
+# or see docs/repository-structure.md.
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -61,7 +20,15 @@ markers = [
 [tool.ruff]
 line-length = 120
 target-version = "py312"
-src = ["src", "tests"]
+src = [
+    "agents/core/src",
+    "agents/maf/src",
+    "agents/mail/src",
+    "mcp-servers/protocol/src",
+    "mcp-servers/gmail/src",
+    "mcp-servers/reference/src",
+    "tests",
+]
 
 [tool.ruff.lint]
 select = [
@@ -96,14 +63,33 @@ max-complexity = 8
 # Tests assert, use fixtures with implicit types and reach into framework
 # internals to build doubles; strict production rules would add noise there.
 "tests/**" = ["S101", "ANN", "ARG", "SLF001", "PLC2701", "TRY"]
+# A tool surface is a long declarative list of registrations, not branching
+# logic, and its arguments are named by the protocol rather than used directly.
+"mcp-servers/protocol/src/mail_mcp/protocol/serving.py" = ["ARG001"]
 
 [tool.mypy]
 python_version = "3.12"
 strict = true
 warn_unreachable = true
 disallow_any_explicit = false
-mypy_path = "src"
-packages = ["ai_agent_lab"]
+namespace_packages = true
+explicit_package_bases = true
+mypy_path = [
+    "agents/core/src",
+    "agents/maf/src",
+    "agents/mail/src",
+    "mcp-servers/protocol/src",
+    "mcp-servers/gmail/src",
+    "mcp-servers/reference/src",
+]
+packages = [
+    "ai_agent_lab.core",
+    "ai_agent_lab.maf",
+    "ai_agent_lab.mail",
+    "mail_mcp.protocol",
+    "mail_mcp.gmail",
+    "mail_mcp.reference",
+]
 
 [[tool.mypy.overrides]]
 module = "tests.*"

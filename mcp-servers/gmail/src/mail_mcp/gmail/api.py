@@ -11,12 +11,12 @@ from typing import Any
 
 import httpx
 
-from ai_agent_lab.infrastructure.gmail.credentials import GmailCredentials
-from ai_agent_lab.mcp.mail.errors import (
-    MailAccessDeniedError,
-    MailNotFoundError,
-    MailToolProtocolError,
-    MailToolUnavailableError,
+from mail_mcp.gmail.credentials import GmailCredentials
+from mail_mcp.protocol.errors import (
+    AccessDeniedError,
+    NotFoundError,
+    ProtocolError,
+    UnavailableError,
 )
 
 BASE_URL = "https://gmail.googleapis.com/gmail/v1/users/me"
@@ -56,7 +56,7 @@ class GmailApiClient:
         try:
             response = await self._http().request(method, f"{BASE_URL}{path}", headers=headers, **kwargs)
         except httpx.HTTPError as error:
-            raise MailToolUnavailableError(f"Gmail could not be reached: {type(error).__name__}") from error
+            raise UnavailableError(f"Gmail could not be reached: {type(error).__name__}") from error
         return self._decoded(response, path)
 
     def _http(self) -> httpx.AsyncClient:
@@ -74,17 +74,17 @@ class GmailApiClient:
     def _decoded(response: httpx.Response, path: str) -> dict[str, Any]:
         """Return the body, or raise the failure the status describes."""
         if response.status_code == httpx.codes.NOT_FOUND:
-            raise MailNotFoundError("resource", path)
+            raise NotFoundError("resource", path)
         if response.status_code in (httpx.codes.UNAUTHORIZED, httpx.codes.FORBIDDEN):
-            raise MailAccessDeniedError(message=f"Gmail refused {path!r}: {response.status_code}")
+            raise AccessDeniedError(f"Gmail refused {path!r}: {response.status_code}")
         if response.status_code >= httpx.codes.INTERNAL_SERVER_ERROR:
-            raise MailToolUnavailableError(f"Gmail failed on {path!r}: {response.status_code}")
+            raise UnavailableError(f"Gmail failed on {path!r}: {response.status_code}")
         if response.status_code != httpx.codes.OK:
-            raise MailToolProtocolError(f"Gmail rejected {path!r}: {response.status_code}")
+            raise ProtocolError(f"Gmail rejected {path!r}: {response.status_code}")
         if not response.content:
             return {}
         try:
             body: dict[str, Any] = response.json()
         except ValueError as error:
-            raise MailToolProtocolError(f"Gmail returned an unreadable body for {path!r}") from error
+            raise ProtocolError(f"Gmail returned an unreadable body for {path!r}") from error
         return body

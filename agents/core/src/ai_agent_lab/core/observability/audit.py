@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 from collections.abc import Sequence
 
-from ai_agent_lab.domain.security.audit import AuditRecord, AuditTrail
+from ai_agent_lab.core.security.audit import AuditRecord, AuditTrail
 
 _LOGGER = logging.getLogger("ai_agent_lab.audit")
 

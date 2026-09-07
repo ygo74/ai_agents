@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import uuid
 
-from ai_agent_lab.domain.mail.errors import DraftNotFoundError
-from ai_agent_lab.domain.mail.models import MailDraft
-from ai_agent_lab.domain.security.context import UserContext
+from ai_agent_lab.core.security.context import UserContext
+from ai_agent_lab.mail.domain.errors import DraftNotFoundError
+from ai_agent_lab.mail.domain.models import MailDraft
 
 
 class InMemoryDraftStore:

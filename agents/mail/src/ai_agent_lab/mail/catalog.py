@@ -13,13 +13,13 @@ from __future__ import annotations
 from collections.abc import Mapping
 from enum import StrEnum
 
-from ai_agent_lab.domain.mail.permissions import MailPermission
-from ai_agent_lab.domain.security.operations import (
+from ai_agent_lab.core.security.operations import (
     OperationType,
     RiskLevel,
     ToolOperationDescriptor,
 )
-from ai_agent_lab.domain.security.permissions import Permission
+from ai_agent_lab.core.security.permissions import Permission
+from ai_agent_lab.mail.domain.permissions import MailPermission
 
 
 class MailToolName(StrEnum):

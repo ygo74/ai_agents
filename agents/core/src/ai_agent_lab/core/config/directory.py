@@ -16,7 +16,7 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-from ai_agent_lab.domain.errors import DomainError
+from ai_agent_lab.core.errors import DomainError
 
 CONFIG_DIR_VARIABLE = "AI_AGENT_LAB_CONFIG_DIR"
 DEFAULT_CONFIG_DIR = "config"

@@ -23,7 +23,7 @@ from typing import TYPE_CHECKING
 from agent_framework import SupportsChatGetResponse
 from agent_framework.openai import OpenAIChatClient
 
-from ai_agent_lab.domain.errors import DomainError
+from ai_agent_lab.core.errors import DomainError
 
 if TYPE_CHECKING:
     from azure.core.credentials import TokenCredential

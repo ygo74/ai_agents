@@ -22,13 +22,13 @@ from typing import Protocol, runtime_checkable
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from ai_agent_lab.domain.security.context import UserContext
-from ai_agent_lab.domain.security.errors import (
+from ai_agent_lab.core.security.context import UserContext
+from ai_agent_lab.core.security.errors import (
     ConfirmationMismatchError,
     ConfirmationRejectedError,
     ConfirmationRequiredError,
 )
-from ai_agent_lab.domain.security.operations import RiskLevel, ToolOperationDescriptor
+from ai_agent_lab.core.security.operations import RiskLevel, ToolOperationDescriptor
 
 _RISK_SEVERITY: Mapping[RiskLevel, int] = {
     RiskLevel.LOW: 0,

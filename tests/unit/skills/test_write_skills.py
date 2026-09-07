@@ -5,34 +5,34 @@ from __future__ import annotations
 import pytest
 from tests.conftest import make_message
 
-from ai_agent_lab.domain.mail.errors import NoReplyRecipientError
-from ai_agent_lab.domain.mail.models import EmailAddress, MailDraft
-from ai_agent_lab.domain.mail.permissions import MailPermission
-from ai_agent_lab.domain.security.audit import AuditOutcome
-from ai_agent_lab.domain.security.confirmation import (
+from ai_agent_lab.core.observability.audit import InMemoryAuditTrail
+from ai_agent_lab.core.security.audit import AuditOutcome
+from ai_agent_lab.core.security.confirmation import (
     ConfiguredConfirmationPolicy,
     ConfirmationDecision,
     ConfirmationGate,
     ConfirmationPreferences,
     InMemoryConfirmationPreferenceStore,
 )
-from ai_agent_lab.domain.security.context import UserContext
-from ai_agent_lab.domain.security.errors import (
+from ai_agent_lab.core.security.context import UserContext
+from ai_agent_lab.core.security.errors import (
     AuthorizationError,
     ConfirmationMismatchError,
     ConfirmationRejectedError,
     ConfirmationRequiredError,
 )
-from ai_agent_lab.domain.security.untrusted import UntrustedOrigin, untrusted
-from ai_agent_lab.infrastructure.config.mailbox_directory import ConfiguredMailboxOwnerDirectory
-from ai_agent_lab.infrastructure.inmemory.reasoner import ScriptedTextReasoner
-from ai_agent_lab.infrastructure.observability.audit import InMemoryAuditTrail
-from ai_agent_lab.mcp.mail.catalog import MailToolCatalog, MailToolName
-from ai_agent_lab.skills.mail.analysis import MailReplyOutput
-from ai_agent_lab.skills.mail.gating import GatedMailOperationRunner
-from ai_agent_lab.skills.mail.management_skill import MailManagementSkill
-from ai_agent_lab.skills.mail.reply_skill import MailReplySkill, ReplyRecipientPlanner
-from ai_agent_lab.skills.mail.send_skill import SendMailSkill
+from ai_agent_lab.core.security.untrusted import UntrustedOrigin, untrusted
+from ai_agent_lab.mail.catalog import MailToolCatalog, MailToolName
+from ai_agent_lab.mail.config.mailbox_directory import ConfiguredMailboxOwnerDirectory
+from ai_agent_lab.mail.domain.errors import NoReplyRecipientError
+from ai_agent_lab.mail.domain.models import EmailAddress, MailDraft
+from ai_agent_lab.mail.domain.permissions import MailPermission
+from ai_agent_lab.mail.inmemory.reasoner import ScriptedTextReasoner
+from ai_agent_lab.mail.skills.analysis import MailReplyOutput
+from ai_agent_lab.mail.skills.gating import GatedMailOperationRunner
+from ai_agent_lab.mail.skills.management_skill import MailManagementSkill
+from ai_agent_lab.mail.skills.reply_skill import MailReplySkill, ReplyRecipientPlanner
+from ai_agent_lab.mail.skills.send_skill import SendMailSkill
 
 REPLY_ANSWER = {"subject": "Re: Project Alpha - architecture review", "body": "Agreed. I will review it tomorrow."}
 
@@ -393,7 +393,7 @@ class TestMailManagementSkill:
         assert audit.records_for(MailToolName.ARCHIVE_MAIL.value)[0].outcome is AuditOutcome.BLOCKED
 
     async def test_records_a_failed_operation(self, management_skill, audit, owner):
-        from ai_agent_lab.mcp.mail.errors import MailNotFoundError
+        from ai_agent_lab.mail.mail_errors import MailNotFoundError
 
         request = management_skill.build_confirmation_request(MailToolName.ARCHIVE_MAIL, "absent", owner)
         decision = ConfirmationDecision(request_id=request.request_id, approved=True, decided_by="owner")

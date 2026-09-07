@@ -13,24 +13,24 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from ai_agent_lab.domain.mail.ports import MailboxOwnerDirectory
-from ai_agent_lab.domain.manifests import AgentManifest
-from ai_agent_lab.domain.reasoning.ports import TextReasoner
-from ai_agent_lab.domain.security.audit import AuditTrail
-from ai_agent_lab.domain.security.confirmation import ConfirmationGate, ConfirmationPolicy
-from ai_agent_lab.mcp.mail.catalog import MailToolCatalog
-from ai_agent_lab.mcp.mail.contracts import MailTools
-from ai_agent_lab.skills.mail.action_extraction_skill import MailActionExtractionSkill
-from ai_agent_lab.skills.mail.analysis import MailAnalysisMapper
-from ai_agent_lab.skills.mail.categories import MailCategoryCatalog
-from ai_agent_lab.skills.mail.classification_skill import MailClassificationSkill
-from ai_agent_lab.skills.mail.context import MailContextBuilder
-from ai_agent_lab.skills.mail.gating import GatedMailOperationRunner
-from ai_agent_lab.skills.mail.management_skill import MailManagementSkill
-from ai_agent_lab.skills.mail.reply_skill import MailReplySkill, ReplyRecipientPlanner
-from ai_agent_lab.skills.mail.search_skill import MailReadSkill, MailSearchSkill
-from ai_agent_lab.skills.mail.send_skill import SendMailSkill
-from ai_agent_lab.skills.mail.summary_skill import MailSummarySkill
+from ai_agent_lab.core.manifests import AgentManifest
+from ai_agent_lab.core.reasoning.ports import TextReasoner
+from ai_agent_lab.core.security.audit import AuditTrail
+from ai_agent_lab.core.security.confirmation import ConfirmationGate, ConfirmationPolicy
+from ai_agent_lab.mail.catalog import MailToolCatalog
+from ai_agent_lab.mail.domain.ports import MailboxOwnerDirectory
+from ai_agent_lab.mail.skills.action_extraction_skill import MailActionExtractionSkill
+from ai_agent_lab.mail.skills.analysis import MailAnalysisMapper
+from ai_agent_lab.mail.skills.categories import MailCategoryCatalog
+from ai_agent_lab.mail.skills.classification_skill import MailClassificationSkill
+from ai_agent_lab.mail.skills.context import MailContextBuilder
+from ai_agent_lab.mail.skills.gating import GatedMailOperationRunner
+from ai_agent_lab.mail.skills.management_skill import MailManagementSkill
+from ai_agent_lab.mail.skills.reply_skill import MailReplySkill, ReplyRecipientPlanner
+from ai_agent_lab.mail.skills.search_skill import MailReadSkill, MailSearchSkill
+from ai_agent_lab.mail.skills.send_skill import SendMailSkill
+from ai_agent_lab.mail.skills.summary_skill import MailSummarySkill
+from ai_agent_lab.mail.tools_port import MailTools
 
 SUMMARISE_MAIL = "summarise_mail"
 CLASSIFY_MAIL = "classify_mail"

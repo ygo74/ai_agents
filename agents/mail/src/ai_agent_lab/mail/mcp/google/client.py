@@ -23,8 +23,10 @@ from typing import Any
 
 from mcp.types import CallToolResult, TextContent
 
-from ai_agent_lab.domain.mail.enums import MailSortOrder
-from ai_agent_lab.domain.mail.models import (
+from ai_agent_lab.core.security.context import UserContext
+from ai_agent_lab.core.security.untrusted import UntrustedOrigin, untrusted
+from ai_agent_lab.mail.domain.enums import MailSortOrder
+from ai_agent_lab.mail.domain.models import (
     MailDraft,
     MailHeader,
     MailLabel,
@@ -35,11 +37,15 @@ from ai_agent_lab.domain.mail.models import (
     MailSendResult,
     MailThread,
 )
-from ai_agent_lab.domain.security.context import UserContext
-from ai_agent_lab.domain.security.untrusted import UntrustedOrigin, untrusted
-from ai_agent_lab.infrastructure.config.mcp_binding import McpServerBinding
-from ai_agent_lab.infrastructure.mcp.connection import McpConnection
-from ai_agent_lab.infrastructure.mcp.gmail.payloads import (
+from ai_agent_lab.mail.mail_errors import (
+    MailAccessDeniedError,
+    MailToolProtocolError,
+    MailToolUnavailableError,
+    decode_failure,
+)
+from ai_agent_lab.mail.mcp.binding import McpServerBinding
+from ai_agent_lab.mail.mcp.connection import McpConnection
+from ai_agent_lab.mail.mcp.google.payloads import (
     INBOX_LABEL,
     UNREAD_LABEL,
     GmailDraft,
@@ -49,13 +55,7 @@ from ai_agent_lab.infrastructure.mcp.gmail.payloads import (
     GmailThread,
     GmailThreadList,
 )
-from ai_agent_lab.infrastructure.mcp.gmail.query import GmailQueryBuilder
-from ai_agent_lab.mcp.mail.errors import (
-    MailAccessDeniedError,
-    MailToolProtocolError,
-    MailToolUnavailableError,
-    decode_failure,
-)
+from ai_agent_lab.mail.mcp.google.query import GmailQueryBuilder
 
 REQUIRED_ALIASES = (
     "search_threads",

@@ -8,7 +8,7 @@ User -> Mail Agent -> Skill -> MCP Tool -> Mail MCP Server -> Gmail
 ```
 
 The agent, the skills and the domain contain no Gmail, OAuth, IMAP or SMTP
-knowledge. That is enforced by `tests/architecture/test_layer_boundaries.py`,
+knowledge. That is enforced by `tests/architecture/test_distribution_boundaries.py`,
 not by convention.
 
 ## 1. Capabilities
@@ -182,12 +182,12 @@ One virtual environment per agent and per framework:
 
 ```powershell
 py -3.12 -m venv .venvs\mail-agent-maf
-.\.venvs\mail-agent-maf\Scripts\python.exe -m pip install -e ".[maf,dev]"
+.\.venvs\mail-agent-maf\Scripts\python.exe -m scripts.install
 Copy-Item .env.example .env
 ```
 
-Add the `azure` extra when authenticating to Azure OpenAI with Entra ID:
-`pip install -e ".[maf,azure,dev]"`.
+The script installs every distribution in editable mode, in dependency order,
+including the Entra ID support used when authenticating to Azure OpenAI.
 
 ### Model provider - OpenAI or Azure OpenAI
 
@@ -257,7 +257,7 @@ the future Mail MCP implementation.
 $env:MAIL_AGENT_MODE = "mock"
 $env:OPENAI_API_KEY  = "<your key>"
 $env:OPENAI_CHAT_MODEL = "gpt-4o-mini"
-.\.venvs\mail-agent-maf\Scripts\python.exe -m ai_agent_lab.application.mail
+.\.venvs\mail-agent-maf\Scripts\python.exe -m ai_agent_lab.mail.application
 ```
 
 ```text
@@ -293,24 +293,27 @@ To use another deterministic mailbox, provide a JSON file with the same
 $env:MAIL_AGENT_MODE = "mock"
 $env:MAIL_AGENT_MOCK_DATASET = "data/mail/my_mailbox.json"
 $env:OPENAI_CHAT_MODEL = "gpt-4o-mini"
-.\.venvs\mail-agent-maf\Scripts\python.exe -m ai_agent_lab.application.mail
+.\.venvs\mail-agent-maf\Scripts\python.exe -m ai_agent_lab.mail.application
 ```
 
 ### VS Code debug
 
-`.vscode/launch.json` provides four configurations, all using
+`.vscode/launch.json` provides six configurations, all using
 `.venvs\mail-agent-maf\Scripts\python.exe`:
 
 | Configuration | What it forces |
 |---|---|
 | **Mail Agent (.env decides)** | nothing — the backend comes from `.env` |
 | **Mail Agent (force mock dataset)** | `MAIL_AGENT_MODE=mock` |
-| **Mail Agent (force local MCP server)** | `MAIL_AGENT_MODE=mcp`, `MAIL_MCP_SERVER=local` |
-| **Authorise against the Gmail MCP server** | runs the one-off consent |
+| **Mail Agent (force the reference MCP server)** | `MAIL_AGENT_MODE=mcp`, `MAIL_MCP_SERVER=local` |
+| **Mail Agent (force the Gmail API MCP server)** | `MAIL_AGENT_MODE=mcp`, `MAIL_MCP_SERVER=gmail-api` |
+| **Authorise the Gmail API server** | one-off Google consent for our Gmail server |
+| **Authorise against the official Gmail MCP server** | one-off consent for the hosted Google server |
 
-The `env` block of a launch configuration **overrides** `envFile`, so the two
+The `env` block of a launch configuration **overrides** `envFile`, so the
 "force" configurations win over `.env` by design. Pick **(.env decides)** when
-you want the file to be the single source of truth.
+you want the file to be the single source of truth — that is the configuration
+to use if you ever wonder why the mock keeps running.
 
 Create `.env` from `.env.example` first and set the model provider credentials
 there. No launch configuration contains a credential.
@@ -332,7 +335,19 @@ can be run completely offline:
 ```powershell
 $env:MAIL_AGENT_MODE = "mcp"
 $env:MAIL_MCP_SERVER = "local"
-.\.venvs\mail-agent-maf\Scripts\python.exe -m ai_agent_lab.application.mail
+.\.venvs\mail-agent-maf\Scripts\python.exe -m ai_agent_lab.mail.application
+```
+
+Against a real mailbox, consent once and then run. The Google credential lives
+in the server process alone; the agent talks to it over stdio and never sees a
+token:
+
+```powershell
+.\.venvs\mail-agent-maf\Scripts\python.exe -m mail_mcp.gmail.authorise
+
+$env:MAIL_AGENT_MODE = "mcp"
+$env:MAIL_MCP_SERVER = "gmail-api"
+.\.venvs\mail-agent-maf\Scripts\python.exe -m ai_agent_lab.mail.application
 ```
 
 The agent, the skills and the scenarios are identical in both modes; only the

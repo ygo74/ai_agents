@@ -15,7 +15,7 @@ dialect: gmail
 # What this server can actually serve.
 #
 # Recorded from the live server with:
-#   python -m ai_agent_lab.infrastructure.mcp.discover --server gmail
+#   python -m ai_agent_lab.mail.application.discover --server gmail
 # The recording is kept in docs/mcp-discovery/gmail-tools.json. It exposes 23
 # tools, and every one of them returns structured content.
 #

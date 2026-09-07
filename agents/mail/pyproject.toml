@@ -1,0 +1,27 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "ai-agent-lab-mail-agent"
+version = "0.1.0"
+description = "The Mail Agent: mail domain, skills and orchestration"
+requires-python = ">=3.12"
+
+# `mcp` is the client library used to reach a mail MCP server. The protocol
+# package is only needed by the native dialect, so it is an extra: an agent
+# talking to a third-party server through its own dialect does not need it.
+dependencies = [
+    "ai-agent-lab-core",
+    "mcp>=1.24,<2",
+]
+
+[project.optional-dependencies]
+maf = ["ai-agent-lab-maf"]
+native = ["mail-mcp-protocol"]
+
+[project.scripts]
+mail-agent = "ai_agent_lab.mail.application.cli_entrypoint:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/ai_agent_lab"]

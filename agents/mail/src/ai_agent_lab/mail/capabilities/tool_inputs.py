@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from ai_agent_lab.domain.mail.enums import MailSortOrder
+from ai_agent_lab.mail.domain.enums import MailSortOrder
 
 _MAX_RESULTS = 50
 

@@ -9,14 +9,14 @@ from __future__ import annotations
 
 from agent_framework import SupportsChatGetResponse
 
-from ai_agent_lab.frameworks.microsoft_agent_framework.chat_client import (
+from ai_agent_lab.maf.azure_credentials import AzureIdentityCredentialProvider
+from ai_agent_lab.maf.chat_client import (
     AzureCredential,
     AzureOpenAIRoute,
     ChatClientConfigurationError,
     MafChatClientFactory,
 )
-from ai_agent_lab.infrastructure.config.azure_credentials import AzureIdentityCredentialProvider
-from ai_agent_lab.infrastructure.config.settings import (
+from ai_agent_lab.mail.config.settings import (
     AzureCredentialMode,
     ChatClientSettings,
     ChatProvider,

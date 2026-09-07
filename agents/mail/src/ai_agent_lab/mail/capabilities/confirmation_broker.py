@@ -4,13 +4,13 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
-from ai_agent_lab.domain.security.confirmation import (
+from ai_agent_lab.core.security.confirmation import (
     ConfirmationAuthority,
     ConfirmationDecision,
     ConfirmationLedger,
     ConfirmationRequest,
 )
-from ai_agent_lab.domain.security.context import UserContext
+from ai_agent_lab.core.security.context import UserContext
 
 
 class ConfirmationBroker:

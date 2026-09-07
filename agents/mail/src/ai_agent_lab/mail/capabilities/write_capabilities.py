@@ -11,30 +11,30 @@ from collections.abc import Awaitable, Callable
 
 from pydantic import BaseModel
 
-from ai_agent_lab.agents.mail.confirmation_broker import ConfirmationBroker
-from ai_agent_lab.agents.mail.results import (
+from ai_agent_lab.core.manifests import AgentManifest
+from ai_agent_lab.core.registry import SkillDescriptor
+from ai_agent_lab.core.security.confirmation import ConfirmationDecision, ConfirmationRequest
+from ai_agent_lab.core.security.context import UserContext
+from ai_agent_lab.mail.capabilities.confirmation_broker import ConfirmationBroker
+from ai_agent_lab.mail.capabilities.results import (
     DraftPreparedResult,
     MailSentResult,
     OperationAcknowledged,
 )
-from ai_agent_lab.agents.mail.tool_inputs import (
+from ai_agent_lab.mail.capabilities.tool_inputs import (
     DraftReferenceInput,
     DraftReplyInput,
     LabelInput,
     MessageInput,
     SetReadStateInput,
 )
-from ai_agent_lab.agents.registry import SkillDescriptor
-from ai_agent_lab.domain.mail.models import MailDraft
-from ai_agent_lab.domain.mail.ports import DraftStore
-from ai_agent_lab.domain.manifests import AgentManifest
-from ai_agent_lab.domain.security.confirmation import ConfirmationDecision, ConfirmationRequest
-from ai_agent_lab.domain.security.context import UserContext
-from ai_agent_lab.mcp.mail.catalog import MailToolName
-from ai_agent_lab.skills.mail.errors import EmptyMailSelectionError
-from ai_agent_lab.skills.mail.management_skill import MailManagementSkill
-from ai_agent_lab.skills.mail.reply_skill import MailReplySkill
-from ai_agent_lab.skills.mail.send_skill import SendMailSkill
+from ai_agent_lab.mail.catalog import MailToolName
+from ai_agent_lab.mail.domain.models import MailDraft
+from ai_agent_lab.mail.domain.ports import DraftStore
+from ai_agent_lab.mail.skills.errors import EmptyMailSelectionError
+from ai_agent_lab.mail.skills.management_skill import MailManagementSkill
+from ai_agent_lab.mail.skills.reply_skill import MailReplySkill
+from ai_agent_lab.mail.skills.send_skill import SendMailSkill
 
 DRAFT_MAIL_REPLY = "draft_mail_reply"
 

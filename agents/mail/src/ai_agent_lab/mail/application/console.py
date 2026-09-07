@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
-from ai_agent_lab.domain.security.confirmation import ConfirmationRequest
+from ai_agent_lab.core.security.confirmation import ConfirmationRequest
 
 _AFFIRMATIVE = frozenset({"y", "yes", "o", "oui"})
 _NEGATIVE = frozenset({"n", "no", "non"})

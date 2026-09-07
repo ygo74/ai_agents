@@ -18,11 +18,11 @@ from typing import Any
 
 from agent_framework import AgentResponse, Content, Message
 
-from ai_agent_lab.domain.security.confirmation import (
+from ai_agent_lab.core.security.confirmation import (
     ConfirmationDecision,
     ConfirmationRequest,
 )
-from ai_agent_lab.domain.security.context import UserContext
+from ai_agent_lab.core.security.context import UserContext
 
 APPROVAL_REQUEST_TYPE = "function_approval_request"
 

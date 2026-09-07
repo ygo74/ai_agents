@@ -14,7 +14,7 @@ from __future__ import annotations
 from collections.abc import Iterable
 from dataclasses import dataclass
 
-from ai_agent_lab.domain.security.errors import SecurityError
+from ai_agent_lab.core.security.errors import SecurityError
 
 _SEPARATOR = ":"
 

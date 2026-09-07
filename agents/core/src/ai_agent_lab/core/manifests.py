@@ -14,7 +14,7 @@ from __future__ import annotations
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from ai_agent_lab.domain.security.operations import ToolOperationDescriptor
+from ai_agent_lab.core.security.operations import ToolOperationDescriptor
 
 
 class SkillManifest(BaseModel):

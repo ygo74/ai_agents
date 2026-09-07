@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from ai_agent_lab.domain.errors import DomainError
+from ai_agent_lab.core.errors import DomainError
 
 
 class SecurityError(DomainError):

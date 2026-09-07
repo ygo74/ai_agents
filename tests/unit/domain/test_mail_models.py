@@ -8,13 +8,13 @@ import pytest
 from pydantic import ValidationError
 from tests.conftest import make_message, make_thread
 
-from ai_agent_lab.domain.mail.models import (
+from ai_agent_lab.core.security.untrusted import UntrustedOrigin, untrusted
+from ai_agent_lab.mail.domain.models import (
     EmailAddress,
     MailSearchRequest,
     MailSearchResult,
     MailThread,
 )
-from ai_agent_lab.domain.security.untrusted import UntrustedOrigin, untrusted
 
 
 class TestEmailAddress:

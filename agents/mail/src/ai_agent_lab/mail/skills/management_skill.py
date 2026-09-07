@@ -2,17 +2,17 @@
 
 from __future__ import annotations
 
-from ai_agent_lab.domain.mail.models import MailLabel
-from ai_agent_lab.domain.mail.permissions import MailPermission
-from ai_agent_lab.domain.security.confirmation import (
+from ai_agent_lab.core.security.confirmation import (
     ConfirmationDecision,
     ConfirmationDetail,
     ConfirmationRequest,
 )
-from ai_agent_lab.domain.security.context import UserContext
-from ai_agent_lab.mcp.mail.catalog import MailToolName
-from ai_agent_lab.mcp.mail.contracts import MailOrganisationTools, MailReadTools
-from ai_agent_lab.skills.mail.gating import GatedMailOperationRunner
+from ai_agent_lab.core.security.context import UserContext
+from ai_agent_lab.mail.catalog import MailToolName
+from ai_agent_lab.mail.domain.models import MailLabel
+from ai_agent_lab.mail.domain.permissions import MailPermission
+from ai_agent_lab.mail.skills.gating import GatedMailOperationRunner
+from ai_agent_lab.mail.tools_port import MailOrganisationTools, MailReadTools
 
 
 class MailManagementSkill:

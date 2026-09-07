@@ -14,17 +14,17 @@ from __future__ import annotations
 import pytest
 from openai import AsyncAzureOpenAI, AsyncOpenAI
 
-from ai_agent_lab.application.chat_client import ConfiguredChatClientFactory
-from ai_agent_lab.frameworks.microsoft_agent_framework.chat_client import (
+from ai_agent_lab.maf.azure_credentials import (
+    AzureCredentialUnavailableError,
+    AzureIdentityCredentialProvider,
+)
+from ai_agent_lab.maf.chat_client import (
     AzureOpenAIRoute,
     ChatClientConfigurationError,
     MafChatClientFactory,
 )
-from ai_agent_lab.infrastructure.config.azure_credentials import (
-    AzureCredentialUnavailableError,
-    AzureIdentityCredentialProvider,
-)
-from ai_agent_lab.infrastructure.config.settings import (
+from ai_agent_lab.mail.application.chat_client import ConfiguredChatClientFactory
+from ai_agent_lab.mail.config.settings import (
     AzureCredentialMode,
     ChatClientSettings,
     ChatProvider,

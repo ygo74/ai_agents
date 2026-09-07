@@ -17,13 +17,12 @@ from pathlib import Path
 import pytest
 from tests.contract.test_mail_tools_contract import MailToolsContractTests
 
-from ai_agent_lab.domain.mail.models import MailSearchRequest
-from ai_agent_lab.infrastructure.config.mcp_binding import McpServerBinding
-from ai_agent_lab.infrastructure.config.settings import McpTransport
-from ai_agent_lab.infrastructure.mcp.connection import McpConnection
-from ai_agent_lab.infrastructure.mcp.mail_tools import McpMailTools
-from ai_agent_lab.mcp.mail.catalog import MailToolName
-from ai_agent_lab.mcp.mail.errors import MailAccessDeniedError, MailNotFoundError
+from ai_agent_lab.mail.catalog import MailToolName
+from ai_agent_lab.mail.domain.models import MailSearchRequest
+from ai_agent_lab.mail.mail_errors import MailAccessDeniedError, MailNotFoundError
+from ai_agent_lab.mail.mcp.binding import McpServerBinding, McpTransport
+from ai_agent_lab.mail.mcp.connection import McpConnection
+from ai_agent_lab.mail.mcp.native.client import McpMailTools
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 DATASET = REPOSITORY_ROOT / "tests" / "contract" / "mcp_contract_mailbox.json"
@@ -39,7 +38,7 @@ def binding() -> McpServerBinding:
         capabilities=tuple(MailToolName),
         tools={name.value: name.value for name in MailToolName},
         command="python",
-        args=("-m", "ai_agent_lab.infrastructure.mcp.reference_server", "--dataset", str(DATASET)),
+        args=("-m", "mail_mcp.reference.server", "--dataset", str(DATASET)),
     )
 
 

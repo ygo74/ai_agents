@@ -11,16 +11,16 @@ from __future__ import annotations
 import pytest
 from tests.support.maf_fakes import ScriptedChatClient, ToolCall, calls, says
 
-from ai_agent_lab.agents.mail.write_capabilities import DRAFT_MAIL_REPLY
-from ai_agent_lab.application.mail.composition import MailAgentCompositionRoot
-from ai_agent_lab.application.mail.console import Console, ConsoleConfirmationPrompt
-from ai_agent_lab.application.mail.session import MailAgentSession
-from ai_agent_lab.domain.security.audit import AuditOutcome
-from ai_agent_lab.frameworks.microsoft_agent_framework.approval import MafApprovalTranslator
-from ai_agent_lab.infrastructure.config.settings import MailAgentSettings
-from ai_agent_lab.infrastructure.inmemory.reasoner import ScriptedTextReasoner
-from ai_agent_lab.mcp.mail.catalog import MailToolName
-from ai_agent_lab.skills.mail.analysis import (
+from ai_agent_lab.core.security.audit import AuditOutcome
+from ai_agent_lab.maf.approval import MafApprovalTranslator
+from ai_agent_lab.mail.application.composition import MailAgentCompositionRoot
+from ai_agent_lab.mail.application.console import Console, ConsoleConfirmationPrompt
+from ai_agent_lab.mail.application.session import MailAgentSession
+from ai_agent_lab.mail.capabilities.write_capabilities import DRAFT_MAIL_REPLY
+from ai_agent_lab.mail.catalog import MailToolName
+from ai_agent_lab.mail.config.settings import MailAgentSettings
+from ai_agent_lab.mail.inmemory.reasoner import ScriptedTextReasoner
+from ai_agent_lab.mail.skills.analysis import (
     MailActionsOutput,
     MailReplyOutput,
     MailSummaryOutput,

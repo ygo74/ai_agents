@@ -9,16 +9,16 @@ from pathlib import Path
 
 from agent_framework import SupportsChatGetResponse
 
-from ai_agent_lab.application.chat_client import ConfiguredChatClientFactory
-from ai_agent_lab.application.mail.composition import MailAgentCompositionRoot, MailAgentRuntime
-from ai_agent_lab.application.mail.console import Console, ConsoleConfirmationPrompt
-from ai_agent_lab.application.mail.session import MailAgentSession
-from ai_agent_lab.domain.errors import DomainError
-from ai_agent_lab.frameworks.microsoft_agent_framework.approval import MafApprovalTranslator
-from ai_agent_lab.frameworks.microsoft_agent_framework.chat_client import MafChatClientFactory
-from ai_agent_lab.infrastructure.config.azure_credentials import AzureIdentityCredentialProvider
-from ai_agent_lab.infrastructure.config.environment import EnvironmentFile
-from ai_agent_lab.infrastructure.config.settings import ChatClientSettings, MailAgentSettings
+from ai_agent_lab.core.config.environment import EnvironmentFile
+from ai_agent_lab.core.errors import DomainError
+from ai_agent_lab.maf.approval import MafApprovalTranslator
+from ai_agent_lab.maf.azure_credentials import AzureIdentityCredentialProvider
+from ai_agent_lab.maf.chat_client import MafChatClientFactory
+from ai_agent_lab.mail.application.chat_client import ConfiguredChatClientFactory
+from ai_agent_lab.mail.application.composition import MailAgentCompositionRoot, MailAgentRuntime
+from ai_agent_lab.mail.application.console import Console, ConsoleConfirmationPrompt
+from ai_agent_lab.mail.application.session import MailAgentSession
+from ai_agent_lab.mail.config.settings import ChatClientSettings, MailAgentSettings
 
 _BANNER = """\
 Mail Agent ready.

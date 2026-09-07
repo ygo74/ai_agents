@@ -6,9 +6,9 @@ from typing import cast
 
 from agent_framework import ChatOptions, ChatResponse, Message, SupportsChatGetResponse
 
-from ai_agent_lab.domain.reasoning.envelope import PromptEnvelopeBuilder
-from ai_agent_lab.domain.reasoning.errors import ReasoningOutputError, ReasoningUnavailableError
-from ai_agent_lab.domain.reasoning.ports import ReasoningOutputT, ReasoningRequest
+from ai_agent_lab.core.reasoning.envelope import PromptEnvelopeBuilder
+from ai_agent_lab.core.reasoning.errors import ReasoningOutputError, ReasoningUnavailableError
+from ai_agent_lab.core.reasoning.ports import ReasoningOutputT, ReasoningRequest
 
 
 class MafTextReasoner:

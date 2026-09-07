@@ -6,10 +6,10 @@ from datetime import UTC, datetime
 
 import pytest
 
-from ai_agent_lab.domain.mail.models import EmailAddress, MailSearchRequest
-from ai_agent_lab.domain.security.errors import AuthorizationError
-from ai_agent_lab.mcp.mail.errors import MailNotFoundError
-from ai_agent_lab.skills.mail.search_skill import MailReadSkill, MailSearchSkill
+from ai_agent_lab.core.security.errors import AuthorizationError
+from ai_agent_lab.mail.domain.models import EmailAddress, MailSearchRequest
+from ai_agent_lab.mail.mail_errors import MailNotFoundError
+from ai_agent_lab.mail.skills.search_skill import MailReadSkill, MailSearchSkill
 
 
 @pytest.fixture
@@ -57,7 +57,7 @@ class TestMailSearchSkill:
 
     @pytest.mark.security
     async def test_requires_the_read_permission(self, search_skill):
-        from ai_agent_lab.domain.security.context import UserContext
+        from ai_agent_lab.core.security.context import UserContext
 
         anonymous = UserContext(user_id="owner", session_id="s", permissions=frozenset())
 
@@ -89,7 +89,7 @@ class TestMailReadSkill:
 
     @pytest.mark.security
     async def test_requires_the_read_permission(self, read_skill, reader):
-        from ai_agent_lab.domain.security.context import UserContext
+        from ai_agent_lab.core.security.context import UserContext
 
         anonymous = UserContext(user_id="owner", session_id="s", permissions=frozenset())
 

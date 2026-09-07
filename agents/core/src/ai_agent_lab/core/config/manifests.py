@@ -18,16 +18,16 @@ from typing import Any
 
 import yaml
 
-from ai_agent_lab.domain.errors import DomainError
-from ai_agent_lab.domain.manifests import AgentManifest, SkillManifest
-from ai_agent_lab.domain.security.floor import SecurityFloor
-from ai_agent_lab.domain.security.operations import (
+from ai_agent_lab.core.config.directory import ConfigurationDirectory
+from ai_agent_lab.core.errors import DomainError
+from ai_agent_lab.core.manifests import AgentManifest, SkillManifest
+from ai_agent_lab.core.security.floor import SecurityFloor
+from ai_agent_lab.core.security.operations import (
     OperationType,
     RiskLevel,
     ToolOperationDescriptor,
 )
-from ai_agent_lab.domain.security.permissions import PermissionRegistry
-from ai_agent_lab.infrastructure.config.directory import ConfigurationDirectory
+from ai_agent_lab.core.security.permissions import PermissionRegistry
 
 SKILL_MANIFEST = "skill.yaml"
 SKILL_PROMPT = "SKILL.md"

@@ -10,19 +10,19 @@ from __future__ import annotations
 import pytest
 from tests.support.maf_fakes import ScriptedChatClient, says
 
-from ai_agent_lab.agents.mail.read_capabilities import CLASSIFY_MAIL, SUMMARISE_MAIL
-from ai_agent_lab.agents.mail.write_capabilities import DRAFT_MAIL_REPLY
-from ai_agent_lab.application.mail.composition import MailAgentCompositionRoot
-from ai_agent_lab.domain.mail.permissions import MailPermission
-from ai_agent_lab.domain.security.confirmation import (
+from ai_agent_lab.core.security.confirmation import (
     ConfiguredConfirmationPolicy,
     InMemoryConfirmationPreferenceStore,
 )
-from ai_agent_lab.domain.security.context import UserContext
-from ai_agent_lab.frameworks.microsoft_agent_framework.tool_adapter import SkillToolAdapter
-from ai_agent_lab.infrastructure.config.settings import MailAgentSettings
-from ai_agent_lab.infrastructure.inmemory.reasoner import ScriptedTextReasoner
-from ai_agent_lab.mcp.mail.catalog import MailToolName
+from ai_agent_lab.core.security.context import UserContext
+from ai_agent_lab.maf.tool_adapter import SkillToolAdapter
+from ai_agent_lab.mail.application.composition import MailAgentCompositionRoot
+from ai_agent_lab.mail.capabilities.read_capabilities import CLASSIFY_MAIL, SUMMARISE_MAIL
+from ai_agent_lab.mail.capabilities.write_capabilities import DRAFT_MAIL_REPLY
+from ai_agent_lab.mail.catalog import MailToolName
+from ai_agent_lab.mail.config.settings import MailAgentSettings
+from ai_agent_lab.mail.domain.permissions import MailPermission
+from ai_agent_lab.mail.inmemory.reasoner import ScriptedTextReasoner
 
 REPOSITORY_ROOT_MARKER = "data"
 
@@ -57,7 +57,7 @@ def tools_of(runtime, settings: MailAgentSettings | None = None):
     policy = ConfiguredConfirmationPolicy(
         InMemoryConfirmationPreferenceStore({resolved.user_id: resolved.confirmation_preferences()})
     )
-    from ai_agent_lab.agents.mail.results import MailToolResultRenderer
+    from ai_agent_lab.mail.capabilities.results import MailToolResultRenderer
 
     adapter = SkillToolAdapter(MailToolResultRenderer(), policy)
     return {tool.name: tool for tool in adapter.to_tools(runtime.registry, runtime.user)}
@@ -134,7 +134,7 @@ class TestApprovalModeFollowsConfiguration:
         policy = ConfiguredConfirmationPolicy(
             InMemoryConfirmationPreferenceStore({settings.user_id: settings.confirmation_preferences()})
         )
-        from ai_agent_lab.agents.mail.results import MailToolResultRenderer
+        from ai_agent_lab.mail.capabilities.results import MailToolResultRenderer
 
         adapter = SkillToolAdapter(MailToolResultRenderer(), policy)
         for_owner = {tool.name: tool for tool in adapter.to_tools(runtime.registry, runtime.user)}

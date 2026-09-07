@@ -20,9 +20,8 @@ from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 from mcp.client.streamable_http import streamablehttp_client
 
-from ai_agent_lab.infrastructure.config.mcp_binding import McpServerBinding
-from ai_agent_lab.infrastructure.config.settings import McpTransport
-from ai_agent_lab.mcp.mail.errors import MailToolUnavailableError
+from ai_agent_lab.mail.mail_errors import MailToolUnavailableError
+from ai_agent_lab.mail.mcp.binding import McpServerBinding, McpTransport
 
 _PYTHON = "python"
 

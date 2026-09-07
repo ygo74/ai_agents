@@ -13,18 +13,18 @@ import uuid
 from collections.abc import Awaitable, Callable, Sequence
 from typing import TypeVar
 
-from ai_agent_lab.domain.security.audit import AuditOutcome, AuditRecord, AuditTrail
-from ai_agent_lab.domain.security.confirmation import (
+from ai_agent_lab.core.security.audit import AuditOutcome, AuditRecord, AuditTrail
+from ai_agent_lab.core.security.confirmation import (
     ConfirmationDecision,
     ConfirmationDetail,
     ConfirmationGate,
     ConfirmationPolicy,
     ConfirmationRequest,
 )
-from ai_agent_lab.domain.security.context import UserContext
-from ai_agent_lab.domain.security.errors import ConfirmationRejectedError, SecurityError
-from ai_agent_lab.domain.security.operations import ToolOperationDescriptor
-from ai_agent_lab.mcp.mail.catalog import MailToolCatalog, MailToolName
+from ai_agent_lab.core.security.context import UserContext
+from ai_agent_lab.core.security.errors import ConfirmationRejectedError, SecurityError
+from ai_agent_lab.core.security.operations import ToolOperationDescriptor
+from ai_agent_lab.mail.catalog import MailToolCatalog, MailToolName
 
 ResultT = TypeVar("ResultT")
 

@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from ai_agent_lab.domain.security.errors import AuthorizationError
-from ai_agent_lab.domain.security.permissions import Permission
+from ai_agent_lab.core.security.errors import AuthorizationError
+from ai_agent_lab.core.security.permissions import Permission
 
 
 class UserContext(BaseModel):

@@ -13,17 +13,17 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from ai_agent_lab.domain.mail.enums import MailImportance
-from ai_agent_lab.domain.mail.models import (
+from ai_agent_lab.core.security.untrusted import UntrustedOrigin, untrusted
+from ai_agent_lab.mail.domain.enums import MailImportance
+from ai_agent_lab.mail.domain.models import (
     EmailAddress,
     MailAttachment,
     MailLabel,
     MailMessage,
     MailParticipant,
 )
-from ai_agent_lab.domain.security.untrusted import UntrustedOrigin, untrusted
-from ai_agent_lab.infrastructure.inmemory.mail_tools import Mailbox
-from ai_agent_lab.mcp.mail.errors import MailToolProtocolError
+from ai_agent_lab.mail.inmemory.mail_tools import Mailbox
+from ai_agent_lab.mail.mail_errors import MailToolProtocolError
 
 JsonObject = Mapping[str, Any]
 

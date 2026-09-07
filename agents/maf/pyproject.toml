@@ -1,0 +1,26 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "ai-agent-lab-maf"
+version = "0.1.0"
+description = "Microsoft Agent Framework adapter for the AI Agent Lab agents"
+requires-python = ">=3.12"
+
+# The only distribution allowed to depend on an agentic framework. Adding a
+# LangChain or CrewAI adapter means a sibling distribution, not a change here.
+dependencies = [
+    "ai-agent-lab-core",
+    "agent-framework-core>=1.17,<2",
+    "agent-framework-openai>=1.14,<2",
+]
+
+[project.optional-dependencies]
+# Entra ID authentication for Azure OpenAI.
+azure = [
+    "azure-identity>=1.19,<2",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/ai_agent_lab"]

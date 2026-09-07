@@ -16,7 +16,7 @@ from typing import Protocol, TypeVar, runtime_checkable
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from ai_agent_lab.domain.security.untrusted import UntrustedText
+from ai_agent_lab.core.security.untrusted import UntrustedText
 
 ReasoningOutputT = TypeVar("ReasoningOutputT", bound=BaseModel)
 

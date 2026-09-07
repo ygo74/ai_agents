@@ -6,9 +6,9 @@ anything but a high-risk operation requiring an explicit confirmation.
 
 from __future__ import annotations
 
-from ai_agent_lab.domain.security.floor import OperationFloor, SecurityFloor
-from ai_agent_lab.domain.security.operations import RiskLevel
-from ai_agent_lab.mcp.mail.catalog import MailToolName
+from ai_agent_lab.core.security.floor import OperationFloor, SecurityFloor
+from ai_agent_lab.core.security.operations import RiskLevel
+from ai_agent_lab.mail.catalog import MailToolName
 
 
 class MailSecurityFloor:

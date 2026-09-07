@@ -11,9 +11,9 @@ transport: stdio
 command: python
 args:
   - -m
-  - ai_agent_lab.infrastructure.mcp.reference_server
-  - --backend
-  - gmail
+  - mail_mcp.gmail.server
+  - --owner
+  - local-user
 
 # It answers our own tool names with the contract payloads.
 dialect: native

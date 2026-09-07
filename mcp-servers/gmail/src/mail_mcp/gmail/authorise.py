@@ -13,16 +13,11 @@ from __future__ import annotations
 
 import asyncio
 
-from ai_agent_lab.domain.security.context import UserContext
-from ai_agent_lab.infrastructure.config.environment import EnvironmentFile
-from ai_agent_lab.infrastructure.gmail.api import GmailApiClient
-from ai_agent_lab.infrastructure.gmail.credentials import GmailCredentials, GmailCredentialSettings
-from ai_agent_lab.infrastructure.gmail.mail_tools import GmailApiMailTools
-from ai_agent_lab.infrastructure.oauth.loopback import LoopbackConsent
-
-# The Gmail API acts for the account that consented, so the caller identity is
-# not part of a request. The mailbox owner is enforced by the MCP client.
-_CONSENTING_ACCOUNT = UserContext(user_id="gmail", session_id="authorisation")
+from mail_mcp.gmail.api import GmailApiClient
+from mail_mcp.gmail.credentials import GmailCredentials, GmailCredentialSettings
+from mail_mcp.gmail.environment import EnvironmentFile
+from mail_mcp.gmail.loopback import LoopbackConsent
+from mail_mcp.gmail.mailbox import GmailMailbox
 
 
 class GmailConsent:
@@ -34,13 +29,16 @@ class GmailConsent:
     async def run(self) -> tuple[int, str]:
         """Authorise, then read the labels back."""
         await self._credentials.authorise()
-        tools = GmailApiMailTools(GmailApiClient(self._credentials))
-        labels = await tools.list_labels(_CONSENTING_ACCOUNT)
-        return len(labels), self._credentials.granted_scopes()
+        mailbox = GmailMailbox(GmailApiClient(self._credentials))
+        try:
+            labels = await mailbox.list_labels()
+        finally:
+            await mailbox.aclose()
+        return len(labels.labels), self._credentials.granted_scopes()
 
 
 def main() -> None:
-    """Entry point of ``python -m ai_agent_lab.infrastructure.gmail.authorise``."""
+    """Entry point of the ``mail-mcp-gmail-authorise`` command."""
     EnvironmentFile().load()
     settings = GmailCredentialSettings()
     settings.require_client()

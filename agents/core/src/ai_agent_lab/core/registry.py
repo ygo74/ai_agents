@@ -14,14 +14,29 @@ from __future__ import annotations
 
 from collections.abc import Awaitable, Callable, Sequence
 from dataclasses import dataclass
+from typing import Protocol
 
 from pydantic import BaseModel
 
-from ai_agent_lab.domain.manifests import SkillManifest
-from ai_agent_lab.domain.security.context import UserContext
-from ai_agent_lab.domain.security.operations import ToolOperationDescriptor
+from ai_agent_lab.core.manifests import SkillManifest
+from ai_agent_lab.core.security.context import UserContext
+from ai_agent_lab.core.security.operations import ToolOperationDescriptor
 
 SkillInvocation = Callable[[BaseModel, UserContext], Awaitable[BaseModel]]
+
+
+class ResultRenderer(Protocol):
+    """Turns the typed result of a capability into the text a model reads.
+
+    Each agent renders its own results: what a mailbox search should look like in
+    a conversation is a mail decision, not a framework one. A framework adapter
+    asks for this and nothing more, which is what keeps it usable by the next
+    agent without a change.
+    """
+
+    def render(self, result: BaseModel | Sequence[BaseModel]) -> str:
+        """Render a capability result as text."""
+        ...
 
 
 @dataclass(frozen=True, slots=True)

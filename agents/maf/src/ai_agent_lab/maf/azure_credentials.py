@@ -10,8 +10,8 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import TYPE_CHECKING
 
-from ai_agent_lab.domain.errors import DomainError
-from ai_agent_lab.infrastructure.config.settings import AzureCredentialMode
+from ai_agent_lab.core.config.chat import AzureCredentialMode
+from ai_agent_lab.core.errors import DomainError
 
 if TYPE_CHECKING:
     from azure.core.credentials import TokenCredential

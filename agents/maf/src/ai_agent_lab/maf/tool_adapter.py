@@ -6,11 +6,10 @@ from typing import Any, Literal
 
 from agent_framework import FunctionTool
 
-from ai_agent_lab.agents.mail.results import MailToolResultRenderer
-from ai_agent_lab.agents.registry import SkillDescriptor, SkillRegistry
-from ai_agent_lab.domain.errors import DomainError
-from ai_agent_lab.domain.security.confirmation import ConfirmationPolicy
-from ai_agent_lab.domain.security.context import UserContext
+from ai_agent_lab.core.errors import DomainError
+from ai_agent_lab.core.registry import ResultRenderer, SkillDescriptor, SkillRegistry
+from ai_agent_lab.core.security.confirmation import ConfirmationPolicy
+from ai_agent_lab.core.security.context import UserContext
 
 ApprovalMode = Literal["always_require", "never_require"]
 
@@ -26,7 +25,7 @@ class SkillToolAdapter:
     is never consulted about it.
     """
 
-    def __init__(self, renderer: MailToolResultRenderer, policy: ConfirmationPolicy) -> None:
+    def __init__(self, renderer: ResultRenderer, policy: ConfirmationPolicy) -> None:
         self._renderer = renderer
         self._policy = policy
 

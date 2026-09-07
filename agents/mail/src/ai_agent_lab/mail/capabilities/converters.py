@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
-from ai_agent_lab.agents.mail.tool_inputs import SearchMailInput
-from ai_agent_lab.domain.mail.models import EmailAddress, MailSearchRequest
+from ai_agent_lab.mail.capabilities.tool_inputs import SearchMailInput
+from ai_agent_lab.mail.domain.models import EmailAddress, MailSearchRequest
 
 
 class MailSearchRequestFactory:

@@ -25,9 +25,8 @@ import httpx
 from pydantic import SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from ai_agent_lab.domain.errors import DomainError
-from ai_agent_lab.infrastructure.config.settings import ENV_FILE
-from ai_agent_lab.infrastructure.oauth.loopback import LoopbackConsent
+from mail_mcp.gmail.loopback import LoopbackConsent
+from mail_mcp.protocol.errors import MailServerError
 
 AUTHORISATION_ENDPOINT = "https://accounts.google.com/o/oauth2/v2/auth"
 TOKEN_ENDPOINT = "https://oauth2.googleapis.com/token"  # noqa: S105 - an endpoint, not a credential
@@ -40,7 +39,7 @@ DEFAULT_SCOPES = f"{READ_SCOPE} {COMPOSE_SCOPE} {MODIFY_SCOPE}"
 _EXPIRY_MARGIN_SECONDS = 60
 
 
-class GoogleAuthorisationError(DomainError):
+class GoogleAuthorisationError(MailServerError):
     """Raised when Google refuses to issue or refresh a token."""
 
 
@@ -49,7 +48,7 @@ class GmailCredentialSettings(BaseSettings):
 
     model_config = SettingsConfigDict(
         env_prefix="GMAIL_OAUTH_",
-        env_file=ENV_FILE,
+        env_file=".env",
         env_file_encoding="utf-8",
         extra="ignore",
     )

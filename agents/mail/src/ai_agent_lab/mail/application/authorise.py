@@ -16,15 +16,15 @@ import asyncio
 import json
 from pathlib import Path
 
-from ai_agent_lab.domain.mail.permissions import MailPermission
-from ai_agent_lab.domain.security.context import UserContext
-from ai_agent_lab.infrastructure.config.directory import ConfigurationDirectory
-from ai_agent_lab.infrastructure.config.environment import EnvironmentFile
-from ai_agent_lab.infrastructure.config.mail_tools_provider import MailToolsProvider
-from ai_agent_lab.infrastructure.config.mcp_binding import McpServerBindingLoader
-from ai_agent_lab.infrastructure.config.settings import MailAgentMode, MailAgentSettings, MailMcpSettings
-from ai_agent_lab.infrastructure.inmemory.dataset import MailDatasetLoader
-from ai_agent_lab.infrastructure.mcp.oauth import MailOAuthSettings
+from ai_agent_lab.core.config.directory import ConfigurationDirectory
+from ai_agent_lab.core.config.environment import EnvironmentFile
+from ai_agent_lab.core.security.context import UserContext
+from ai_agent_lab.mail.application.mail_tools_provider import MailToolsProvider
+from ai_agent_lab.mail.config.settings import MailAgentMode, MailAgentSettings, MailMcpSettings
+from ai_agent_lab.mail.domain.permissions import MailPermission
+from ai_agent_lab.mail.inmemory.dataset import MailDatasetLoader
+from ai_agent_lab.mail.mcp.binding import McpServerBindingLoader
+from ai_agent_lab.mail.mcp.oauth import MailOAuthSettings
 
 _CONSENT_TIMEOUT_SECONDS = 600
 
@@ -67,7 +67,7 @@ def _granted_scopes() -> str:
 
 
 def main() -> None:
-    """Entry point of ``python -m ai_agent_lab.infrastructure.mcp.authorise``."""
+    """Entry point of ``python -m ai_agent_lab.mail.application.authorise``."""
     parser = argparse.ArgumentParser(description="Authorise the agent against a mail MCP server.")
     parser.add_argument("--server", default="gmail", help="binding name under config/mcp/")
     server = parser.parse_args().server

@@ -7,15 +7,15 @@ implemented in code rather than delegated to a model.
 
 from __future__ import annotations
 
-from ai_agent_lab.domain.mail.models import (
+from ai_agent_lab.core.security.context import UserContext
+from ai_agent_lab.mail.domain.models import (
     MailMessage,
     MailSearchRequest,
     MailSearchResult,
     MailThread,
 )
-from ai_agent_lab.domain.mail.permissions import MailPermission
-from ai_agent_lab.domain.security.context import UserContext
-from ai_agent_lab.mcp.mail.contracts import MailReadTools
+from ai_agent_lab.mail.domain.permissions import MailPermission
+from ai_agent_lab.mail.tools_port import MailReadTools
 
 
 class MailSearchSkill:

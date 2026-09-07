@@ -10,7 +10,7 @@ transport: stdio
 command: python
 args:
   - -m
-  - ai_agent_lab.infrastructure.mcp.reference_server
+  - mail_mcp.reference.server
 
 # It answers our own tool names with the contract payloads, so no translation
 # is needed. A server built on EWS declaring the same dialect works unchanged.

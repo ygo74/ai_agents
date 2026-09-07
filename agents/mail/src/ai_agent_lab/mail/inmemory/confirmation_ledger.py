@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
-from ai_agent_lab.domain.security.confirmation import (
+from ai_agent_lab.core.security.confirmation import (
     ConfirmationKey,
     ConfirmationLedger,
     ConfirmationOutcome,
 )
-from ai_agent_lab.domain.security.context import UserContext
+from ai_agent_lab.core.security.context import UserContext
 
 
 class InMemoryConfirmationLedger(ConfirmationLedger):

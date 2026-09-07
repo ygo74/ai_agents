@@ -10,7 +10,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from enum import StrEnum
 
-from ai_agent_lab.domain.errors import DomainError
+from ai_agent_lab.core.errors import DomainError
 
 
 class MailToolError(DomainError):

@@ -16,11 +16,11 @@ from pathlib import Path
 import pytest
 from tests.support.maf_fakes import ScriptedChatClient, says
 
-from ai_agent_lab.application.mail.composition import MailAgentCompositionRoot
-from ai_agent_lab.infrastructure.config.settings import MailAgentSettings
-from ai_agent_lab.infrastructure.inmemory.mail_tools import InMemoryMailTools
-from ai_agent_lab.infrastructure.inmemory.reasoner import ScriptedTextReasoner
-from ai_agent_lab.mcp.mail.catalog import MailToolName
+from ai_agent_lab.mail.application.composition import MailAgentCompositionRoot
+from ai_agent_lab.mail.catalog import MailToolName
+from ai_agent_lab.mail.config.settings import MailAgentSettings
+from ai_agent_lab.mail.inmemory.mail_tools import InMemoryMailTools
+from ai_agent_lab.mail.inmemory.reasoner import ScriptedTextReasoner
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 

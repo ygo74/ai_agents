@@ -14,9 +14,9 @@ unattended send.
 
 from __future__ import annotations
 
-from ai_agent_lab.domain.security.confirmation import ConfirmationDecision, ConfirmationRequest
-from ai_agent_lab.domain.security.context import UserContext
-from ai_agent_lab.domain.security.errors import ConfirmationRequiredError
+from ai_agent_lab.core.security.confirmation import ConfirmationDecision, ConfirmationRequest
+from ai_agent_lab.core.security.context import UserContext
+from ai_agent_lab.core.security.errors import ConfirmationRequiredError
 
 
 class UnattendedApprovalAuthority:

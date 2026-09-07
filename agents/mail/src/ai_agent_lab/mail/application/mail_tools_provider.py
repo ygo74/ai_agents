@@ -2,43 +2,24 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
 from pathlib import Path
 
 import httpx
 
-from ai_agent_lab.infrastructure.config.directory import ConfigurationDirectory
-from ai_agent_lab.infrastructure.config.mcp_binding import McpServerBinding, McpServerBindingLoader
-from ai_agent_lab.infrastructure.config.settings import (
+from ai_agent_lab.core.config.directory import ConfigurationDirectory
+from ai_agent_lab.mail.catalog import MailToolName
+from ai_agent_lab.mail.config.settings import (
     MailAgentMode,
     MailAgentSettings,
     MailMcpSettings,
-    McpTransport,
 )
-from ai_agent_lab.infrastructure.inmemory.dataset import MailDatasetLoader
-from ai_agent_lab.infrastructure.inmemory.mail_tools import InMemoryMailTools
-from ai_agent_lab.infrastructure.mcp.connection import McpConnection
-from ai_agent_lab.infrastructure.mcp.gmail.mail_tools import GmailMailTools
-from ai_agent_lab.infrastructure.mcp.mail_tools import McpMailTools
-from ai_agent_lab.infrastructure.mcp.oauth import MailOAuthProvider
-from ai_agent_lab.mcp.mail.catalog import MailToolName
-from ai_agent_lab.mcp.mail.contracts import MailTools
-from ai_agent_lab.mcp.mail.errors import MailToolUnavailableError
-
-DialectFactory = Callable[[McpConnection, McpServerBinding, str], MailTools]
-
-
-def _native(connection: McpConnection, binding: McpServerBinding, owner_id: str) -> MailTools:
-    """Build the client of a server implementing our contract."""
-    return McpMailTools(connection, binding, owner_id=owner_id)
-
-
-def _gmail(connection: McpConnection, binding: McpServerBinding, owner_id: str) -> MailTools:
-    """Build the client of the official Gmail server."""
-    return GmailMailTools(connection, binding, owner_id=owner_id)
-
-
-_DIALECTS: dict[str, DialectFactory] = {"native": _native, "gmail": _gmail}
+from ai_agent_lab.mail.inmemory.dataset import MailDatasetLoader
+from ai_agent_lab.mail.inmemory.mail_tools import InMemoryMailTools
+from ai_agent_lab.mail.mcp.binding import McpServerBinding, McpServerBindingLoader, McpTransport
+from ai_agent_lab.mail.mcp.connection import McpConnection
+from ai_agent_lab.mail.mcp.dialects import MailDialectRegistry
+from ai_agent_lab.mail.mcp.oauth import MailOAuthProvider
+from ai_agent_lab.mail.tools_port import MailTools
 
 
 class MailToolsProvider:
@@ -57,10 +38,12 @@ class MailToolsProvider:
         dataset_loader: MailDatasetLoader,
         *,
         mcp_settings: MailMcpSettings | None = None,
+        dialects: MailDialectRegistry | None = None,
     ) -> None:
         self._settings = settings
         self._dataset_loader = dataset_loader
         self._mcp_settings = mcp_settings or MailMcpSettings()
+        self._dialects = dialects or MailDialectRegistry()
         self._connection: McpConnection | None = None
 
     def build(self, *, base_path: Path | None = None) -> MailTools:
@@ -91,18 +74,12 @@ class MailToolsProvider:
     def _build_mcp(self, base_path: Path | None) -> MailTools:
         """Build the client of the bound mail MCP server."""
         binding = self._binding(base_path)
-        build = _DIALECTS.get(binding.dialect)
-        if build is None:
-            raise MailToolUnavailableError(
-                f"server {binding.server!r} speaks the {binding.dialect!r} dialect, which is not implemented. "
-                f"Known dialects: {', '.join(sorted(_DIALECTS))}."
-            )
         self._connection = McpConnection(
             binding,
             timeout_seconds=self._mcp_settings.request_timeout_seconds,
             auth=self._auth(binding),
         )
-        return build(self._connection, binding, self._settings.user_id)
+        return self._dialects.build(self._connection, binding, self._settings.user_id)
 
     @staticmethod
     def _auth(binding: McpServerBinding) -> httpx.Auth | None:

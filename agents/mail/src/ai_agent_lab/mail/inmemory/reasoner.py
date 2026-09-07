@@ -12,9 +12,9 @@ from collections.abc import Mapping, Sequence
 
 from pydantic import BaseModel, ValidationError
 
-from ai_agent_lab.domain.reasoning.envelope import PromptEnvelopeBuilder
-from ai_agent_lab.domain.reasoning.errors import ReasoningOutputError
-from ai_agent_lab.domain.reasoning.ports import ReasoningOutputT, ReasoningRequest
+from ai_agent_lab.core.reasoning.envelope import PromptEnvelopeBuilder
+from ai_agent_lab.core.reasoning.errors import ReasoningOutputError
+from ai_agent_lab.core.reasoning.ports import ReasoningOutputT, ReasoningRequest
 
 
 class RecordedReasoning(BaseModel):

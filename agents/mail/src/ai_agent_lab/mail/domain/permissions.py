@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import Final
 
-from ai_agent_lab.domain.security.permissions import Permission
+from ai_agent_lab.core.security.permissions import Permission
 
 _DOMAIN: Final = "mail"
 

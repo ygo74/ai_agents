@@ -6,10 +6,10 @@ from pathlib import Path
 
 import pytest
 
-from ai_agent_lab.domain.mail.permissions import MailPermission
-from ai_agent_lab.domain.security.context import UserContext
-from ai_agent_lab.infrastructure.inmemory.dataset import MailDatasetError, MailDatasetLoader
-from ai_agent_lab.infrastructure.inmemory.mail_tools import InMemoryMailTools
+from ai_agent_lab.core.security.context import UserContext
+from ai_agent_lab.mail.domain.permissions import MailPermission
+from ai_agent_lab.mail.inmemory.dataset import MailDatasetError, MailDatasetLoader
+from ai_agent_lab.mail.inmemory.mail_tools import InMemoryMailTools
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 SAMPLE_DATASET = REPOSITORY_ROOT / "data" / "mail" / "sample_mailbox.json"

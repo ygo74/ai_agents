@@ -13,35 +13,35 @@ from datetime import UTC
 import pytest
 from tests.unit.test_mail_dataset import SAMPLE_DATASET
 
-from ai_agent_lab.domain.mail.errors import DraftNotFoundError
-from ai_agent_lab.domain.mail.models import EmailAddress, MailDraft, MailSearchRequest
-from ai_agent_lab.domain.mail.permissions import MailPermission
-from ai_agent_lab.domain.security.audit import AuditOutcome
-from ai_agent_lab.domain.security.confirmation import (
+from ai_agent_lab.core.observability.audit import InMemoryAuditTrail, LoggingAuditTrail
+from ai_agent_lab.core.security.audit import AuditOutcome
+from ai_agent_lab.core.security.confirmation import (
     ConfiguredConfirmationPolicy,
     ConfirmationDecision,
     ConfirmationGate,
     ConfirmationPreferences,
     InMemoryConfirmationPreferenceStore,
 )
-from ai_agent_lab.domain.security.context import UserContext
-from ai_agent_lab.domain.security.errors import (
+from ai_agent_lab.core.security.context import UserContext
+from ai_agent_lab.core.security.errors import (
     AuthorizationError,
     ConfirmationMismatchError,
     ConfirmationRejectedError,
     ConfirmationRequiredError,
 )
-from ai_agent_lab.domain.security.untrusted import UntrustedOrigin, untrusted
-from ai_agent_lab.infrastructure.inmemory.dataset import MailDatasetLoader
-from ai_agent_lab.infrastructure.inmemory.draft_store import InMemoryDraftStore
-from ai_agent_lab.infrastructure.inmemory.mail_tools import InMemoryMailTools
-from ai_agent_lab.infrastructure.observability.audit import InMemoryAuditTrail, LoggingAuditTrail
-from ai_agent_lab.mcp.mail.catalog import MailToolCatalog, MailToolName
-from ai_agent_lab.mcp.mail.errors import MailAccessDeniedError, MailToolError
-from ai_agent_lab.skills.mail.gating import GatedMailOperationRunner
-from ai_agent_lab.skills.mail.management_skill import MailManagementSkill
-from ai_agent_lab.skills.mail.search_skill import MailReadSkill, MailSearchSkill
-from ai_agent_lab.skills.mail.send_skill import SendMailSkill
+from ai_agent_lab.core.security.untrusted import UntrustedOrigin, untrusted
+from ai_agent_lab.mail.catalog import MailToolCatalog, MailToolName
+from ai_agent_lab.mail.domain.errors import DraftNotFoundError
+from ai_agent_lab.mail.domain.models import EmailAddress, MailDraft, MailSearchRequest
+from ai_agent_lab.mail.domain.permissions import MailPermission
+from ai_agent_lab.mail.inmemory.dataset import MailDatasetLoader
+from ai_agent_lab.mail.inmemory.draft_store import InMemoryDraftStore
+from ai_agent_lab.mail.inmemory.mail_tools import InMemoryMailTools
+from ai_agent_lab.mail.mail_errors import MailAccessDeniedError, MailToolError
+from ai_agent_lab.mail.skills.gating import GatedMailOperationRunner
+from ai_agent_lab.mail.skills.management_skill import MailManagementSkill
+from ai_agent_lab.mail.skills.search_skill import MailReadSkill, MailSearchSkill
+from ai_agent_lab.mail.skills.send_skill import SendMailSkill
 
 LOCAL_USER = UserContext(user_id="local-user", session_id="s1", permissions=MailPermission.declared())
 OTHER_USER = UserContext(user_id="other-user", session_id="s2", permissions=MailPermission.declared())

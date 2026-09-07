@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 
-from ai_agent_lab.domain.mail.enums import MailCategory
+from ai_agent_lab.mail.domain.enums import MailCategory
 
 DEFAULT_CATEGORY_DESCRIPTIONS: Mapping[MailCategory, str] = {
     MailCategory.ACTION_REQUIRED: "The recipient is explicitly asked to do or decide something.",

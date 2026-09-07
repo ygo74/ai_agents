@@ -6,15 +6,15 @@ from datetime import UTC, datetime
 
 import pytest
 
-from ai_agent_lab.domain.mail.models import (
+from ai_agent_lab.core.security.context import UserContext
+from ai_agent_lab.core.security.untrusted import UntrustedOrigin, untrusted
+from ai_agent_lab.mail.domain.models import (
     EmailAddress,
     MailMessage,
     MailParticipant,
     MailThread,
 )
-from ai_agent_lab.domain.mail.permissions import MailPermission
-from ai_agent_lab.domain.security.context import UserContext
-from ai_agent_lab.domain.security.untrusted import UntrustedOrigin, untrusted
+from ai_agent_lab.mail.domain.permissions import MailPermission
 
 OWNER_EMAIL = "owner@example.com"
 

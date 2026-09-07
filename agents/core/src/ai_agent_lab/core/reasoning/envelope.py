@@ -1,14 +1,14 @@
 """Rendering of a reasoning request into a prompt.
 
 This is where a skill hands untrusted material to a model. The delimiting rules
-themselves live in :mod:`ai_agent_lab.domain.security.fencing`, shared with the
+themselves live in :mod:`ai_agent_lab.core.security.fencing`, shared with the
 rendering of tool results, so both paths behave identically.
 """
 
 from __future__ import annotations
 
-from ai_agent_lab.domain.reasoning.ports import ReasoningRequest
-from ai_agent_lab.domain.security.fencing import UNTRUSTED_CONTRACT, UntrustedFence
+from ai_agent_lab.core.reasoning.ports import ReasoningRequest
+from ai_agent_lab.core.security.fencing import UNTRUSTED_CONTRACT, UntrustedFence
 
 
 class PromptEnvelopeBuilder:

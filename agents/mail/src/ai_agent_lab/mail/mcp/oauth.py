@@ -25,8 +25,8 @@ from mcp.shared.auth import OAuthClientInformationFull, OAuthClientMetadata, OAu
 from pydantic import SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from ai_agent_lab.infrastructure.config.settings import ENV_FILE
-from ai_agent_lab.mcp.mail.errors import MailToolUnavailableError
+from ai_agent_lab.core.config.environment import ENV_FILE
+from ai_agent_lab.mail.mail_errors import MailToolUnavailableError
 
 GMAIL_SCOPES = "https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.compose"
 

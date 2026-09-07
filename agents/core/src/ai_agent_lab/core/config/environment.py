@@ -15,7 +15,9 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-from ai_agent_lab.infrastructure.config.settings import ENV_FILE
+# The name of the file, declared here rather than by any one agent: every
+# distribution loading it must agree on it.
+ENV_FILE = ".env"
 
 
 class EnvironmentFile:

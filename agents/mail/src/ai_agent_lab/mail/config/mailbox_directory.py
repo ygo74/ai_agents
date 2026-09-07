@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 
-from ai_agent_lab.domain.mail.errors import MailboxOwnerUnknownError
-from ai_agent_lab.domain.mail.models import EmailAddress
-from ai_agent_lab.domain.security.context import UserContext
+from ai_agent_lab.core.security.context import UserContext
+from ai_agent_lab.mail.domain.errors import MailboxOwnerUnknownError
+from ai_agent_lab.mail.domain.models import EmailAddress
 
 
 class ConfiguredMailboxOwnerDirectory:

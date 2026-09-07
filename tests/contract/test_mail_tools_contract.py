@@ -1,6 +1,6 @@
 """Conformance suite for the mail MCP contract.
 
-Any implementation of :class:`~ai_agent_lab.mcp.mail.contracts.MailTools` must
+Any implementation of :class:`~ai_agent_lab.mail.tools_port.MailTools` must
 satisfy these tests. They are written against the contract only, so the same
 suite will validate the real MCP client once the Mail MCP server exists: subclass
 :class:`MailToolsContractTests` and override the ``mail_tools`` fixture.
@@ -13,19 +13,19 @@ from datetime import UTC, datetime
 import pytest
 from tests.conftest import make_message
 
-from ai_agent_lab.domain.mail.enums import MailSortOrder
-from ai_agent_lab.domain.mail.models import (
+from ai_agent_lab.core.security.context import UserContext
+from ai_agent_lab.core.security.untrusted import UntrustedOrigin, untrusted
+from ai_agent_lab.mail.domain.enums import MailSortOrder
+from ai_agent_lab.mail.domain.models import (
     EmailAddress,
     MailDraft,
     MailSearchRequest,
     MailSendRequest,
 )
-from ai_agent_lab.domain.mail.permissions import MailPermission
-from ai_agent_lab.domain.security.context import UserContext
-from ai_agent_lab.domain.security.untrusted import UntrustedOrigin, untrusted
-from ai_agent_lab.infrastructure.inmemory.mail_tools import InMemoryMailTools, Mailbox
-from ai_agent_lab.mcp.mail.contracts import MailTools
-from ai_agent_lab.mcp.mail.errors import MailAccessDeniedError, MailNotFoundError
+from ai_agent_lab.mail.domain.permissions import MailPermission
+from ai_agent_lab.mail.inmemory.mail_tools import InMemoryMailTools, Mailbox
+from ai_agent_lab.mail.mail_errors import MailAccessDeniedError, MailNotFoundError
+from ai_agent_lab.mail.tools_port import MailTools
 
 OWNER = UserContext(user_id="owner", session_id="s1", permissions=MailPermission.declared())
 INTRUDER = UserContext(user_id="intruder", session_id="s2", permissions=MailPermission.declared())
@@ -207,7 +207,7 @@ class TestInMemoryMailToolsContract(MailToolsContractTests):
     @pytest.fixture
     def mail_tools(self) -> MailTools:
         """Build a mailbox holding a fixed, deterministic set of messages."""
-        from ai_agent_lab.domain.mail.models import MailLabel
+        from ai_agent_lab.mail.domain.models import MailLabel
 
         messages = (
             make_message(

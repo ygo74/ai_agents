@@ -1,7 +1,7 @@
 """Shapes the official Gmail MCP server returns.
 
 Transcribed from the schemas recorded by
-``python -m ai_agent_lab.infrastructure.mcp.discover --server gmail`` and kept
+``python -m ai_agent_lab.mail.application.discover --server gmail`` and kept
 in ``docs/mcp-discovery/gmail-tools.json``. Every field the server declares as
 optional is optional here, so a message missing a subject or a date is data to
 handle rather than a crash.
@@ -16,7 +16,8 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from ai_agent_lab.domain.mail.models import (
+from ai_agent_lab.core.security.untrusted import UntrustedOrigin, untrusted
+from ai_agent_lab.mail.domain.models import (
     EmailAddress,
     MailAttachment,
     MailHeader,
@@ -24,8 +25,7 @@ from ai_agent_lab.domain.mail.models import (
     MailMessage,
     MailParticipant,
 )
-from ai_agent_lab.domain.security.untrusted import UntrustedOrigin, untrusted
-from ai_agent_lab.mcp.mail.errors import MailToolProtocolError
+from ai_agent_lab.mail.mail_errors import MailToolProtocolError
 
 UNREAD_LABEL = "UNREAD"
 INBOX_LABEL = "INBOX"

@@ -2,16 +2,16 @@
 
 from __future__ import annotations
 
-from ai_agent_lab.domain.mail.models import MailDraft, MailSendRequest, MailSendResult
-from ai_agent_lab.domain.security.confirmation import (
+from ai_agent_lab.core.security.confirmation import (
     ConfirmationDecision,
     ConfirmationDetail,
     ConfirmationRequest,
 )
-from ai_agent_lab.domain.security.context import UserContext
-from ai_agent_lab.mcp.mail.catalog import MailToolName
-from ai_agent_lab.mcp.mail.contracts import MailDraftTools, MailSendTools
-from ai_agent_lab.skills.mail.gating import GatedMailOperationRunner
+from ai_agent_lab.core.security.context import UserContext
+from ai_agent_lab.mail.catalog import MailToolName
+from ai_agent_lab.mail.domain.models import MailDraft, MailSendRequest, MailSendResult
+from ai_agent_lab.mail.skills.gating import GatedMailOperationRunner
+from ai_agent_lab.mail.tools_port import MailDraftTools, MailSendTools
 
 _BODY_PREVIEW_CHARACTERS = 600
 

@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from typing import Protocol, runtime_checkable
 
-from ai_agent_lab.domain.mail.models import EmailAddress, MailDraft
-from ai_agent_lab.domain.security.context import UserContext
+from ai_agent_lab.core.security.context import UserContext
+from ai_agent_lab.mail.domain.models import EmailAddress, MailDraft
 
 
 @runtime_checkable

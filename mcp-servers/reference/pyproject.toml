@@ -1,0 +1,23 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "mail-mcp-reference"
+version = "0.1.0"
+description = "Mail MCP server backed by a deterministic dataset"
+requires-python = ">=3.12"
+
+# The reference implementation of the protocol. It exists so the real protocol
+# stack can run offline, and so a new server has something concrete to match.
+dependencies = [
+    "mail-mcp-protocol[serving]",
+    "mcp>=1.24,<2",
+    "pydantic>=2,<3",
+]
+
+[project.scripts]
+mail-mcp-reference = "mail_mcp.reference.server:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/mail_mcp"]

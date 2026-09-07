@@ -13,13 +13,13 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Any
 
-from ai_agent_lab.agents.mail.write_capabilities import housekeeping_target
-from ai_agent_lab.application.mail.skills_factory import MailSkills
-from ai_agent_lab.domain.errors import DomainError
-from ai_agent_lab.domain.mail.ports import DraftStore
-from ai_agent_lab.domain.security.confirmation import ConfirmationRequest
-from ai_agent_lab.domain.security.context import UserContext
-from ai_agent_lab.mcp.mail.catalog import MailToolName
+from ai_agent_lab.core.errors import DomainError
+from ai_agent_lab.core.security.confirmation import ConfirmationRequest
+from ai_agent_lab.core.security.context import UserContext
+from ai_agent_lab.mail.application.skills_factory import MailSkills
+from ai_agent_lab.mail.capabilities.write_capabilities import housekeeping_target
+from ai_agent_lab.mail.catalog import MailToolName
+from ai_agent_lab.mail.domain.ports import DraftStore
 
 _HOUSEKEEPING = frozenset(
     {

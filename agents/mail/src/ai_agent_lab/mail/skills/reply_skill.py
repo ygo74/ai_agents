@@ -2,21 +2,21 @@
 
 from __future__ import annotations
 
-from ai_agent_lab.domain.mail.errors import NoReplyRecipientError
-from ai_agent_lab.domain.mail.models import (
+from ai_agent_lab.core.reasoning.ports import ReasoningRequest, TextReasoner
+from ai_agent_lab.core.security.context import UserContext
+from ai_agent_lab.core.security.untrusted import UntrustedOrigin, untrusted
+from ai_agent_lab.mail.domain.errors import NoReplyRecipientError
+from ai_agent_lab.mail.domain.models import (
     EmailAddress,
     MailDraft,
     MailMessage,
     MailParticipant,
 )
-from ai_agent_lab.domain.mail.permissions import MailPermission
-from ai_agent_lab.domain.mail.ports import MailboxOwnerDirectory
-from ai_agent_lab.domain.reasoning.ports import ReasoningRequest, TextReasoner
-from ai_agent_lab.domain.security.context import UserContext
-from ai_agent_lab.domain.security.untrusted import UntrustedOrigin, untrusted
-from ai_agent_lab.mcp.mail.contracts import MailReadTools
-from ai_agent_lab.skills.mail.analysis import MailReplyOutput
-from ai_agent_lab.skills.mail.context import MailContextBuilder
+from ai_agent_lab.mail.domain.permissions import MailPermission
+from ai_agent_lab.mail.domain.ports import MailboxOwnerDirectory
+from ai_agent_lab.mail.skills.analysis import MailReplyOutput
+from ai_agent_lab.mail.skills.context import MailContextBuilder
+from ai_agent_lab.mail.tools_port import MailReadTools
 
 _REPLY_PREFIX = "Re: "
 

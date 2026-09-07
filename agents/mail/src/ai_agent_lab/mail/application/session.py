@@ -17,18 +17,18 @@ from typing import Any
 
 from agent_framework import AgentResponse, AgentSession
 
-from ai_agent_lab.application.mail.composition import MailAgentRuntime
-from ai_agent_lab.application.mail.console import Console, ConsoleConfirmationPrompt
-from ai_agent_lab.domain.errors import DomainError
-from ai_agent_lab.domain.security.confirmation import (
+from ai_agent_lab.core.errors import DomainError
+from ai_agent_lab.core.security.confirmation import (
     ConfirmationDecision,
     ConfirmationOutcome,
     ConfirmationRequest,
 )
-from ai_agent_lab.frameworks.microsoft_agent_framework.approval import (
+from ai_agent_lab.maf.approval import (
     MafApprovalTranslator,
     PendingToolApproval,
 )
+from ai_agent_lab.mail.application.composition import MailAgentRuntime
+from ai_agent_lab.mail.application.console import Console, ConsoleConfirmationPrompt
 
 _MAX_APPROVAL_ROUNDS = 25
 _MAX_DECLINE_ROUNDS = 25

@@ -39,15 +39,18 @@ frameworks, not to build the same business logic three times.
 
 ## Layout
 
+The repository ships six distributions, each buildable and deployable on its
+own. See [docs/repository-structure.md](./docs/repository-structure.md).
+
 ```text
-src/ai_agent_lab/
-  domain/          typed models, manifests, security primitives, reasoning ports
-  mcp/             MCP tool contracts, catalogues and security floors
-  skills/          reusable domain capabilities
-  agents/          skill registry and capability bindings
-  frameworks/      framework adapters (the only place importing a framework)
-  infrastructure/  MCP clients, configuration loaders, in-memory doubles
-  application/     composition root, CLI
+agents/                     the product
+  core/     ai_agent_lab.core   security, reasoning ports, manifests, skill registry
+  maf/      ai_agent_lab.maf    Microsoft Agent Framework adapter
+  mail/     ai_agent_lab.mail   mail domain, skills, capabilities, composition root
+mcp-servers/                auxiliaries, shipped separately
+  protocol/  mail_mcp.protocol  wire payloads, tool names, error codes
+  gmail/     mail_mcp.gmail     mail MCP server on the Gmail REST API
+  reference/ mail_mcp.reference mail MCP server on a dataset
 config/            delivered configuration: agent, skill packages, MCP bindings
 tests/             unit, contract, integration, agent, security, architecture
 data/mail/         deterministic mailbox datasets
@@ -55,7 +58,10 @@ scenarios/mail/    reproducible agent scenarios
 docs/              architecture and design documents
 ```
 
-Layer boundaries are enforced by `tests/architecture/test_layer_boundaries.py`.
+No `mail_mcp` package imports `ai_agent_lab`: a server we write and a server
+somebody else wrote are reached the same way, through a dialect on the agent
+side. Distribution and layer boundaries are enforced by
+`tests/architecture/test_distribution_boundaries.py`.
 
 Instructions, tool descriptions, prompts, approval defaults and MCP tool names
 live in `config/`, so they ship independently of the code. See
@@ -68,13 +74,13 @@ framework dependencies never leak into a comparison.
 
 ```powershell
 py -3.12 -m venv .venvs\mail-agent-maf
-.\.venvs\mail-agent-maf\Scripts\python.exe -m pip install -e ".[maf,dev]"
+.\.venvs\mail-agent-maf\Scripts\python.exe -m scripts.install
 Copy-Item .env.example .env
 ```
 
-The core distribution is framework free; framework dependencies come from
-extras (`.[maf]`). Add `.[azure]` for Entra ID authentication against Azure
-OpenAI.
+The script installs every distribution in editable mode, in dependency order.
+`ai_agent_lab.core` is framework free; only `ai_agent_lab.maf` depends on an
+agentic framework.
 
 Pick the model provider in `.env`. `AGENT_CHAT_PROVIDER=openai` or
 `AGENT_CHAT_PROVIDER=azure_openai`; see
@@ -86,14 +92,14 @@ Run the Mail Agent against the local dataset - no Gmail, no mail credentials:
 $env:MAIL_AGENT_MODE = "mock"
 $env:OPENAI_API_KEY  = "<your key>"
 $env:OPENAI_CHAT_MODEL = "gpt-4o-mini"
-.\.venvs\mail-agent-maf\Scripts\python.exe -m ai_agent_lab.application.mail
+.\.venvs\mail-agent-maf\Scripts\python.exe -m ai_agent_lab.mail.application
 ```
 
 Run the checks:
 
 ```powershell
-.\.venvs\mail-agent-maf\Scripts\python.exe -m pytest tests -q
-.\.venvs\mail-agent-maf\Scripts\python.exe -m ruff check src tests
+.\.venvs\mail-agent-maf\Scripts\python.exe -m pytest
+.\.venvs\mail-agent-maf\Scripts\python.exe -m ruff check .
 .\.venvs\mail-agent-maf\Scripts\python.exe -m mypy
 ```
 

@@ -20,42 +20,42 @@ from pathlib import Path
 
 from agent_framework import Agent, SupportsChatGetResponse, ToolApprovalMiddleware
 
-from ai_agent_lab.agents.mail.confirmation_broker import ConfirmationBroker
-from ai_agent_lab.agents.mail.converters import MailSearchRequestFactory
-from ai_agent_lab.agents.mail.read_capabilities import MailReadCapabilities
-from ai_agent_lab.agents.mail.results import MailToolResultRenderer
-from ai_agent_lab.agents.mail.write_capabilities import MailWriteCapabilities
-from ai_agent_lab.agents.registry import SkillDescriptor, SkillRegistry
-from ai_agent_lab.application.mail.confirmation_presenter import MailConfirmationPresenter
-from ai_agent_lab.application.mail.skills_factory import MailSkills, MailSkillsFactory
-from ai_agent_lab.domain.mail.permissions import MailPermission
-from ai_agent_lab.domain.manifests import AgentManifest
-from ai_agent_lab.domain.reasoning.envelope import PromptEnvelopeBuilder
-from ai_agent_lab.domain.reasoning.ports import TextReasoner
-from ai_agent_lab.domain.security.confirmation import (
+from ai_agent_lab.core.config.directory import ConfigurationDirectory
+from ai_agent_lab.core.config.manifests import AgentManifestLoader, SkillManifestLoader
+from ai_agent_lab.core.manifests import AgentManifest
+from ai_agent_lab.core.observability.audit import InMemoryAuditTrail, LoggingAuditTrail
+from ai_agent_lab.core.reasoning.envelope import PromptEnvelopeBuilder
+from ai_agent_lab.core.reasoning.ports import TextReasoner
+from ai_agent_lab.core.registry import SkillDescriptor, SkillRegistry
+from ai_agent_lab.core.security.confirmation import (
     ConfiguredConfirmationPolicy,
     ConfirmationPolicy,
     InMemoryConfirmationPreferenceStore,
 )
-from ai_agent_lab.domain.security.context import UserContext
-from ai_agent_lab.domain.security.permissions import PermissionRegistry
-from ai_agent_lab.frameworks.microsoft_agent_framework.authority import UnattendedApprovalAuthority
-from ai_agent_lab.frameworks.microsoft_agent_framework.reasoner import MafTextReasoner
-from ai_agent_lab.frameworks.microsoft_agent_framework.tool_adapter import SkillToolAdapter
-from ai_agent_lab.infrastructure.config.directory import ConfigurationDirectory
-from ai_agent_lab.infrastructure.config.mail_tools_provider import MailToolsProvider
-from ai_agent_lab.infrastructure.config.mailbox_directory import ConfiguredMailboxOwnerDirectory
-from ai_agent_lab.infrastructure.config.manifests import AgentManifestLoader, SkillManifestLoader
-from ai_agent_lab.infrastructure.config.settings import ChatClientSettings, MailAgentSettings
-from ai_agent_lab.infrastructure.inmemory.confirmation_ledger import InMemoryConfirmationLedger
-from ai_agent_lab.infrastructure.inmemory.dataset import MailDatasetLoader
-from ai_agent_lab.infrastructure.inmemory.draft_store import InMemoryDraftStore
-from ai_agent_lab.infrastructure.observability.audit import InMemoryAuditTrail, LoggingAuditTrail
-from ai_agent_lab.mcp.mail.catalog import MailToolCatalog, MailToolName
-from ai_agent_lab.mcp.mail.contracts import MailTools
-from ai_agent_lab.mcp.mail.floor import MailSecurityFloor
-from ai_agent_lab.skills.mail.categories import MailCategoryCatalog
-from ai_agent_lab.skills.mail.context import MailContextBuilder
+from ai_agent_lab.core.security.context import UserContext
+from ai_agent_lab.core.security.permissions import PermissionRegistry
+from ai_agent_lab.maf.authority import UnattendedApprovalAuthority
+from ai_agent_lab.maf.reasoner import MafTextReasoner
+from ai_agent_lab.maf.tool_adapter import SkillToolAdapter
+from ai_agent_lab.mail.application.confirmation_presenter import MailConfirmationPresenter
+from ai_agent_lab.mail.application.mail_tools_provider import MailToolsProvider
+from ai_agent_lab.mail.application.skills_factory import MailSkills, MailSkillsFactory
+from ai_agent_lab.mail.capabilities.confirmation_broker import ConfirmationBroker
+from ai_agent_lab.mail.capabilities.converters import MailSearchRequestFactory
+from ai_agent_lab.mail.capabilities.read_capabilities import MailReadCapabilities
+from ai_agent_lab.mail.capabilities.results import MailToolResultRenderer
+from ai_agent_lab.mail.capabilities.write_capabilities import MailWriteCapabilities
+from ai_agent_lab.mail.catalog import MailToolCatalog, MailToolName
+from ai_agent_lab.mail.config.mailbox_directory import ConfiguredMailboxOwnerDirectory
+from ai_agent_lab.mail.config.settings import ChatClientSettings, MailAgentSettings
+from ai_agent_lab.mail.domain.permissions import MailPermission
+from ai_agent_lab.mail.inmemory.confirmation_ledger import InMemoryConfirmationLedger
+from ai_agent_lab.mail.inmemory.dataset import MailDatasetLoader
+from ai_agent_lab.mail.inmemory.draft_store import InMemoryDraftStore
+from ai_agent_lab.mail.security_floor import MailSecurityFloor
+from ai_agent_lab.mail.skills.categories import MailCategoryCatalog
+from ai_agent_lab.mail.skills.context import MailContextBuilder
+from ai_agent_lab.mail.tools_port import MailTools
 
 MAIL_AGENT = "mail"
 
