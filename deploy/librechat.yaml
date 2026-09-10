@@ -1,0 +1,93 @@
+# LibreChat configuration for the AI Agent Lab.
+#
+# The Mail Agent is declared as a custom OpenAI-compatible endpoint. LibreChat
+# talks to it exactly as it would to any OpenAI gateway:
+# `POST {baseURL}/chat/completions`.
+#
+# Copy this next to your LibreChat deployment as `librechat.yaml`.
+#
+# Pin LibreChat >= v0.8.8. Resolution of the `{{LIBRECHAT_OPENID_*}}` placeholders
+# on the headers of a *custom* endpoint is not confirmed on earlier versions.
+
+version: 1.2.8
+
+endpoints:
+  custom:
+    # ---------------------------------------------------------------------
+    # Demonstration mode: one static key, one caller.
+    #
+    # Use this first. It proves the integration without needing a realm, and
+    # the agent behaves identically - the same `auth_context` reaches it, only
+    # the authenticator differs.
+    # ---------------------------------------------------------------------
+    - name: 'Mail Agent'
+      apiKey: '${MAIL_AGENT_HTTP_API_KEY}'
+      baseURL: 'http://mail-agent:8123/v1'
+
+      # `fetch: false` is deliberate. Discovery is authenticated on the agent
+      # side, and the model list is a single entry; declaring it here avoids an
+      # unauthenticated round trip at startup.
+      models:
+        default: ['mail-agent']
+        fetch: false
+
+      headers:
+        x-api-key: '${MAIL_AGENT_HTTP_API_KEY}'
+        # Keeps each LibreChat conversation mapped to its own agent
+        # conversation. Read from `metadata` by the agent once the runtime
+        # forwards headers; harmless before that.
+        X-Conversation-Id: '{{LIBRECHAT_BODY_CONVERSATIONID}}'
+
+      titleConvo: true
+      titleModel: 'mail-agent'
+      modelDisplayLabel: 'Mail Agent'
+
+      # The agent answers in one piece: a turn either completes or leaves a
+      # confirmation waiting, and there is no partial state worth streaming.
+      # `dropParams` keeps LibreChat from sending options the agent ignores.
+      dropParams: ['user', 'stop', 'temperature', 'top_p', 'presence_penalty', 'frequency_penalty']
+
+    # ---------------------------------------------------------------------
+    # Multi-user mode: the caller's Keycloak token is forwarded.
+    #
+    # Requires `OPENID_REUSE_TOKENS=true` in the LibreChat environment. Without
+    # it the default JWT strategy never populates the federated tokens, and
+    # `{{LIBRECHAT_OPENID_ACCESS_TOKEN}}` resolves to nothing.
+    #
+    # Also align `OPENID_REUSE_MAX_SESSION_AGE_MS` with the Keycloak access
+    # token lifetime, or a still-valid token is rotated out from under the MCP
+    # server that is introspecting it.
+    # ---------------------------------------------------------------------
+    # - name: 'Mail Agent (SSO)'
+    #   apiKey: '${INTERNAL_GATEWAY_KEY}'   # must be non-empty; unused
+    #   baseURL: 'http://mail-agent:8123/v1'
+    #   models:
+    #     default: ['mail-agent']
+    #     fetch: false
+    #   headers:
+    #     Authorization: 'Bearer {{LIBRECHAT_OPENID_ACCESS_TOKEN}}'
+    #     X-Conversation-Id: '{{LIBRECHAT_BODY_CONVERSATIONID}}'
+    #   titleConvo: true
+    #   titleModel: 'mail-agent'
+    #   modelDisplayLabel: 'Mail Agent'
+
+# ---------------------------------------------------------------------------
+# Settings that must NOT be used with this endpoint
+#
+#   directEndpoint: true
+#       Bypasses the SDK and posts to the literal baseURL, so `/chat/completions`
+#       is never appended.
+#
+#   baseURL: 'user_provided'
+#       Makes LibreChat withhold EVERY configured header - including the one
+#       carrying the credential - because a user-controlled destination must not
+#       receive interpolated secrets.
+#
+#   addParams: { useResponsesApi: true }
+#       Switches to `POST /responses`, which this endpoint does not serve. There
+#       is also an open LibreChat defect (#13984) breaking multi-turn against a
+#       self-hosted Responses gateway.
+#
+#   Web search
+#       Force-flips the request to the Responses API, with the same consequence.
+# ---------------------------------------------------------------------------

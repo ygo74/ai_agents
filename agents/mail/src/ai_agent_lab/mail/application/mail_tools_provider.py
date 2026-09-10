@@ -37,11 +37,13 @@ class MailToolsProvider:
         settings: MailAgentSettings,
         dataset_loader: MailDatasetLoader,
         *,
+        owner_id: str | None = None,
         mcp_settings: MailMcpSettings | None = None,
         dialects: MailDialectRegistry | None = None,
     ) -> None:
         self._settings = settings
         self._dataset_loader = dataset_loader
+        self._owner_id = owner_id or settings.user_id
         self._mcp_settings = mcp_settings or MailMcpSettings()
         self._dialects = dialects or MailDialectRegistry()
         self._connection: McpConnection | None = None
@@ -79,7 +81,7 @@ class MailToolsProvider:
             timeout_seconds=self._mcp_settings.request_timeout_seconds,
             auth=self._auth(binding),
         )
-        return self._dialects.build(self._connection, binding, self._settings.user_id)
+        return self._dialects.build(self._connection, binding, self._owner_id)
 
     @staticmethod
     def _auth(binding: McpServerBinding) -> httpx.Auth | None:

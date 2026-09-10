@@ -13,6 +13,7 @@ from tests.support.maf_fakes import ScriptedChatClient, ToolCall, calls, says
 
 from ai_agent_lab.core.security.audit import AuditOutcome
 from ai_agent_lab.maf.approval import MafApprovalTranslator
+from ai_agent_lab.mail.application.approval.console import ConsoleApprovalResolver
 from ai_agent_lab.mail.application.composition import MailAgentCompositionRoot
 from ai_agent_lab.mail.application.console import Console, ConsoleConfirmationPrompt
 from ai_agent_lab.mail.application.session import MailAgentSession
@@ -111,8 +112,14 @@ def build_session(
     ).build(session_id="scenario")
     session = MailAgentSession(
         runtime,
-        console,
-        ConsoleConfirmationPrompt(console),
+        ConsoleApprovalResolver(
+            runtime.presenter,
+            ConsoleConfirmationPrompt(console),
+            console,
+            runtime.confirmation_ledger,
+            runtime.policy,
+            runtime.user,
+        ),
         MafApprovalTranslator(),
         max_approval_rounds=max_approval_rounds,
         max_total_rounds=max_total_rounds,

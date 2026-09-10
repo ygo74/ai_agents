@@ -94,3 +94,11 @@ packages = [
 [[tool.mypy.overrides]]
 module = "tests.*"
 disallow_untyped_defs = false
+
+# `ygo74-agent-runtime` ships no `py.typed` marker yet, so mypy cannot read its
+# annotations even though the source is fully typed. Adding the marker upstream
+# is tracked; until then this is the narrowest possible waiver, and it applies to
+# the serving library alone rather than relaxing the strict settings above.
+[[tool.mypy.overrides]]
+module = "ygo74.*"
+ignore_missing_imports = true
