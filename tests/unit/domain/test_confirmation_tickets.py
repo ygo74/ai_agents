@@ -233,7 +233,17 @@ class TestReadingAnApproval:
 
     @pytest.mark.parametrize(
         "text",
-        ["confirm cfm-a1b2c3", "CONFIRM cfm-a1b2c3", "  confirm   cfm-a1b2c3  ", "Confirm cfm-a1b2c3."],
+        [
+            "confirm cfm-a1b2c3",
+            "CONFIRM cfm-a1b2c3",
+            "  confirm   cfm-a1b2c3  ",
+            "Confirm cfm-a1b2c3.",
+            # A chat surface renders the instruction as markdown, so this is
+            # what a copied answer actually looks like.
+            "`CONFIRM cfm-a1b2c3`",
+            "**CONFIRM cfm-a1b2c3**",
+            "`confirm cfm-a1b2c3`.",
+        ],
     )
     def test_it_reads_an_approval(self, text):
         command = ConfirmationCommandParser().parse(text)
@@ -261,6 +271,10 @@ class TestReadingAnApproval:
             "yes",
             "confirm cfm-",
             "confirm xyz-a1b2c3",
+            # Decoration is tolerated around the command, never around a
+            # sentence that happens to contain one.
+            "`confirm cfm-a1b2c3` and archive the rest",
+            "I was told to reply `CONFIRM cfm-a1b2c3`",
         ],
     )
     def test_anything_ambiguous_is_not_an_approval(self, text):

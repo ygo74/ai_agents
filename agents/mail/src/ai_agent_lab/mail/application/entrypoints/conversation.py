@@ -26,6 +26,7 @@ from ai_agent_lab.core.security.tickets import (
 from ai_agent_lab.core.serving.conversation import AgentReply, ConversationTurn
 from ai_agent_lab.core.serving.runtimes import ConversationRuntimeCache
 from ai_agent_lab.maf.approval import MafApprovalTranslator
+from ai_agent_lab.mail.application.approval.pending import PendingConfirmationRenderer
 from ai_agent_lab.mail.application.approval.tickets import (
     ConfirmedOperationRunner,
     TicketApprovalResolver,
@@ -49,6 +50,7 @@ class MailConversation:
     store: PendingConfirmationStore
     runner: ConfirmedOperationRunner
     conversation_id: str
+    renderer: PendingConfirmationRenderer
 
     async def aclose(self) -> None:
         """Release the MCP session this conversation holds."""
@@ -64,12 +66,7 @@ class MailConversation:
         Written by the application rather than by the model: what is pending is
         a fact about the ledger, and a model paraphrasing it could drop one.
         """
-        waiting = self._pending()
-        if not waiting:
-            return ""
-        lines = ["", "Awaiting your confirmation - nothing has been changed yet:"]
-        lines.extend(f"  - {ticket.request.title} Reply: CONFIRM {ticket.ticket_id}" for ticket in waiting)
-        return "\n".join(lines)
+        return self.renderer.render(self._pending())
 
     def _pending(self) -> tuple[ConfirmationTicket, ...]:
         """The tickets of this conversation, for its own caller."""
@@ -87,8 +84,13 @@ class MailConversationFactory:
     than a deployment-wide setting.
     """
 
-    def __init__(self, composition: MailAgentCompositionRoot) -> None:
+    def __init__(
+        self,
+        composition: MailAgentCompositionRoot,
+        renderer: PendingConfirmationRenderer | None = None,
+    ) -> None:
         self._composition = composition
+        self._renderer = renderer or PendingConfirmationRenderer()
 
     async def build(self, principal: Principal, conversation_id: str) -> MailConversation:
         """Assemble the conversation of one caller."""
@@ -113,6 +115,7 @@ class MailConversationFactory:
             store=store,
             runner=runner,
             conversation_id=conversation_id,
+            renderer=self._renderer,
         )
 
     @staticmethod

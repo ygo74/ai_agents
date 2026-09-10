@@ -47,8 +47,18 @@ proposes them. The agent answers with a ticket:
 
 ```text
 Awaiting your confirmation - nothing has been changed yet:
-  - Apply this label to the message? Reply: CONFIRM cfm-1a2b3c4d5e6f
+
+- **Apply this label to the message?**
+  - Message: m-alpha-1
+  - Subject: Project Alpha - architecture review
+  - From: john.smith@example.com
+  - Label: Finance (FINANCE)
+  - Reply `CONFIRM cfm-1a2b3c4d5e6f` to approve, `CANCEL cfm-1a2b3c4d5e6f` to decline.
 ```
+
+Each entry names the message rather than only its identifier, because the answer
+may come several messages later and nobody should have to scroll back to find out
+what they are approving.
 
 Replying `CONFIRM cfm-…` performs exactly the stored operation; `CANCEL cfm-…`
 discards it. Both consume the ticket. This is deliberate, not a limitation of

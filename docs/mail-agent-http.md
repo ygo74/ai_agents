@@ -94,12 +94,29 @@ gated operation ends its turn **unperformed** and comes back as a ticket:
 I have asked for confirmation.
 
 Awaiting your confirmation - nothing has been changed yet:
-  - Apply this label to the message? Reply: CONFIRM cfm-1a2b3c4d5e6f
+
+- **Apply this label to the message?**
+  - Message: m-alpha-1
+  - Subject: Project Alpha - architecture review
+  - From: john.smith@example.com
+  - Label: Finance (FINANCE)
+  - Reply `CONFIRM cfm-1a2b3c4d5e6f` to approve, `CANCEL cfm-1a2b3c4d5e6f` to decline.
 
 > CONFIRM cfm-1a2b3c4d5e6f
 
 apply_label succeeded.
 ```
+
+Each ticket carries the facts the presenter resolved for it - the subject, the
+sender, the label's name rather than its identifier - because a chat reply is
+read long after the message it refers to has scrolled away. A bare list of
+identifiers would make the reader go back up the conversation to work out what
+they are approving, which is how people approve things they have not read.
+
+Those facts are written by the application, from the very request that will
+authorise the operation, so what is read is what gets executed and audited. They
+come from mail, so they are contained: one line each, long ones cut, and a
+subject may not display something that looks like a ticket reference.
 
 Why this is not a weakening of the console behaviour:
 
@@ -110,7 +127,9 @@ Why this is not a weakening of the console behaviour:
   change what was described;
 - `CONFIRM` is read by a literal parser *before* the model sees the message, so a
   model can never approve anything, and a sentence merely mentioning a ticket is
-  an ordinary question;
+  an ordinary question. Markdown decoration around the whole command is accepted,
+  since that is what a copied answer looks like, but a sentence quoting one still
+  matches nothing;
 - a ticket is single-use, expires after fifteen minutes, and belongs to one
   subject and one conversation. Answering somebody else's is refused, and refused
   as "unknown" rather than "not yours" - saying otherwise would confirm it exists.

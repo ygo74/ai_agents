@@ -17,6 +17,7 @@ operations - is verified against what works today.
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 import pytest
@@ -155,6 +156,18 @@ def chat(http: TestClient, message: str, *, key: str | None = API_KEY, conversat
     )
 
 
+def ticket_in(reply: str) -> str:
+    """Read the ticket a reply offers, the way a user copies it.
+
+    Deliberately not a `split` on whitespace: the instruction is rendered as
+    markdown, so this asserts that what the interface displays can actually be
+    read back.
+    """
+    match = re.search(r"cfm-[0-9a-f]+", reply)
+    assert match is not None, reply
+    return match.group(0)
+
+
 def answer_of(response) -> str:
     """Read the agent's text out of whatever shape the runtime returned."""
     body = response.json()
@@ -283,7 +296,7 @@ class TestEachDiscussionGetsItsOwnSession:
 
         with TestClient(app) as http:
             raised = answer_of(chat(http, "file it under Finance", conversation="conv-a"))
-            ticket = raised.split("CONFIRM ")[1].split()[0]
+            ticket = ticket_in(raised)
             elsewhere = answer_of(chat(http, f"CONFIRM {ticket}", conversation="conv-b"))
 
         assert "not awaiting an answer" in elsewhere
@@ -361,7 +374,7 @@ class TestAGatedOperationIsDeferredOverHttp:
 
         with TestClient(app) as http:
             first = answer_of(chat(http, "file the Project Alpha message under Finance"))
-            ticket = first.split("CONFIRM ")[1].split()[0]
+            ticket = ticket_in(first)
 
             second = answer_of(chat(http, f"CONFIRM {ticket}"))
 
