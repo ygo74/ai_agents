@@ -34,6 +34,7 @@ from ai_agent_lab.core.security.confirmation import (
 )
 from ai_agent_lab.core.security.context import UserContext
 from ai_agent_lab.core.security.permissions import PermissionRegistry
+from ai_agent_lab.core.security.principal import Principal
 from ai_agent_lab.maf.authority import UnattendedApprovalAuthority
 from ai_agent_lab.maf.reasoner import MafTextReasoner
 from ai_agent_lab.maf.tool_adapter import SkillToolAdapter
@@ -46,6 +47,7 @@ from ai_agent_lab.mail.capabilities.read_capabilities import MailReadCapabilitie
 from ai_agent_lab.mail.capabilities.results import MailToolResultRenderer
 from ai_agent_lab.mail.capabilities.write_capabilities import MailWriteCapabilities
 from ai_agent_lab.mail.catalog import DeliveredMailOperations, MailToolName
+from ai_agent_lab.mail.config.local_principal import LocalPrincipalSource
 from ai_agent_lab.mail.config.mailbox_directory import ConfiguredMailboxOwnerDirectory
 from ai_agent_lab.mail.config.settings import ChatClientSettings, MailAgentSettings
 from ai_agent_lab.mail.domain.permissions import MailPermission
@@ -64,6 +66,7 @@ MAIL_AGENT = "mail"
 class MailAgentRuntime:
     """Everything the console, a test or another host needs to drive the agent."""
 
+    principal: Principal
     user: UserContext
     manifest: AgentManifest
     registry: SkillRegistry
@@ -89,25 +92,54 @@ class MailAgentCompositionRoot:
         settings: MailAgentSettings,
         chat_client: SupportsChatGetResponse,
         *,
+        principal: Principal | None = None,
         mail_tools: MailTools | None = None,
         reasoner: TextReasoner | None = None,
         base_path: Path | None = None,
     ) -> None:
         self._settings = settings
         self._chat_client = chat_client
+        self._principal = principal or LocalPrincipalSource(settings).principal()
         self._mail_tools_override = mail_tools
         self._reasoner_override = reasoner
         self._base_path = base_path
 
+    def for_principal(self, principal: Principal) -> MailAgentCompositionRoot:
+        """Return a root that assembles the agent for another caller.
+
+        Serving several people means building the same wiring for a different
+        identity, request after request. Copying the root keeps that in one
+        place: nothing else has to know which collaborators a runtime needs.
+        """
+        return MailAgentCompositionRoot(
+            self._settings,
+            self._chat_client,
+            principal=principal,
+            mail_tools=self._mail_tools_override,
+            reasoner=self._reasoner_override,
+            base_path=self._base_path,
+        )
+
+    def manifest(self) -> AgentManifest:
+        """Return the delivered configuration of this agent.
+
+        Exposed because the description an HTTP surface advertises must come
+        from the same file the agent runs on. Two hand-written descriptions
+        would drift, and a caller would discover capabilities the agent does not
+        have.
+        """
+        return self._manifest()
+
     def build(self, *, session_id: str) -> MailAgentRuntime:
         """Assemble the Mail Agent and everything driving it."""
         manifest = self._manifest()
+        principal = self._principal
         user = self._user_context(session_id)
         policy = self._policy()
         audit = InMemoryAuditTrail()
-        provider = MailToolsProvider(self._settings, MailDatasetLoader())
+        provider = MailToolsProvider(self._settings, MailDatasetLoader(), owner_id=principal.subject)
         mail_tools = self._mail_tools(provider)
-        skills = self._skills(manifest, mail_tools, policy, audit, user)
+        skills = self._skills(manifest, mail_tools, policy, audit)
 
         draft_store = InMemoryDraftStore()
         ledger = InMemoryConfirmationLedger()
@@ -115,6 +147,7 @@ class MailAgentCompositionRoot:
         tools = SkillToolAdapter(MailToolResultRenderer(), policy).to_tools(registry, user)
 
         return MailAgentRuntime(
+            principal=principal,
             user=user,
             manifest=manifest,
             registry=registry,
@@ -150,16 +183,16 @@ class MailAgentCompositionRoot:
         mail_tools: MailTools,
         policy: ConfirmationPolicy,
         audit: InMemoryAuditTrail,
-        user: UserContext,
     ) -> MailSkills:
         """Assemble the reusable domain capabilities."""
+        principal = self._principal
         return MailSkillsFactory(
             mail_tools=mail_tools,
             reasoner=self._reasoner(),
             operations=DeliveredMailOperations(manifest),
             policy=policy,
             audit=LoggingAuditTrail(audit),
-            owner_directory=ConfiguredMailboxOwnerDirectory({user.user_id: self._settings.user_email}),
+            owner_directory=ConfiguredMailboxOwnerDirectory({principal.subject: principal.email}),
             category_catalog=MailCategoryCatalog(),
             context_builder=MailContextBuilder(),
             manifest=manifest,
@@ -234,14 +267,13 @@ class MailAgentCompositionRoot:
         either.
         """
         store = InMemoryConfirmationPreferenceStore(
-            {self._settings.user_id: self._settings.confirmation_preferences()}
+            {self._principal.subject: self._settings.confirmation_preferences()}
         )
         return ConfiguredConfirmationPolicy(store, MailSecurityFloor().build())
 
     def _user_context(self, session_id: str) -> UserContext:
         """Build the identity every operation of this session carries."""
-        return UserContext(
-            user_id=self._settings.user_id,
+        return self._principal.to_user_context(
             session_id=session_id,
             permissions=MailPermission.declared(),
         )

@@ -1,0 +1,22 @@
+# Capability delivered to the Mail Agent.
+tool_name: create_draft
+implementation: mail.save_draft
+
+# The model selects tools from this text, so it is part of the contract.
+description: >-
+  Save a reply prepared earlier, identified by its draft reference, into the mailbox drafts
+  folder. The message is NOT delivered to anyone: it appears among the drafts so the owner can
+  find, review or edit it there. Use this whenever the owner asks to keep a reply, or expects
+  to see it in their mailbox - preparing a reply alone leaves nothing behind. The draft
+  reference stays valid afterwards, so the same reply can still be sent later.
+
+# Security posture. The risk floor enforced in code cannot be lowered here.
+operation:
+  type: WRITE
+  risk: LOW
+  permission: mail:draft
+  confirmation_required: false
+
+# Logical MCP tools this capability is allowed to use.
+mcp_tools:
+  - create_draft

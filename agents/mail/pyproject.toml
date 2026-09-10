@@ -20,6 +20,21 @@ dependencies = [
 maf = ["ai-agent-lab-maf"]
 native = ["mail-mcp-protocol"]
 
+# Serving the agent over HTTP. `ygo74-agent-runtime` owns the routes, the OpenAI
+# payload shapes, JWT validation and discovery; this package owns identity,
+# conversation state and what happens to a gated operation.
+#
+# A range rather than an exact pin, because the library is developed alongside
+# this repository: `python -m scripts.install --runtime-source <checkout>` links a
+# working copy into the environment, and an exact pin would make pip replace it
+# with the published wheel the next time anything is installed. The upper bound
+# still holds, since a pre-1.0 minor is free to move the API.
+http = [
+    "ygo74-agent-runtime>=0.0.3,<0.1",
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.30",
+]
+
 [project.scripts]
 mail-agent = "ai_agent_lab.mail.application.cli_entrypoint:main"
 

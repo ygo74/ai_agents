@@ -51,7 +51,7 @@ class TestMockExposesEverything:
     def test_every_capability_is_offered(self, monkeypatch):
         names = exposed(monkeypatch, mode="mock", server="local")
 
-        assert {name.value for name in MailToolName} - {"create_draft"} <= names
+        assert {name.value for name in MailToolName} <= names
         assert names >= ANALYSIS_TOOLS
 
 

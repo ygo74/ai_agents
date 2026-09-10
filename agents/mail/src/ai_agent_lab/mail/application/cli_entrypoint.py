@@ -15,6 +15,7 @@ from ai_agent_lab.core.errors import DomainError
 from ai_agent_lab.maf.approval import MafApprovalTranslator
 from ai_agent_lab.maf.azure_credentials import AzureIdentityCredentialProvider
 from ai_agent_lab.maf.chat_client import MafChatClientFactory
+from ai_agent_lab.mail.application.approval.console import ConsoleApprovalResolver
 from ai_agent_lab.mail.application.chat_client import ConfiguredChatClientFactory
 from ai_agent_lab.mail.application.composition import MailAgentCompositionRoot, MailAgentRuntime
 from ai_agent_lab.mail.application.console import Console, ConsoleConfirmationPrompt
@@ -106,7 +107,15 @@ def build_cli(
     ).build(session_id=f"cli-{uuid.uuid4().hex[:8]}")
 
     console = Console()
-    session = MailAgentSession(runtime, console, ConsoleConfirmationPrompt(console), MafApprovalTranslator())
+    resolver = ConsoleApprovalResolver(
+        runtime.presenter,
+        ConsoleConfirmationPrompt(console),
+        console,
+        runtime.confirmation_ledger,
+        runtime.policy,
+        runtime.user,
+    )
+    session = MailAgentSession(runtime, resolver, MafApprovalTranslator())
     return MailAgentCli(session, console, runtime)
 
 
