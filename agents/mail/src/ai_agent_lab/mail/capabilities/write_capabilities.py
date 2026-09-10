@@ -18,6 +18,7 @@ from ai_agent_lab.core.security.context import UserContext
 from ai_agent_lab.mail.capabilities.confirmation_broker import ConfirmationBroker
 from ai_agent_lab.mail.capabilities.results import (
     DraftPreparedResult,
+    DraftSavedResult,
     LabelOperationAcknowledged,
     MailSentResult,
     OperationAcknowledged,
@@ -77,6 +78,7 @@ class MailWriteCapabilities:
         """Every drafting and state-changing capability of the Mail Agent."""
         return (
             self._draft_reply(),
+            self._save_draft(),
             self._send_draft(),
             self._set_read_state(),
             self._archive(),
@@ -103,6 +105,28 @@ class MailWriteCapabilities:
             )
 
         return self._bind(DRAFT_MAIL_REPLY, DraftReplyInput, invoke)
+
+    def _save_draft(self) -> SkillDescriptor:
+        """Put a prepared reply in the mailbox, without delivering it.
+
+        Separate from drafting so composing keeps having no consequence, and
+        separate from sending so keeping a reply for later never risks becoming
+        delivering it. The reference is not consumed: a saved draft can still be
+        sent afterwards.
+        """
+
+        async def invoke(payload: BaseModel, user: UserContext) -> BaseModel:
+            reference = DraftReferenceInput.model_validate(payload).draft_reference
+            draft = self._draft_store.get(reference, user)
+            saved = await self._send_skill.save_draft(draft, user)
+            return DraftSavedResult(
+                draft_reference=reference,
+                draft_id=saved.draft_id or "",
+                to=tuple(str(address) for address in saved.to),
+                subject=saved.subject.expose(),
+            )
+
+        return self._bind(MailToolName.CREATE_DRAFT.value, DraftReferenceInput, invoke)
 
     def _send_draft(self) -> SkillDescriptor:
         """Deliver a previously prepared draft."""

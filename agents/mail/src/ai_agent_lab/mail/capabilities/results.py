@@ -73,6 +73,23 @@ class DraftPreparedResult(MailToolResult):
     in_reply_to_message_id: str | None = None
 
 
+class DraftSavedResult(MailToolResult):
+    """A prepared reply that now exists in the mailbox itself.
+
+    Distinct from :class:`MailSentResult` on purpose: a draft has reached the
+    mailbox and nobody has received anything. Reporting the mailbox identifier
+    is what lets the user go and find it.
+
+    The reference survives, because the draft can still be sent afterwards.
+    """
+
+    draft_reference: str
+    draft_id: str
+    to: tuple[str, ...]
+    subject: str
+    detail: str = "saved in the mailbox as a draft; nothing was delivered"
+
+
 class MailSentResult(MailToolResult):
     """Acknowledgement of a delivered message."""
 

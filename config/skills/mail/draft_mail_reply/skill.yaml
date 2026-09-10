@@ -6,7 +6,9 @@ implementation: mail.draft_reply
 description: >-
   Prepare a reply to a message, or to the most recent message of a conversation, following the
   intent stated by the mailbox owner. Returns the draft and a draft reference. Nothing is sent
-  and nothing is stored in the mailbox.
+  and nothing is stored in the mailbox: the reply exists only in this conversation. To put it
+  in the mailbox drafts folder, where the owner can find it, call create_draft with the
+  reference afterwards.
 
 # Security posture. The risk floor enforced in code cannot be lowered here.
 operation:

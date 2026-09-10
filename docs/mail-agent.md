@@ -22,7 +22,8 @@ not by convention.
 | `summarise_mail`          | READ  | no           | Summarises a message or a conversation: key points, decisions, actions, deadlines, participants, open questions, sources. |
 | `classify_mail`           | READ  | no           | Assigns one configurable category per message, with confidence and reason. |
 | `extract_mail_actions`    | READ  | no           | Lists what the owner has to do, marking each action explicit or inferred. |
-| `draft_mail_reply`        | READ  | no           | Prepares a reply and returns a draft reference. Sends nothing. |
+| `draft_mail_reply`        | READ  | no           | Prepares a reply and returns a draft reference. Stores nothing and sends nothing. |
+| `create_draft`            | WRITE | no (configurable) | Saves a prepared reply into the mailbox drafts. Delivers nothing. |
 | `send_mail`               | WRITE | **always**   | Delivers a prepared draft, identified by its reference. |
 | `mark_read`               | WRITE | yes (configurable) | Marks a message read or unread. |
 | `archive_mail`            | WRITE | yes          | Removes a message from the inbox. |
@@ -256,10 +257,20 @@ their own levels only has to implement that port.
 
 ### Draft references
 
-`draft_mail_reply` returns an opaque reference; `send_mail` takes that reference
-and nothing else. The content delivered is therefore exactly the content the
-user approved: a model cannot rewrite recipients or body between the two turns.
-References are scoped to their owner and cannot be redeemed by another user.
+`draft_mail_reply` returns an opaque reference; `create_draft` and `send_mail`
+take that reference and nothing else. The content saved or delivered is
+therefore exactly the content the user approved: a model cannot rewrite
+recipients or body between the two turns. References are scoped to their owner
+and cannot be redeemed by another user.
+
+Composing, keeping and delivering are three capabilities rather than one because
+they have three different consequences. Drafting touches nothing, so it needs no
+approval. Saving puts something in the mailbox that nobody receives. Sending is
+irreversible, and is the only one the security floor gates unconditionally.
+
+Saving does not consume the reference: a draft kept in the mailbox can still be
+sent afterwards. What is delivered is then the stored draft, so the mailbox keeps
+its own copy - the two are the same content, not the same object.
 
 ## 5. Security
 

@@ -19,6 +19,7 @@ skills:
   - classify_mail
   - extract_mail_actions
   - draft_mail_reply
+  - create_draft
   - send_mail
   - mark_read
   - archive_mail

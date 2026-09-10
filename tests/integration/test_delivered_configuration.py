@@ -32,6 +32,30 @@ from ai_agent_lab.mail.security_floor import MailSecurityFloor
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 
+# What the repository ships. Named rather than counted: a count tells you the
+# delivery changed, never which capability appeared or disappeared - and a
+# capability silently leaving the manifest is the failure worth catching.
+DELIVERED_CAPABILITIES = frozenset(
+    {
+        "search_mail",
+        "get_mail",
+        "get_thread",
+        "list_labels",
+        "summarise_mail",
+        "classify_mail",
+        "extract_mail_actions",
+        "draft_mail_reply",
+        "create_draft",
+        "send_mail",
+        "mark_read",
+        "archive_mail",
+        "apply_label",
+        "remove_label",
+        "create_label",
+        "delete_label",
+    }
+)
+
 SKILL_TEMPLATE = """\
 tool_name: {tool_name}
 implementation: mail.example
@@ -103,7 +127,7 @@ class TestDeliveredMailConfiguration:
         manifest = AgentManifestLoader(delivered(), skill_loader()).load("mail")
 
         assert manifest.name == "mail-agent"
-        assert len(manifest.skills) == 15
+        assert {skill.tool_name for skill in manifest.skills} == DELIVERED_CAPABILITIES
 
     def test_the_instructions_come_from_the_delivered_file(self):
         manifest = AgentManifestLoader(delivered(), skill_loader()).load("mail")
