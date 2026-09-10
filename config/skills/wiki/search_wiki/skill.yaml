@@ -1,0 +1,22 @@
+# Capability delivered to the Wiki Agent.
+tool_name: search_wiki
+implementation: wiki.search
+
+# The model selects tools from this text, so it is part of the contract.
+description: >-
+  Search the wiki and return page references. Supports free-text keywords, space, label,
+  title fragment, modification date range and publication status, alone or combined.
+  Returns titles and short excerpts only, never page bodies: call get_page for the content
+  of a page this returns. Prefer narrowing by space or date over asking for more results.
+  Has no side effect.
+
+# Security posture. The risk floor enforced in code cannot be lowered here.
+operation:
+  type: READ
+  risk: LOW
+  permission: wiki:read
+  confirmation_required: false
+
+# Logical MCP tools this capability is allowed to use.
+mcp_tools:
+  - search_wiki

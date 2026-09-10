@@ -30,9 +30,9 @@ from ygo74.agent_runtime import (
 )
 from ygo74.agent_runtime.domains.auth.jwt_authenticator import JwksKeyResolver, JwtValidationConfig
 
+from ai_agent_lab.core.config.azure_credentials import AzureIdentityCredentialProvider
 from ai_agent_lab.core.config.environment import EnvironmentFile
 from ai_agent_lab.core.serving.runtimes import ConversationRuntimeCache
-from ai_agent_lab.maf.azure_credentials import AzureIdentityCredentialProvider
 from ai_agent_lab.maf.chat_client import MafChatClientFactory
 from ai_agent_lab.mail.application.chat_client import ConfiguredChatClientFactory
 from ai_agent_lab.mail.application.composition import MailAgentCompositionRoot

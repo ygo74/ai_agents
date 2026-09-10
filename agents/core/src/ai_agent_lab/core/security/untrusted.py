@@ -27,6 +27,15 @@ class UntrustedOrigin(StrEnum):
     MAIL_ATTACHMENT_NAME = "mail_attachment_name"
     MAIL_LABEL = "mail_label"
 
+    WIKI_PAGE_TITLE = "wiki_page_title"
+    WIKI_PAGE_BODY = "wiki_page_body"
+    WIKI_PAGE_EXCERPT = "wiki_page_excerpt"
+    WIKI_SPACE_NAME = "wiki_space_name"
+    WIKI_COMMENT_BODY = "wiki_comment_body"
+    WIKI_AUTHOR_NAME = "wiki_author_name"
+    WIKI_LABEL = "wiki_label"
+    WIKI_VERSION_MESSAGE = "wiki_version_message"
+
 
 class UntrustedText(BaseModel):
     """Text produced outside the trust boundary of the application.

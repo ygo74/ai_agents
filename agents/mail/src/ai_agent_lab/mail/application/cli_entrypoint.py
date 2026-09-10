@@ -10,10 +10,10 @@ from pathlib import Path
 
 from agent_framework import SupportsChatGetResponse
 
+from ai_agent_lab.core.config.azure_credentials import AzureIdentityCredentialProvider
 from ai_agent_lab.core.config.environment import EnvironmentFile
 from ai_agent_lab.core.errors import DomainError
 from ai_agent_lab.maf.approval import MafApprovalTranslator
-from ai_agent_lab.maf.azure_credentials import AzureIdentityCredentialProvider
 from ai_agent_lab.maf.chat_client import MafChatClientFactory
 from ai_agent_lab.mail.application.approval.console import ConsoleApprovalResolver
 from ai_agent_lab.mail.application.chat_client import ConfiguredChatClientFactory

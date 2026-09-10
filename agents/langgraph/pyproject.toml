@@ -1,0 +1,38 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "ai-agent-lab-langgraph"
+version = "0.1.0"
+description = "LangChain / LangGraph adapter for the AI Agent Lab agents"
+requires-python = ">=3.12"
+
+# Sibling of ai-agent-lab-maf, never a change inside it. Each adapter owns one
+# framework, and no agent distribution depends on more than one, so a deployment
+# environment never carries a framework it does not run.
+#
+# `langchain>=1.3.3` is a floor rather than a preference: the `when` predicate of
+# the human-in-the-loop middleware, which is how a per-user confirmation policy
+# reaches the framework, appeared in that release.
+dependencies = [
+    "ai-agent-lab-core",
+    "langchain>=1.3.3,<2",
+    "langgraph>=1.2,<2",
+    "langchain-openai>=1.6,<2",
+]
+
+# Deliberately absent: `langchain-mcp-adapters`. Skills reach a server through
+# our own typed port, so the MCP client belongs to the agent distribution. Going
+# through LangChain's adapters would hand the model a third-party server's raw
+# tools, bypassing the skills, the risk catalogue and the untrusted-content
+# fencing - and would make the framework comparison meaningless.
+
+[project.optional-dependencies]
+# Entra ID authentication for Azure OpenAI.
+azure = [
+    "azure-identity>=1.19,<2",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/ai_agent_lab"]

@@ -52,7 +52,12 @@ class Principal(BaseModel):
             provider. This is what every mailbox, ledger and audit entry is
             partitioned by, so it must never be derived from client-supplied
             data.
-        email: Address of the mailbox this principal owns.
+        email: Address of the person, when the identity provider asserts one.
+            Optional because it is an attribute of an identity rather than a
+            requirement of every agent: a mailbox is addressed by email, a wiki
+            account is not. An agent that needs one says so itself, and fails
+            loudly when it is absent, rather than this model demanding it of
+            agents that do not.
         display_name: Human-readable name, for prompts and confirmations.
         roles: Roles asserted by the identity provider. They are claims about
             the caller, not permissions: mapping them to permissions is a
@@ -62,7 +67,7 @@ class Principal(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid")
 
     subject: str = Field(min_length=1)
-    email: str = Field(min_length=1)
+    email: str = ""
     display_name: str = ""
     roles: frozenset[str] = frozenset()
 

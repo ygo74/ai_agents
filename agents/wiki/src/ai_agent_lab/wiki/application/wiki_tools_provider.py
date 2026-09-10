@@ -1,0 +1,128 @@
+"""Selection of the wiki MCP implementation for the configured runtime mode."""
+
+from __future__ import annotations
+
+from pathlib import Path
+
+from ai_agent_lab.core.config.directory import ConfigurationDirectory
+from ai_agent_lab.core.security.context import UserContext
+from ai_agent_lab.wiki.catalog import WikiToolName
+from ai_agent_lab.wiki.config.settings import (
+    WikiAgentMode,
+    WikiAgentSettings,
+    WikiMcpSettings,
+)
+from ai_agent_lab.wiki.inmemory.dataset import WikiDatasetLoader
+from ai_agent_lab.wiki.inmemory.wiki_tools import InMemoryWikiTools
+from ai_agent_lab.wiki.mcp.authorization import WikiAuthorization, authorization_for
+from ai_agent_lab.wiki.mcp.binding import McpServerBinding, McpServerBindingLoader
+from ai_agent_lab.wiki.mcp.connection import McpConnection
+from ai_agent_lab.wiki.mcp.dialects import DialectContext, WikiDialectRegistry
+from ai_agent_lab.wiki.tools_port import WikiTools
+
+
+class WikiToolsProvider:
+    """Builds the wiki MCP implementation the configuration asks for.
+
+    The agent and the skills are identical in every mode; only the object built
+    here changes. That is the property the runtime modes exist to prove.
+
+    In ``mcp`` mode the provider also reports what the bound server can serve, so
+    a capability no server offers is never advertised to the model. That is not a
+    theoretical nicety: `sooperset/mcp-atlassian` cannot list page revisions, and
+    its binding says so.
+
+    **A provider is built for one caller.** Over HTTP the connection carries that
+    caller's ``Authorization`` header for the lifetime of the session, so sharing
+    a provider between two people would serve the second one the first one's view
+    of the wiki.
+    """
+
+    def __init__(
+        self,
+        settings: WikiAgentSettings,
+        dataset_loader: WikiDatasetLoader,
+        *,
+        user_id: str = "",
+        mcp_settings: WikiMcpSettings | None = None,
+        dialects: WikiDialectRegistry | None = None,
+    ) -> None:
+        self._settings = settings
+        self._dataset_loader = dataset_loader
+        self._user_id = user_id or settings.user_id
+        self._mcp_settings = mcp_settings or WikiMcpSettings()
+        self._dialects = dialects or WikiDialectRegistry()
+        self._connection: McpConnection | None = None
+
+    def build(self, *, base_path: Path | None = None) -> WikiTools:
+        """Return the wiki tools matching the configured mode."""
+        if self._settings.mode is WikiAgentMode.MOCK:
+            return self._build_mock(base_path or Path.cwd())
+        return self._build_mcp(base_path)
+
+    def capabilities(self, *, base_path: Path | None = None) -> frozenset[WikiToolName]:
+        """Return the capabilities the configured backend can actually serve."""
+        if self._settings.mode is WikiAgentMode.MOCK:
+            return frozenset(WikiToolName)
+        return self._binding(base_path).capabilities
+
+    async def aclose(self) -> None:
+        """Close the MCP session, if one was opened."""
+        if self._connection is None:
+            return
+        await self._connection.aclose()
+        self._connection = None
+
+    def _build_mock(self, base_path: Path) -> WikiTools:
+        """Build the wiki tools backed by the configured dataset."""
+        dataset = self._settings.mock_dataset
+        resolved = dataset if dataset.is_absolute() else base_path / dataset
+        return InMemoryWikiTools(self._dataset_loader.load_file(resolved))
+
+    def _build_mcp(self, base_path: Path | None) -> WikiTools:
+        """Build the client of the bound wiki MCP server.
+
+        Over HTTP the caller's identity travels in a header, so it is resolved
+        here, once, and the connection carries it. Over stdio there is no such
+        header and the authorisation is empty, which is what tells the dialect it
+        is speaking for exactly one person.
+        """
+        binding = self._binding(base_path)
+        authorization = self._authorization()
+        self._connection = McpConnection(
+            binding,
+            timeout_seconds=self._mcp_settings.timeout_seconds,
+            headers=authorization.headers_for(self._caller()),
+        )
+        return self._dialects.build(
+            self._connection,
+            binding,
+            DialectContext(
+                account_id=self._mcp_settings.account_id,
+                is_per_user=authorization.is_per_user,
+            ),
+        )
+
+    def _authorization(self) -> WikiAuthorization:
+        """Build the authorisation identifying the caller to a remote server."""
+        return authorization_for(
+            self._mcp_settings.auth_scheme,
+            user_id=self._user_id,
+            account=self._mcp_settings.user_account,
+            secret=self._mcp_settings.user_secret,
+        )
+
+    def _caller(self) -> UserContext:
+        """The identity the connection is opened for.
+
+        A minimal context: the authorisation only needs to know whose credential
+        to look up, and building a full one here would suggest this is the
+        context skills run under. It is not - that one comes from the composition
+        root, carries permissions, and reaches every call.
+        """
+        return UserContext(user_id=self._user_id, session_id="mcp-connection")
+
+    def _binding(self, base_path: Path | None) -> McpServerBinding:
+        """Load the delivered description of the bound server."""
+        directory = ConfigurationDirectory.resolve(base_path=base_path)
+        return McpServerBindingLoader(directory).load(self._mcp_settings.server)

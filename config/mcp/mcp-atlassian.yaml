@@ -1,0 +1,98 @@
+# sooperset/mcp-atlassian - the community Confluence server, over stdio.
+#
+# It is the only mature MCP server covering Confluence Cloud AND Confluence
+# Data Center behind one tool surface, which is why it is the one bound here.
+# Moving from Cloud to Data Center is a change of environment variables and
+# nothing else; this file does not change, and neither does any agent code.
+#
+# See docs/wiki-mcp-servers.md for the research behind that choice, and for the
+# security advisories that make the version pin below non-negotiable.
+server: mcp-atlassian
+transport: stdio
+
+# Run the published image rather than vendoring the server. It is a third-party
+# server and is treated as one: it holds the Confluence credentials, and this
+# process never sees them.
+#
+# The tag is pinned deliberately:
+#   < 0.17.0  CVE-2026-27825 (CVSS 9.1, arbitrary file write -> RCE)
+#             CVE-2026-27826 (CVSS 8.2, SSRF)
+#   < 0.23.1  GHSA-5j8j-256g-vvp5 (the sse transport bypassed authentication)
+command: docker
+args:
+  - run
+  - --rm
+  - --interactive
+  - --env
+  - CONFLUENCE_URL
+  - --env
+  - CONFLUENCE_USERNAME
+  - --env
+  - CONFLUENCE_API_TOKEN
+  - --env
+  - READ_ONLY_MODE
+  - --env
+  - TOOLSETS
+  - ghcr.io/sooperset/mcp-atlassian:0.23.1
+
+# Names only. A value here would be a credential in version control; each name
+# is resolved from the ambient environment when the server process starts, and
+# reaches that process alone.
+#
+# Cloud today:
+#   CONFLUENCE_URL=https://your-site.atlassian.net/wiki
+#   CONFLUENCE_USERNAME=you@example.com
+#   CONFLUENCE_API_TOKEN=<token>
+#
+# Data Center later - same file, same tools, same agent:
+#   CONFLUENCE_URL=https://confluence.your-company.example
+#   CONFLUENCE_PERSONAL_TOKEN=<PAT>
+#
+# Cloud OAuth is deliberately not used: Atlassian removed the v1 REST endpoints
+# from the api.atlassian.com gateway in August 2026 and that path now returns
+# 410 Gone (upstream issue #1598). The API token is unaffected, and is also the
+# closest thing to the Data Center PAT.
+env:
+  CONFLUENCE_URL: CONFLUENCE_URL
+  CONFLUENCE_USERNAME: CONFLUENCE_USERNAME
+  CONFLUENCE_API_TOKEN: CONFLUENCE_API_TOKEN
+  READ_ONLY_MODE: WIKI_MCP_READ_ONLY
+  TOOLSETS: WIKI_MCP_TOOLSETS
+
+# This server has its own tool names and returns JSON as text, so it needs a
+# translating client rather than the native one.
+dialect: atlassian
+
+# What this server can actually serve.
+#
+# Read-only for the first increment. The write tools exist on the server and the
+# dialect implements them; they are simply not declared here, so they are never
+# offered to the model. Enabling them is this list plus WIKI_MCP_READ_ONLY=false,
+# and no code change.
+#
+# Deliberately absent:
+#   get_page_history - confluence_get_page_history returns ONE named revision,
+#                      not the list of revisions, and no tool enumerates them.
+#                      Synthesising a history from a single revision would be a
+#                      lie the agent would then reason from.
+capabilities:
+  - search_wiki
+  - get_page
+  - get_page_children
+  - list_spaces
+  - get_comments
+
+# Names this server gives to the tools the dialect uses.
+#
+# list_spaces has no entry: this server exposes no space-listing tool at all, so
+# the dialect serves that capability with a CQL search for `type = space`.
+tools:
+  search_wiki: confluence_search
+  get_page: confluence_get_page
+  get_page_children: confluence_get_page_children
+  get_comments: confluence_get_comments
+  list_spaces: confluence_search
+  create_page: confluence_create_page
+  update_page: confluence_update_page
+  delete_page: confluence_delete_page
+  add_comment: confluence_add_comment

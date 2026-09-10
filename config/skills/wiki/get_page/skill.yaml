@@ -1,0 +1,16 @@
+# Capability delivered to the Wiki Agent.
+tool_name: get_page
+implementation: wiki.get_page
+
+description: >-
+  Retrieve one complete page, body included, by page identifier. A page can be long, so
+  call this for pages a search actually identified rather than to browse. Has no side effect.
+
+operation:
+  type: READ
+  risk: LOW
+  permission: wiki:read
+  confirmation_required: false
+
+mcp_tools:
+  - get_page

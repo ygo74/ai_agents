@@ -1,0 +1,17 @@
+# Capability delivered to the Wiki Agent.
+tool_name: get_page_children
+implementation: wiki.get_page_children
+
+description: >-
+  List the direct children of one page, as references. Returns one level only: call it
+  again on a child to go deeper. Use it to understand how a space is organised.
+  Has no side effect.
+
+operation:
+  type: READ
+  risk: LOW
+  permission: wiki:read
+  confirmation_required: false
+
+mcp_tools:
+  - get_page_children

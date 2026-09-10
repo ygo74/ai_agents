@@ -1,0 +1,22 @@
+# Capability delivered to the Wiki Agent.
+#
+# Not every wiki server can serve this. `sooperset/mcp-atlassian` exposes no tool
+# enumerating the revisions of a page, so its binding does not declare the
+# capability and it is simply never offered against that server. Delivering the
+# package anyway costs nothing and keeps the agent identical across backends.
+tool_name: get_page_history
+implementation: wiki.get_page_history
+
+description: >-
+  Retrieve the revision history of one page: who changed it, when, and the note they left.
+  Returns metadata about revisions, never the content of past revisions. Use it to judge
+  whether a page is still current. Has no side effect.
+
+operation:
+  type: READ
+  risk: LOW
+  permission: wiki:read
+  confirmation_required: false
+
+mcp_tools:
+  - get_page_history

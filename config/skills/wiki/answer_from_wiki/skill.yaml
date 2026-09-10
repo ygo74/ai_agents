@@ -1,0 +1,22 @@
+# Capability delivered to the Wiki Agent.
+# The reasoning instructions live next to this file, in SKILL.md.
+tool_name: answer_from_wiki
+implementation: wiki.answer
+
+description: >-
+  Answer a question using the project documentation, and only the project documentation.
+  Searches the wiki, reads the pages it finds, and returns the answer together with the
+  identifier and version of every page it relied on. Reports explicitly when the
+  documentation does not answer the question rather than filling the gap. Use this for any
+  question about how a project works, what was decided, or what is in scope.
+  Has no side effect.
+
+operation:
+  type: READ
+  risk: LOW
+  permission: wiki:read
+  confirmation_required: false
+
+mcp_tools:
+  - search_wiki
+  - get_page

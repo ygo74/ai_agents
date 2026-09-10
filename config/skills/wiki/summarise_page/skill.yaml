@@ -1,0 +1,21 @@
+# Capability delivered to the Wiki Agent.
+# The reasoning instructions live next to this file, in SKILL.md.
+tool_name: summarise_page
+implementation: wiki.summarise
+
+description: >-
+  Summarise one page, a page and its comments, a page and its direct children, or a set of
+  related pages. Returns the summary, the key points, the decisions recorded, the questions
+  the documentation leaves open, and the identifier and version of every page used.
+  Has no side effect.
+
+operation:
+  type: READ
+  risk: LOW
+  permission: wiki:read
+  confirmation_required: false
+
+mcp_tools:
+  - get_page
+  - get_page_children
+  - get_comments

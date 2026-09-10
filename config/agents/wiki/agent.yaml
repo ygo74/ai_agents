@@ -1,0 +1,24 @@
+# Identity and capabilities of the Wiki Agent.
+# The system instructions live next to this file, in AGENT.md.
+name: wiki-agent
+
+description: >-
+  Assists a member of a project team with the project documentation: finds pages, reads
+  them, summarises them, answers questions from them while citing its sources, and reports
+  which documentation has gone stale.
+
+# Capabilities offered to the model, in this order. Each name is a package
+# delivered under config/skills/wiki/. Removing a name removes the capability.
+#
+# Read-only for this increment. The write capabilities exist in the domain, in
+# the catalogue and in both dialects; they are simply not delivered here yet.
+skills:
+  - answer_from_wiki
+  - search_wiki
+  - get_page
+  - get_page_children
+  - list_spaces
+  - get_comments
+  - get_page_history
+  - summarise_page
+  - assess_page_freshness

@@ -1,0 +1,16 @@
+# Capability delivered to the Wiki Agent.
+tool_name: list_spaces
+implementation: wiki.list_spaces
+
+description: >-
+  List the spaces of the wiki the user may read, with their keys. Use it to find the key a
+  search should be restricted to. Has no side effect.
+
+operation:
+  type: READ
+  risk: LOW
+  permission: wiki:read
+  confirmation_required: false
+
+mcp_tools:
+  - list_spaces

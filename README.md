@@ -7,11 +7,11 @@ foundations of a future enterprise agent platform.
 
 Frameworks under evaluation:
 
-- Microsoft Agent Framework
-- LangChain
-- CrewAI
+- Microsoft Agent Framework — the Mail Agent
+- LangChain / LangGraph — the Wiki Agent
+- CrewAI — not started
 
-Agents planned: Mail, Memory, Jira, Confluence, On-Prem RAG, Internet Research,
+Agents planned: Mail, Wiki, Memory, Jira, On-Prem RAG, Internet Research,
 IT Project.
 
 ## The rule that shapes everything
@@ -31,36 +31,44 @@ frameworks, not to build the same business logic three times.
 
 | Agent | Framework | State |
 |---|---|---|
-| Mail Agent | Microsoft Agent Framework 1.17 | Working. See [docs/mail-agent.md](./docs/mail-agent.md). |
+| Mail Agent | Microsoft Agent Framework | Working. See [docs/mail-agent.md](./docs/mail-agent.md). |
+| Wiki Agent | LangChain / LangGraph | Working, read-only. See [docs/wiki-agent.md](./docs/wiki-agent.md). |
 | Mail MCP | our server, on the Gmail REST API | Working against a real mailbox, full coverage. |
 | Mail MCP | our server, on a dataset | Working over stdio, validated by the conformance suite. |
 | Mail MCP | official Google Gmail server | Bound and capability-checked; blocked by Workspace Developer Preview enrolment. |
-| Mail Agent | LangChain, CrewAI | Not started. The skills are ready to be reused. |
+| Wiki MCP | our server, on a dataset | Working over stdio, restrictions reproduced. |
+| Wiki MCP | `sooperset/mcp-atlassian` | Bound and capability-checked. Cloud and Data Center. See [docs/wiki-mcp-servers.md](./docs/wiki-mcp-servers.md). |
+| Third agent | CrewAI | Not started. The core and the skill registry are ready to be reused. |
 
 ## Layout
 
-The repository ships six distributions, each buildable and deployable on its
+The repository ships ten distributions, each buildable and deployable on its
 own. See [docs/repository-structure.md](./docs/repository-structure.md).
 
 ```text
-agents/                     the product
-  core/     ai_agent_lab.core   security, reasoning ports, manifests, skill registry
-  maf/      ai_agent_lab.maf    Microsoft Agent Framework adapter
-  mail/     ai_agent_lab.mail   mail domain, skills, capabilities, composition root
-mcp-servers/                auxiliaries, shipped separately
-  protocol/  mail_mcp.protocol  wire payloads, tool names, error codes
-  gmail/     mail_mcp.gmail     mail MCP server on the Gmail REST API
-  reference/ mail_mcp.reference mail MCP server on a dataset
-config/            delivered configuration: agent, skill packages, MCP bindings
+agents/                          the products
+  core/       ai_agent_lab.core       security, reasoning ports, manifests, skill registry
+  maf/        ai_agent_lab.maf        Microsoft Agent Framework adapter
+  langgraph/  ai_agent_lab.langgraph  LangChain / LangGraph adapter
+  mail/       ai_agent_lab.mail       mail domain, skills, capabilities, composition root
+  wiki/       ai_agent_lab.wiki       wiki domain, skills, capabilities, composition root
+mcp-servers/                     auxiliaries, shipped separately
+  protocol/       mail_mcp.protocol   wire payloads, tool names, error codes
+  gmail/          mail_mcp.gmail      mail MCP server on the Gmail REST API
+  reference/      mail_mcp.reference  mail MCP server on a dataset
+  wiki-protocol/  wiki_mcp.protocol   wire payloads, tool names, error codes
+  wiki-reference/ wiki_mcp.reference  wiki MCP server on a dataset
+config/            delivered configuration: agents, skill packages, MCP bindings
 tests/             unit, contract, integration, agent, security, architecture
-data/mail/         deterministic mailbox datasets
-scenarios/mail/    reproducible agent scenarios
+data/              deterministic datasets
+scenarios/         reproducible agent scenarios
 docs/              architecture and design documents
 ```
 
-No `mail_mcp` package imports `ai_agent_lab`: a server we write and a server
-somebody else wrote are reached the same way, through a dialect on the agent
-side. Distribution and layer boundaries are enforced by
+No `mail_mcp` or `wiki_mcp` package imports `ai_agent_lab`: a server we write and
+a server somebody else wrote are reached the same way, through a dialect on the
+agent side. **No agent depends on two framework adapters.** Distribution and
+layer boundaries are enforced by
 `tests/architecture/test_distribution_boundaries.py`.
 
 Instructions, tool descriptions, prompts, approval defaults and MCP tool names
@@ -69,52 +77,62 @@ live in `config/`, so they ship independently of the code. See
 
 ## Getting started
 
-Python 3.12 or later. One virtual environment per agent and per framework, so
-framework dependencies never leak into a comparison.
+Python 3.12 or later. **One virtual environment per agent**, so framework
+dependencies never leak into a comparison. That is not tidiness: installing
+LangChain alongside Microsoft Agent Framework has been observed to move a shared
+transitive dependency under the other's feet.
 
 ```powershell
-py -3.12 -m venv .venvs\mail-agent-maf
-.\.venvs\mail-agent-maf\Scripts\python.exe -m scripts.install
+py -3.12 -m scripts.install --list                                  # what is on offer
+py -3.12 -m scripts.install --env wiki-agent --into .venvs\wiki-agent
+py -3.12 -m scripts.install --env mail-agent --into .venvs\mail-agent
+py -3.12 -m scripts.install --env dev        --into .venvs\dev       # everything, for the tests
 Copy-Item .env.example .env
 ```
 
-The script installs every distribution in editable mode, in dependency order.
-`ai_agent_lab.core` is framework free; only `ai_agent_lab.maf` depends on an
-agentic framework.
+Pick the model provider in `.env`: `AGENT_CHAT_PROVIDER=openai` or
+`azure_openai`. Both agents read the same model settings, on purpose — a
+comparison between two frameworks is only meaningful when both run against the
+same model.
 
-Pick the model provider in `.env`. `AGENT_CHAT_PROVIDER=openai` or
-`AGENT_CHAT_PROVIDER=azure_openai`; see
-[docs/mail-agent.md](./docs/mail-agent.md) for the Azure variables.
-
-Run the Mail Agent against the local dataset - no Gmail, no mail credentials:
+Run an agent against its local dataset — no Gmail, no Confluence, no credentials
+beyond the model key:
 
 ```powershell
-$env:MAIL_AGENT_MODE = "mock"
-$env:OPENAI_API_KEY  = "<your key>"
+$env:OPENAI_API_KEY = "<your key>"
 $env:OPENAI_CHAT_MODEL = "gpt-4o-mini"
-.\.venvs\mail-agent-maf\Scripts\python.exe -m ai_agent_lab.mail.application
+
+.\.venvs\wiki-agent\Scripts\wiki-agent.exe
+.\.venvs\mail-agent\Scripts\python.exe -m ai_agent_lab.mail.application
 ```
 
-Run the checks:
+From VS Code, press **F5** and pick a configuration from `.vscode/launch.json`.
+Each one points at the right virtual environment.
+
+Run the checks, in the development environment:
 
 ```powershell
-.\.venvs\mail-agent-maf\Scripts\python.exe -m pytest
-.\.venvs\mail-agent-maf\Scripts\python.exe -m ruff check .
-.\.venvs\mail-agent-maf\Scripts\python.exe -m mypy
+.\.venvs\dev\Scripts\python.exe -m pytest
+.\.venvs\dev\Scripts\python.exe -m ruff check .
+.\.venvs\dev\Scripts\python.exe -m mypy
 ```
 
-No test needs a network, an API key or a mailbox.
+No test needs a network, an API key, a mailbox or a wiki.
 
 ## Documentation
 
 | Document | Content |
 |---|---|
 | [docs/architecture.md](./docs/architecture.md) | Layers, dependency rule, runtime modes. |
+| [docs/repository-structure.md](./docs/repository-structure.md) | The distributions, the per-agent environments, how to plug a server. |
 | [docs/agent-design.md](./docs/agent-design.md) | What an agent is, framework adapters, confirmation model. |
 | [docs/mcp-design.md](./docs/mcp-design.md) | Tool contracts, tool surface, error translation. |
-| [docs/mail-mcp-servers.md](./docs/mail-mcp-servers.md) | Which mail MCP servers are supported, and how to plug in another. |
 | [docs/configuration.md](./docs/configuration.md) | What is delivered as configuration, and what stays in code. |
 | [docs/mail-agent.md](./docs/mail-agent.md) | The Mail Agent: capabilities, skills, security, how to run it. |
+| [docs/mail-mcp-servers.md](./docs/mail-mcp-servers.md) | Which mail MCP servers are supported, and how to plug in another. |
+| [docs/wiki-agent.md](./docs/wiki-agent.md) | The Wiki Agent: capabilities, grounding, confirmation on LangGraph. |
+| [docs/wiki-agent-running.md](./docs/wiki-agent-running.md) | **How to run it, and how to configure the MCP server.** |
+| [docs/wiki-mcp-servers.md](./docs/wiki-mcp-servers.md) | Which wiki MCP servers are supported, Cloud versus Data Center. |
 
 ## Security
 

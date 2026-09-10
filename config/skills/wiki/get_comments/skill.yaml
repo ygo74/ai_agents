@@ -1,0 +1,17 @@
+# Capability delivered to the Wiki Agent.
+tool_name: get_comments
+implementation: wiki.get_comments
+
+description: >-
+  Retrieve the comments attached to one page. Comments often carry decisions and objections
+  that never made it into the page body, so a page that looks settled may be contradicted
+  in its own discussion. Has no side effect.
+
+operation:
+  type: READ
+  risk: LOW
+  permission: wiki:read
+  confirmation_required: false
+
+mcp_tools:
+  - get_comments

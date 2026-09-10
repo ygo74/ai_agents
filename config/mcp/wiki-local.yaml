@@ -1,0 +1,42 @@
+# A wiki MCP server implementing our contract natively, over stdio.
+#
+# This is the reference shape: a server that speaks our tool names and returns
+# the protocol payloads. The reference server implements it, and a server built
+# on Notion or XWiki could too.
+#
+# Because it covers the whole contract, nothing is missing from `capabilities`.
+server: wiki-local
+transport: stdio
+command: python
+args:
+  - -m
+  - wiki_mcp.reference.server
+
+# It answers our own tool names with the contract payloads, so no translation is
+# needed.
+dialect: native
+
+capabilities:
+  - search_wiki
+  - get_page
+  - get_page_children
+  - list_spaces
+  - get_comments
+  - get_page_history
+  - create_page
+  - update_page
+  - add_comment
+  - delete_page
+
+# A native server needs no translation: each alias is the logical name itself.
+tools:
+  search_wiki: search_wiki
+  get_page: get_page
+  get_page_children: get_page_children
+  list_spaces: list_spaces
+  get_comments: get_comments
+  get_page_history: get_page_history
+  create_page: create_page
+  update_page: update_page
+  add_comment: add_comment
+  delete_page: delete_page

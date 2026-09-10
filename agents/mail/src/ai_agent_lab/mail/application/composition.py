@@ -35,7 +35,7 @@ from ai_agent_lab.core.security.confirmation import (
 from ai_agent_lab.core.security.context import UserContext
 from ai_agent_lab.core.security.permissions import PermissionRegistry
 from ai_agent_lab.core.security.principal import Principal
-from ai_agent_lab.maf.authority import UnattendedApprovalAuthority
+from ai_agent_lab.core.security.unattended import UnattendedApprovalAuthority
 from ai_agent_lab.maf.reasoner import MafTextReasoner
 from ai_agent_lab.maf.tool_adapter import SkillToolAdapter
 from ai_agent_lab.mail.application.confirmation_presenter import MailConfirmationPresenter
@@ -44,7 +44,7 @@ from ai_agent_lab.mail.application.skills_factory import MailSkills, MailSkillsF
 from ai_agent_lab.mail.capabilities.confirmation_broker import ConfirmationBroker
 from ai_agent_lab.mail.capabilities.converters import MailSearchRequestFactory
 from ai_agent_lab.mail.capabilities.read_capabilities import MailReadCapabilities
-from ai_agent_lab.mail.capabilities.results import MailToolResultRenderer
+from ai_agent_lab.mail.capabilities.results import MAIL_UNTRUSTED_SOURCE, MailToolResultRenderer
 from ai_agent_lab.mail.capabilities.write_capabilities import MailWriteCapabilities
 from ai_agent_lab.mail.catalog import DeliveredMailOperations, MailToolName
 from ai_agent_lab.mail.config.local_principal import LocalPrincipalSource
@@ -290,6 +290,6 @@ class MailAgentCompositionRoot:
             return self._reasoner_override
         return MafTextReasoner(
             self._chat_client,
-            PromptEnvelopeBuilder(),
+            PromptEnvelopeBuilder(source=MAIL_UNTRUSTED_SOURCE),
             temperature=ChatClientSettings().sampling_temperature(),
         )
