@@ -200,6 +200,194 @@
       "justMyCode": false,
       "cwd": "${workspaceFolder}",
       "args": ["${file}", "-v"]
+    },
+    {
+      // Start here. No Confluence, no credentials, no network: the agent runs
+      // against data/wiki/sample_wiki.json, which deliberately contains
+      // contradictory pages, a stale one, a restricted one and a prompt
+      // injection. Only the model provider needs to be configured.
+      "name": "Wiki Agent — mock dataset",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "ai_agent_lab.wiki.application.cli_entrypoint",
+      "python": "${workspaceFolder}/.venvs/wiki-agent/Scripts/python.exe",
+      "console": "integratedTerminal",
+      "justMyCode": false,
+      "cwd": "${workspaceFolder}",
+      "envFile": "${workspaceFolder}/.env",
+      "env": {
+        "WIKI_AGENT_MODE": "mock",
+        "WIKI_AGENT_LOG_LEVEL": "DEBUG",
+        "PYTHONUTF8": "1"
+      }
+    },
+    {
+      // The same agent, over a real MCP stack: a real stdio transport, a real
+      // protocol handshake, our reference server on the same dataset. This is
+      // what to run to debug the MCP client, the binding or the dialect.
+      "name": "Wiki Agent — reference MCP server (stdio)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "ai_agent_lab.wiki.application.cli_entrypoint",
+      "python": "${workspaceFolder}/.venvs/wiki-agent/Scripts/python.exe",
+      "console": "integratedTerminal",
+      "justMyCode": false,
+      "cwd": "${workspaceFolder}",
+      "envFile": "${workspaceFolder}/.env",
+      "env": {
+        "WIKI_AGENT_MODE": "mcp",
+        "WIKI_MCP_SERVER": "wiki-local",
+        "WIKI_AGENT_LOG_LEVEL": "DEBUG",
+        "PYTHONUTF8": "1"
+      }
+    },
+    {
+      // Against a real Confluence, through sooperset/mcp-atlassian in Docker.
+      // Requires CONFLUENCE_URL, CONFLUENCE_USERNAME and CONFLUENCE_API_TOKEN in
+      // .env, and a running Docker daemon. See docs/wiki-mcp-servers.md.
+      //
+      // WIKI_MCP_ACCOUNT_ID matters here: that server takes no account argument
+      // and resolves the caller from its own credentials, so it acts as exactly
+      // one person. Naming them lets the dialect refuse to serve anybody else.
+      "name": "Wiki Agent — Confluence (mcp-atlassian)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "ai_agent_lab.wiki.application.cli_entrypoint",
+      "python": "${workspaceFolder}/.venvs/wiki-agent/Scripts/python.exe",
+      "console": "integratedTerminal",
+      "justMyCode": false,
+      "cwd": "${workspaceFolder}",
+      "envFile": "${workspaceFolder}/.env",
+      "env": {
+        "WIKI_AGENT_MODE": "mcp",
+        "WIKI_MCP_SERVER": "mcp-atlassian",
+        "WIKI_MCP_READ_ONLY": "true",
+        "WIKI_MCP_TOOLSETS": "confluence_pages,confluence_comments",
+        "WIKI_AGENT_LOG_LEVEL": "DEBUG",
+        "PYTHONUTF8": "1"
+      }
+    },
+    {
+      // Against a real Confluence, on behalf of the user, over streamable HTTP.
+      //
+      // This is the mode an enterprise deployment wants: the server reads an
+      // Authorization header on every request and builds a per-user client from
+      // it, so the agent genuinely acts as the person asking and their page and
+      // space restrictions apply.
+      //
+      // Start the server first, once:
+      //   docker run --rm -p 9000:9000 \
+      //     -e CONFLUENCE_URL=https://your-site.atlassian.net/wiki \
+      //     -e CONFLUENCE_PERSONAL_TOKEN=unused \
+      //     -e READ_ONLY_MODE=true \
+      //     ghcr.io/sooperset/mcp-atlassian:0.23.1 \
+      //     --transport streamable-http --host 0.0.0.0 --port 9000
+      //
+      // Then set WIKI_MCP_USER_ACCOUNT and WIKI_MCP_USER_SECRET in .env.
+      "name": "Wiki Agent — Confluence on behalf of the user (HTTP)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "ai_agent_lab.wiki.application.cli_entrypoint",
+      "python": "${workspaceFolder}/.venvs/wiki-agent/Scripts/python.exe",
+      "console": "integratedTerminal",
+      "justMyCode": false,
+      "cwd": "${workspaceFolder}",
+      "envFile": "${workspaceFolder}/.env",
+      "env": {
+        "WIKI_AGENT_MODE": "mcp",
+        "WIKI_MCP_SERVER": "mcp-atlassian-http",
+        "WIKI_MCP_AUTH_SCHEME": "basic",
+        "WIKI_AGENT_LOG_LEVEL": "DEBUG",
+        "PYTHONUTF8": "1"
+      }
+    },
+    {
+      // The reference wiki MCP server on its own, so a client can be attached
+      // to it or its payloads inspected. It serves the dataset over stdio and
+      // needs no credential of any kind.
+      "name": "Wiki MCP reference server (stdio)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "wiki_mcp.reference.server",
+      "python": "${workspaceFolder}/.venvs/wiki-agent/Scripts/python.exe",
+      "console": "integratedTerminal",
+      "justMyCode": false,
+      "cwd": "${workspaceFolder}",
+      "args": ["--dataset", "data/wiki/sample_wiki.json"],
+      "env": {
+        "PYTHONUTF8": "1"
+      }
+    },
+    {
+      "name": "Mail Agent — mock dataset",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "ai_agent_lab.mail.application.cli_entrypoint",
+      "python": "${workspaceFolder}/.venvs/mail-agent/Scripts/python.exe",
+      "console": "integratedTerminal",
+      "justMyCode": false,
+      "cwd": "${workspaceFolder}",
+      "envFile": "${workspaceFolder}/.env",
+      "env": {
+        "MAIL_AGENT_MODE": "mock",
+        "MAIL_AGENT_LOG_LEVEL": "DEBUG",
+        "PYTHONUTF8": "1"
+      }
+    },
+    {
+      // The whole suite, in the development environment. It is the one place
+      // both frameworks are installed together, because the architecture tests
+      // scan every distribution.
+      "name": "Tests — all",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "pytest",
+      "python": "${workspaceFolder}/.venvs/dev/Scripts/python.exe",
+      "console": "integratedTerminal",
+      "justMyCode": false,
+      "cwd": "${workspaceFolder}",
+      "args": ["tests", "-v"]
+    },
+    {
+      // The Wiki Agent tests alone: domain, MCP client, dialects, skills.
+      "name": "Tests — wiki agent",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "pytest",
+      "python": "${workspaceFolder}/.venvs/dev/Scripts/python.exe",
+      "console": "integratedTerminal",
+      "justMyCode": false,
+      "cwd": "${workspaceFolder}",
+      "args": [
+        "tests/unit/wiki",
+        "tests/unit/langgraph",
+        "tests/integration/test_wiki_agent_langgraph.py",
+        "tests/security/test_wiki_security.py",
+        "-v"
+      ]
+    },
+    {
+      "name": "Tests — security only",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "pytest",
+      "python": "${workspaceFolder}/.venvs/dev/Scripts/python.exe",
+      "console": "integratedTerminal",
+      "justMyCode": false,
+      "cwd": "${workspaceFolder}",
+      "args": ["tests", "-m", "security", "-v"]
+    },
+    {
+      // Debug whichever test file is open, at the cursor.
+      "name": "Tests — current file",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "pytest",
+      "python": "${workspaceFolder}/.venvs/dev/Scripts/python.exe",
+      "console": "integratedTerminal",
+      "justMyCode": false,
+      "cwd": "${workspaceFolder}",
+      "args": ["${file}", "-v"]
     }
   ]
 }
