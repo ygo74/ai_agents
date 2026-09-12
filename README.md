@@ -133,6 +133,7 @@ No test needs a network, an API key, a mailbox or a wiki.
 | [docs/wiki-agent.md](./docs/wiki-agent.md) | The Wiki Agent: capabilities, grounding, confirmation on LangGraph. |
 | [docs/wiki-agent-running.md](./docs/wiki-agent-running.md) | **How to run it, and how to configure the MCP server.** |
 | [docs/wiki-mcp-servers.md](./docs/wiki-mcp-servers.md) | Which wiki MCP servers are supported, Cloud versus Data Center. |
+| [docs/runtime-extraction-candidates.md](./docs/runtime-extraction-candidates.md) | What could move to `ygo74-agent-runtime`, and what must stay here. |
 
 ## Security
 
