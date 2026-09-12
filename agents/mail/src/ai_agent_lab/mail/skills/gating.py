@@ -9,6 +9,7 @@ different, weaker path.
 
 from __future__ import annotations
 
+import logging
 import uuid
 from collections.abc import Awaitable, Callable, Sequence
 from typing import TypeVar
@@ -27,6 +28,7 @@ from ai_agent_lab.core.security.operations import ToolOperationDescriptor
 from ai_agent_lab.mail.catalog import MailOperations, MailToolName
 
 ResultT = TypeVar("ResultT")
+_logger = logging.getLogger(__name__)
 
 
 class GatedMailOperationRunner:
@@ -44,6 +46,15 @@ class GatedMailOperationRunner:
         gate: ConfirmationGate,
         audit: AuditTrail,
     ) -> None:
+        _logger.info("Initializing gated Mail operation runner")
+        _logger.debug(
+            "GatedMailOperationRunner.__init__ arguments: operations_type=%s, "
+            "policy_type=%s, gate_type=%s, audit_type=%s",
+            type(operations).__name__,
+            type(policy).__name__,
+            type(gate).__name__,
+            type(audit).__name__,
+        )
         self._operations = operations
         self._policy = policy
         self._gate = gate
@@ -51,6 +62,12 @@ class GatedMailOperationRunner:
 
     def requires_confirmation(self, tool: MailToolName, user: UserContext) -> bool:
         """Whether the user must approve this operation before it runs."""
+        _logger.info("Checking gated Mail operation confirmation requirement")
+        _logger.debug(
+            "GatedMailOperationRunner.requires_confirmation arguments: tool_name=%s, user_id=%s",
+            tool.value,
+            user.user_id,
+        )
         return self._policy.requires_confirmation(self._operations.descriptor(tool), user)
 
     def build_confirmation_request(
@@ -63,6 +80,16 @@ class GatedMailOperationRunner:
         details: Sequence[ConfirmationDetail] = (),
     ) -> ConfirmationRequest:
         """Build the request shown to the user before they decide."""
+        _logger.info("Building gated Mail operation confirmation request")
+        _logger.debug(
+            "GatedMailOperationRunner.build_confirmation_request arguments: "
+            "tool_name=%s, user_id=%s, title_length=%d, target=%s, details=%d",
+            tool.value,
+            user.user_id,
+            len(title),
+            target,
+            len(details),
+        )
         return ConfirmationRequest(
             request_id=f"cfm-{uuid.uuid4().hex[:12]}",
             operation=self._operations.descriptor(tool),
@@ -83,6 +110,19 @@ class GatedMailOperationRunner:
         decision: ConfirmationDecision | None = None,
     ) -> ResultT:
         """Authorise, run and audit one state-changing operation."""
+        _logger.info("Executing gated Mail operation")
+        _logger.debug(
+            "GatedMailOperationRunner.execute arguments: tool_name=%s, user_id=%s, "
+            "session_id=%s, operation_type=%s, target_id=%s, request_id=%s, "
+            "decision_present=%s",
+            tool.value,
+            user.user_id,
+            user.session_id,
+            type(operation).__name__,
+            target_id,
+            None if request is None else request.request_id,
+            decision is not None,
+        )
         descriptor = self._operations.descriptor(tool)
         try:
             self._gate.ensure_approved(descriptor, user, request, decision)
@@ -110,6 +150,18 @@ class GatedMailOperationRunner:
         error: Exception | None,
     ) -> None:
         """Append one record to the audit trail."""
+        _logger.info("Writing Mail operation audit record")
+        _logger.debug(
+            "GatedMailOperationRunner._write arguments: tool_name=%s, user_id=%s, "
+            "session_id=%s, outcome=%s, target_id=%s, request_id=%s, error_type=%s",
+            descriptor.tool_name,
+            user.user_id,
+            user.session_id,
+            outcome.value,
+            target_id,
+            None if request is None else request.request_id,
+            None if error is None else type(error).__name__,
+        )
         self._audit.record(
             AuditRecord(
                 tool_name=descriptor.tool_name,

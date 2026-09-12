@@ -12,6 +12,7 @@ a safeguard.
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Sequence
 
 from ai_agent_lab.core.errors import DomainError
@@ -32,6 +33,8 @@ from ai_agent_lab.mail.application.console import (
     ConsoleConfirmationPrompt,
 )
 
+_logger = logging.getLogger(__name__)
+
 
 class ConsoleApprovalResolver:
     """Puts each suspended call to the person at the console."""
@@ -45,6 +48,16 @@ class ConsoleApprovalResolver:
         policy: ConfirmationPolicy,
         user: UserContext,
     ) -> None:
+        _logger.info("Initializing Mail Agent console approval resolver")
+        _logger.debug(
+            "ConsoleApprovalResolver.__init__ arguments: presenter_type=%s, prompt_type=%s, "
+            "console_type=%s, policy_type=%s, user_id=%s",
+            type(presenter).__name__,
+            type(prompt).__name__,
+            type(console).__name__,
+            type(policy).__name__,
+            user.user_id,
+        )
         self._presenter = presenter
         self._prompt = prompt
         self._console = console
@@ -55,11 +68,25 @@ class ConsoleApprovalResolver:
 
     def will_question(self, pending: Sequence[PendingToolApproval]) -> bool:
         """Whether this batch holds a call no standing answer already covers."""
+        _logger.info("Checking whether Mail approvals require a console question")
+        _logger.debug(
+            "ConsoleApprovalResolver.will_question arguments: pending=%d, tool_names=%s",
+            len(pending),
+            tuple(approval.tool_name for approval in pending),
+        )
         return any(approval.tool_name not in self._standing_approvals for approval in pending)
 
     async def resolve(self, pending: Sequence[PendingToolApproval]) -> ApprovalRound:
         """Ask about each call and build the answers that resume them."""
+        _logger.info("Resolving Mail approval batch at the console")
+        _logger.debug(
+            "ConsoleApprovalResolver.resolve arguments: pending=%d, tool_names=%s, user_id=%s",
+            len(pending),
+            tuple(approval.tool_name for approval in pending),
+            self._user.user_id,
+        )
         questioned = self.will_question(pending)
+        _logger.info("Starting Mail console approval decision loop")
         answers = [approval.answer(approved=await self._decide(approval)) for approval in pending]
         return ApprovalRound(answers=tuple(answers), questioned_user=questioned)
 
@@ -69,6 +96,12 @@ class ConsoleApprovalResolver:
         A standing answer removes the question, never the trace: each operation
         still gets its own request, its own decision and its own audit record.
         """
+        _logger.debug(
+            "ConsoleApprovalResolver._decide arguments: tool_name=%s, argument_names=%s, user_id=%s",
+            approval.tool_name,
+            tuple(sorted(approval.arguments)),
+            self._user.user_id,
+        )
         try:
             request = await self._presenter.present(approval.tool_name, approval.arguments, self._user)
         except DomainError as error:
@@ -94,10 +127,20 @@ class ConsoleApprovalResolver:
         floor protects. Offering the choice and then ignoring it would be worse
         than never offering it.
         """
+        _logger.info("Checking standing approval eligibility")
+        _logger.debug("ConsoleApprovalResolver._may_stand arguments: tool_name=%s", tool_name)
         return self._policy.is_overridable(tool_name)
 
     def _record(self, request: ConfirmationRequest, *, approved: bool) -> None:
         """Store the answer so the gated skill enforces this very decision."""
+        _logger.info("Recording Mail console approval decision")
+        _logger.debug(
+            "ConsoleApprovalResolver._record arguments: request_id=%s, capability=%s, approved=%s, user_id=%s",
+            request.request_id,
+            request.operation.tool_name,
+            approved,
+            self._user.user_id,
+        )
         decision = ConfirmationDecision(
             request_id=request.request_id,
             approved=approved,

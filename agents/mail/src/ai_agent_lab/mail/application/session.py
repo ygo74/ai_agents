@@ -59,6 +59,17 @@ class MailAgentSession:
         max_approval_rounds: int = _MAX_ASKED_ROUNDS,
         max_total_rounds: int = _MAX_TOTAL_ROUNDS,
     ) -> None:
+        _logger.info("Initializing Mail Agent conversation session")
+        _logger.debug(
+            "MailAgentSession.__init__ arguments: session_id=%s, user_id=%s, "
+            "resolver_type=%s, translator_type=%s, max_approval_rounds=%d, max_total_rounds=%d",
+            runtime.user.session_id,
+            runtime.user.user_id,
+            type(resolver).__name__,
+            type(translator).__name__,
+            max_approval_rounds,
+            max_total_rounds,
+        )
         self._runtime = runtime
         self._resolver = resolver
         self._translator = translator
@@ -79,26 +90,62 @@ class MailAgentSession:
         the user says "yes to all of these", the questions stop, and the turn is
         interrupted anyway for having asked too much.
         """
+        _logger.info("Starting Mail Agent turn and approval loop")
+        _logger.debug(
+            "MailAgentSession.ask arguments: session_id=%s, user_id=%s, message_length=%d",
+            self._runtime.user.session_id,
+            self._runtime.user.user_id,
+            len(message),
+        )
         response = await self._runtime.agent.run(message, session=self._session)
         asked = 0
-        for _ in range(self._max_total_rounds):
+        for round_index in range(self._max_total_rounds):
             pending = self._translator.pending_approvals(response)
             if not pending:
+                _logger.info("Mail Agent turn completed")
+                _logger.debug(
+                    "MailAgentSession.ask result: round=%d, response_length=%d, approval_rounds=%d",
+                    round_index + 1,
+                    len(response.text),
+                    asked,
+                )
                 return response.text
+            _logger.debug(
+                "Mail approval loop iteration: round=%d, pending=%d, tool_names=%s",
+                round_index + 1,
+                len(pending),
+                tuple(approval.tool_name for approval in pending),
+            )
             if self._resolver.will_question(pending):
                 asked += 1
                 if asked > self._max_asked_rounds:
+                    _logger.warning(
+                        "Mail Agent approval question budget exceeded: asked=%d, maximum=%d",
+                        asked,
+                        self._max_asked_rounds,
+                    )
                     return await self._abandon(response, _INTERRUPTED)
             response = await self._resume(pending)
+        _logger.warning("Mail Agent total round budget exceeded: maximum=%d", self._max_total_rounds)
         return await self._abandon(response, _EXHAUSTED)
 
     async def _abandon(self, response: AgentResponse[Any], reason: str) -> str:
         """Leave a turn without letting anything pending execute."""
+        _logger.debug(
+            "MailAgentSession._abandon arguments: response_type=%s, reason_length=%d",
+            type(response).__name__,
+            len(reason),
+        )
         await self._decline_everything(response)
         return reason
 
     async def _resume(self, pending: tuple[PendingToolApproval, ...]) -> AgentResponse[Any]:
         """Collect the user's answers and let the framework continue."""
+        _logger.debug(
+            "MailAgentSession._resume arguments: pending=%d, tool_names=%s",
+            len(pending),
+            tuple(approval.tool_name for approval in pending),
+        )
         round_ = await self._resolver.resolve(pending)
         return await self._runtime.agent.run(
             self._translator.answer_message(round_.answers),
@@ -124,13 +171,29 @@ class MailAgentSession:
         empty, so nothing pending can execute whether or not the batch ever
         completes. Insisting would turn a safe abandonment into a crash.
         """
+        _logger.info("Declining all operations left by an abandoned Mail Agent turn")
+        _logger.debug(
+            "MailAgentSession._decline_everything arguments: response_type=%s, "
+            "user_id=%s, session_id=%s, max_rounds=%d",
+            type(response).__name__,
+            self._runtime.user.user_id,
+            self._runtime.user.session_id,
+            _MAX_DECLINE_ROUNDS,
+        )
         self._runtime.confirmation_ledger.discard(self._runtime.user)
 
         current = response
-        for _ in range(_MAX_DECLINE_ROUNDS):
+        for round_index in range(_MAX_DECLINE_ROUNDS):
             pending = self._translator.pending_approvals(current)
             if not pending:
+                _logger.debug("Decline loop completed after %d round(s)", round_index)
                 return
+            _logger.debug(
+                "Decline loop iteration: round=%d, pending=%d, tool_names=%s",
+                round_index + 1,
+                len(pending),
+                tuple(approval.tool_name for approval in pending),
+            )
             answers = [approval.answer(approved=False) for approval in pending]
             try:
                 current = await self._runtime.agent.run(

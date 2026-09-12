@@ -11,6 +11,7 @@ fabricate a source identifier and have it presented to the user as a fact.
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Iterable, Sequence
 from datetime import UTC, datetime
 
@@ -29,6 +30,7 @@ from ai_agent_lab.mail.skills.categories import MailCategoryCatalog
 from ai_agent_lab.mail.skills.errors import UngroundedMailResultError
 
 _MAX_REASON_LENGTH = 280
+_logger = logging.getLogger(__name__)
 
 
 class ReasonerOutput(BaseModel):
@@ -86,6 +88,11 @@ class MailAnalysisMapper:
     """
 
     def __init__(self, category_catalog: MailCategoryCatalog) -> None:
+        _logger.info("Initializing Mail analysis mapper")
+        _logger.debug(
+            "MailAnalysisMapper.__init__ arguments: category_catalog_type=%s",
+            type(category_catalog).__name__,
+        )
         self._category_catalog = category_catalog
 
     def to_summary(
@@ -94,6 +101,17 @@ class MailAnalysisMapper:
         messages: Sequence[MailMessage],
     ) -> MailSummary:
         """Build a domain summary grounded in the analysed messages."""
+        _logger.info("Mapping Mail summary analysis")
+        _logger.debug(
+            "MailAnalysisMapper.to_summary arguments: message_ids=%s, messages=%d, "
+            "key_points=%d, decisions=%d, uncertainties=%d, actions=%d",
+            tuple(message.message_id for message in messages),
+            len(messages),
+            len(output.key_points),
+            len(output.decisions),
+            len(output.uncertainties),
+            len(output.actions),
+        )
         actions = self.to_actions(output.actions, messages)
         return MailSummary(
             summary=output.summary.strip(),
@@ -112,6 +130,13 @@ class MailAnalysisMapper:
         messages: Sequence[MailMessage],
     ) -> tuple[MailAction, ...]:
         """Build domain actions, rejecting any ungrounded source reference."""
+        _logger.info("Mapping Mail action output loop")
+        _logger.debug(
+            "MailAnalysisMapper.to_actions arguments: outputs_type=%s, message_ids=%s, messages=%d",
+            type(outputs).__name__,
+            tuple(message.message_id for message in messages),
+            len(messages),
+        )
         by_id = {message.message_id: message for message in messages}
         return tuple(self._to_action(output, by_id) for output in outputs if output.description.strip())
 
@@ -121,6 +146,15 @@ class MailAnalysisMapper:
         message: MailMessage,
     ) -> MailClassification:
         """Build a domain classification, normalising category and confidence."""
+        _logger.info("Mapping Mail classification analysis")
+        _logger.debug(
+            "MailAnalysisMapper.to_classification arguments: message_id=%s, "
+            "category=%s, confidence=%s, reason_length=%d",
+            message.message_id,
+            output.category.value,
+            output.confidence,
+            len(output.reason),
+        )
         return MailClassification(
             message_id=message.message_id,
             category=self._category_catalog.normalise(output.category),
@@ -134,6 +168,17 @@ class MailAnalysisMapper:
         messages_by_id: dict[str, MailMessage],
     ) -> MailAction:
         """Build one domain action from a reasoner entry."""
+        _logger.debug(
+            "MailAnalysisMapper._to_action arguments: source_message_id=%s, "
+            "description_length=%d, origin=%s, confidence=%s, due_date_present=%s, "
+            "available_messages=%d",
+            output.source_message_id,
+            len(output.description),
+            output.origin.value,
+            output.confidence.value,
+            output.due_date is not None,
+            len(messages_by_id),
+        )
         message = messages_by_id.get(output.source_message_id)
         if message is None:
             raise UngroundedMailResultError(output.source_message_id)
@@ -153,6 +198,11 @@ class MailAnalysisMapper:
         reported as unknown rather than invented, and the action itself is kept
         because its description remains useful.
         """
+        _logger.debug(
+            "MailAnalysisMapper._parse_due_date arguments: present=%s, value_length=%s",
+            value is not None,
+            None if value is None else len(value),
+        )
         if not value:
             return None
         try:
@@ -164,11 +214,22 @@ class MailAnalysisMapper:
     @staticmethod
     def _clean(values: Iterable[str]) -> tuple[str, ...]:
         """Drop blank entries and surrounding whitespace."""
+        _logger.info("Cleaning Mail analysis output loop")
+        _logger.debug(
+            "MailAnalysisMapper._clean arguments: values_type=%s",
+            type(values).__name__,
+        )
         return tuple(stripped for stripped in (value.strip() for value in values) if stripped)
 
     @staticmethod
     def _participants_of(messages: Sequence[MailMessage]) -> tuple[EmailAddress, ...]:
         """Distinct participants of the analysed messages, in order."""
+        _logger.info("Collecting Mail analysis participant loop")
+        _logger.debug(
+            "MailAnalysisMapper._participants_of arguments: message_ids=%s, messages=%d",
+            tuple(message.message_id for message in messages),
+            len(messages),
+        )
         seen: dict[str, EmailAddress] = {}
         for message in messages:
             for participant in (message.sender, *message.to, *message.cc):
@@ -178,6 +239,12 @@ class MailAnalysisMapper:
     @staticmethod
     def _sources_of(messages: Sequence[MailMessage]) -> tuple[MailSourceReference, ...]:
         """Reference every analysed message as a source."""
+        _logger.info("Collecting Mail analysis source loop")
+        _logger.debug(
+            "MailAnalysisMapper._sources_of arguments: message_ids=%s, messages=%d",
+            tuple(message.message_id for message in messages),
+            len(messages),
+        )
         return tuple(
             MailSourceReference(message_id=message.message_id, thread_id=message.thread_id) for message in messages
         )

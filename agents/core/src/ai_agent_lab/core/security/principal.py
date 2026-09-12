@@ -72,7 +72,12 @@ class Principal(BaseModel):
     roles: frozenset[str] = frozenset()
 
     @classmethod
-    def from_auth_context(cls, context: Mapping[str, object] | None) -> Principal:
+    def from_auth_context(
+        cls,
+        context: Mapping[str, object] | None,
+        *,
+        require_email: bool = True,
+    ) -> Principal:
         """Build a principal from a wire-shaped authentication context.
 
         The mapping is the shape a serving library hands to an application:
@@ -80,6 +85,16 @@ class Principal(BaseModel):
         is the single place allowed to read it, so the rest of the application
         keeps working with a typed model - the same discipline applied to MCP
         payloads.
+
+        Args:
+            context: The authentication context the transport established.
+            require_email: Whether a caller without an address is refused. An
+                agent that addresses its subject by e-mail says so by leaving
+                this at its default: a mailbox agent given a caller with no
+                address would have to guess whose mail to serve, and guessing
+                picks a victim. An agent whose accounts are not e-mail
+                addresses - a wiki, an issue tracker - passes ``False`` rather
+                than inventing an address to satisfy this model.
         """
         if not context:
             raise PrincipalError("the request carried no authenticated caller")
@@ -92,7 +107,7 @@ class Principal(BaseModel):
             raise PrincipalError("the authenticated caller carries no subject")
 
         email = _text(identity_map.get(_EMAIL))
-        if not email:
+        if require_email and not email:
             raise PrincipalError(f"the authenticated caller {subject!r} carries no email address")
 
         return cls(

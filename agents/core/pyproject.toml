@@ -17,5 +17,11 @@ dependencies = [
     "pyyaml>=6,<7",
 ]
 
+[project.optional-dependencies]
+# Serving an agent over HTTP. Only `core.serving.discovery` needs it, and only
+# to build the descriptor a runtime advertises; every other module of this
+# distribution stays free of any transport.
+http = ["ygo74-agent-runtime>=0.0.3,<0.1"]
+
 [tool.hatch.build.targets.wheel]
 packages = ["src/ai_agent_lab"]

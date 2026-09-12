@@ -19,7 +19,7 @@ from ai_agent_lab.core.security.operations import (
     ToolOperationDescriptor,
 )
 from ai_agent_lab.core.security.tickets import ConfirmationTicket
-from ai_agent_lab.mail.application.approval.pending import PendingConfirmationRenderer
+from ai_agent_lab.core.serving.pending import PendingConfirmationRenderer
 from ai_agent_lab.mail.domain.permissions import MailPermission
 
 SUBJECT = "Continuez a explorer avec Visorando Premium"

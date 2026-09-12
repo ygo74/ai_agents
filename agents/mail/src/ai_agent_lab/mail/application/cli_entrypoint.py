@@ -39,12 +39,21 @@ class MailAgentCli:
     """Reads user turns from the console and prints the agent answers."""
 
     def __init__(self, session: MailAgentSession, console: Console, runtime: MailAgentRuntime) -> None:
+        _logger.info("Initializing Mail Agent CLI")
+        _logger.debug(
+            "MailAgentCli.__init__ arguments: session_type=%s, console_type=%s, runtime_type=%s",
+            type(session).__name__,
+            type(console).__name__,
+            type(runtime).__name__,
+        )
         self._session = session
         self._console = console
         self._runtime = runtime
 
     async def run(self) -> None:
         """Run the conversation until the user leaves, then release the backend."""
+        _logger.info("Starting Mail Agent CLI")
+        _logger.debug("MailAgentCli.run arguments: none")
         try:
             await self._converse()
         finally:
@@ -52,6 +61,8 @@ class MailAgentCli:
 
     async def _converse(self) -> None:
         """Read and answer turns until the user leaves."""
+        _logger.info("Starting Mail Agent CLI conversation loop")
+        _logger.debug("MailAgentCli._converse arguments: none")
         self._console.write(_BANNER)
         while True:
             try:
@@ -74,6 +85,9 @@ class MailAgentCli:
         the session over it, along with every draft prepared in it, helps
         nobody. The detail goes to the log; the user gets a sentence.
         """
+        # Called once per console-loop iteration, so its entry stays at DEBUG;
+        # the loop itself emits the corresponding INFO event.
+        _logger.debug("MailAgentCli._answer arguments: message_length=%d", len(message))
         try:
             answer = await self._session.ask(message)
         except DomainError as error:
@@ -96,6 +110,12 @@ def build_cli(
     The chat client is chosen by ``AGENT_CHAT_PROVIDER``. A client can also be
     injected by another host or by a test.
     """
+    _logger.info("Building Mail Agent CLI")
+    _logger.debug(
+        "build_cli arguments: base_path=%s, injected_chat_client=%s",
+        base_path,
+        chat_client is not None,
+    )
     EnvironmentFile().load()
     settings = MailAgentSettings()
     logging.basicConfig(level=settings.log_level.upper())
@@ -121,6 +141,8 @@ def build_cli(
 
 def build_chat_client() -> SupportsChatGetResponse:
     """Build the configured chat client, OpenAI or Azure OpenAI."""
+    _logger.info("Building Mail Agent chat client")
+    _logger.debug("build_chat_client arguments: none")
     EnvironmentFile().load()
     return ConfiguredChatClientFactory(
         ChatClientSettings(),
@@ -131,6 +153,8 @@ def build_chat_client() -> SupportsChatGetResponse:
 
 def main() -> None:
     """Entry point of the ``mail-agent`` console script."""
+    _logger.info("Starting Mail Agent command-line entry point")
+    _logger.debug("main arguments: none")
     _prefer_utf8()
     asyncio.run(build_cli().run())
 
@@ -146,6 +170,8 @@ def _prefer_utf8() -> None:
     Failing is fine: a stream that cannot be reconfigured is one that was
     already redirected or wrapped, and the fallback still applies.
     """
+    _logger.info("Configuring Mail Agent terminal encoding")
+    _logger.debug("_prefer_utf8 arguments: streams=%s", ("stdout", "stderr"))
     for stream in (sys.stdout, sys.stderr):
         reconfigure = getattr(stream, "reconfigure", None)
         if reconfigure is None:

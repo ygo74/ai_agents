@@ -14,6 +14,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+import logging
 from pathlib import Path
 
 from ai_agent_lab.core.config.directory import ConfigurationDirectory
@@ -27,16 +28,21 @@ from ai_agent_lab.mail.mcp.binding import McpServerBindingLoader
 from ai_agent_lab.mail.mcp.oauth import MailOAuthSettings
 
 _CONSENT_TIMEOUT_SECONDS = 600
+_logger = logging.getLogger(__name__)
 
 
 class MailAuthorisation:
     """Performs the consent handshake and proves the token works."""
 
     def __init__(self, server: str) -> None:
+        _logger.info("Initializing Mail MCP authorisation")
+        _logger.debug("MailAuthorisation.__init__ arguments: server=%s", server)
         self._server = server
 
     async def run(self) -> tuple[int, str]:
         """Authorise, then read the labels to confirm the grant is usable."""
+        _logger.info("Running Mail MCP authorisation")
+        _logger.debug("MailAuthorisation.run arguments: server=%s", self._server)
         settings = MailAgentSettings(mode=MailAgentMode.MCP)
         provider = MailToolsProvider(
             settings,
@@ -57,6 +63,8 @@ class MailAuthorisation:
 
 def _granted_scopes() -> str:
     """Return the scopes the authorisation server actually issued."""
+    _logger.info("Reading Mail MCP granted scope metadata")
+    _logger.debug("_granted_scopes arguments: none")
     path = MailOAuthSettings().token_file
     if not path.is_file():
         return "unknown: no token was stored"
@@ -68,6 +76,8 @@ def _granted_scopes() -> str:
 
 def main() -> None:
     """Entry point of ``python -m ai_agent_lab.mail.application.authorise``."""
+    _logger.info("Starting Mail MCP authorisation command")
+    _logger.debug("main arguments: none")
     parser = argparse.ArgumentParser(description="Authorise the agent against a mail MCP server.")
     parser.add_argument("--server", default="gmail", help="binding name under config/mcp/")
     server = parser.parse_args().server

@@ -13,6 +13,7 @@ supplied here rather than negotiated.
 from __future__ import annotations
 
 import json
+import logging
 import webbrowser
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
@@ -40,6 +41,7 @@ _DONE = (
     "<html><body><h3>Authorisation received.</h3>"
     "<p>You can close this tab and return to the terminal.</p></body></html>"
 )
+_logger = logging.getLogger(__name__)
 
 
 class MailOAuthSettings(BaseSettings):
@@ -65,6 +67,15 @@ class MailOAuthSettings(BaseSettings):
 
     def require_client(self) -> None:
         """Fail with an actionable message when no client was configured."""
+        _logger.info("Validating Mail MCP OAuth client configuration")
+        _logger.debug(
+            "MailOAuthSettings.require_client arguments: client_id_configured=%s, "
+            "client_secret_configured=%s, callback_port=%d, scope_count=%d",
+            bool(self.client_id),
+            bool(self.client_secret.get_secret_value()),
+            self.callback_port,
+            len(self.scopes.split()),
+        )
         if self.client_id and self.client_secret.get_secret_value():
             return
         raise MailToolUnavailableError(
@@ -82,11 +93,22 @@ class FileTokenStorage(TokenStorage):
     """
 
     def __init__(self, settings: MailOAuthSettings) -> None:
+        _logger.info("Initializing Mail MCP OAuth token storage")
+        _logger.debug(
+            "FileTokenStorage.__init__ arguments: token_file_name=%s",
+            settings.token_file.name,
+        )
         self._settings = settings
 
     async def get_tokens(self) -> OAuthToken | None:
         """Return the tokens of a previous authorisation, if any."""
         path = self._settings.token_file
+        _logger.info("Reading stored Mail MCP OAuth tokens")
+        _logger.debug(
+            "FileTokenStorage.get_tokens arguments: token_file_name=%s, exists=%s",
+            path.name,
+            path.is_file(),
+        )
         if not path.is_file():
             return None
         try:
@@ -98,12 +120,24 @@ class FileTokenStorage(TokenStorage):
     async def set_tokens(self, tokens: OAuthToken) -> None:
         """Persist the issued tokens for the next run."""
         path = self._settings.token_file
+        _logger.info("Persisting Mail MCP OAuth tokens")
+        _logger.debug(
+            "FileTokenStorage.set_tokens arguments: token_type=%s, token_file_name=%s",
+            tokens.token_type,
+            path.name,
+        )
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(tokens.model_dump_json(), encoding="utf-8")
         path.chmod(0o600)
 
     async def get_client_info(self) -> OAuthClientInformationFull:
         """Return the pre-registered client, so no dynamic registration happens."""
+        _logger.info("Building Mail MCP OAuth client information")
+        _logger.debug(
+            "FileTokenStorage.get_client_info arguments: callback_port=%d, scope_count=%d",
+            self._settings.callback_port,
+            len(self._settings.scopes.split()),
+        )
         self._settings.require_client()
         return OAuthClientInformationFull(
             client_id=self._settings.client_id,
@@ -116,6 +150,11 @@ class FileTokenStorage(TokenStorage):
 
     async def set_client_info(self, client_info: OAuthClientInformationFull) -> None:
         """Ignore a registration result: the client is configured, not negotiated."""
+        _logger.info("Ignoring dynamic Mail MCP OAuth client registration")
+        _logger.debug(
+            "FileTokenStorage.set_client_info arguments: client_info_type=%s",
+            type(client_info).__name__,
+        )
         del client_info
 
 
@@ -123,19 +162,36 @@ class LoopbackAuthorisationListener:
     """Receives the authorisation redirect on the loopback interface."""
 
     def __init__(self, port: int) -> None:
+        _logger.info("Initializing Mail MCP OAuth loopback listener")
+        _logger.debug("LoopbackAuthorisationListener.__init__ arguments: port=%d", port)
         self._port = port
 
     async def open_consent(self, authorization_url: str) -> None:
         """Send the person to the authorisation page."""
+        _logger.info("Opening Mail MCP OAuth consent page")
+        _logger.debug(
+            "LoopbackAuthorisationListener.open_consent arguments: authorization_url_length=%d",
+            len(authorization_url),
+        )
         print(f"\nAuthorise the Mail Agent in your browser:\n  {authorization_url}\n")
         webbrowser.open(authorization_url)
 
     async def await_code(self) -> tuple[str, str | None]:
         """Wait for the redirect and return the code and state it carried."""
+        _logger.info("Waiting for Mail MCP OAuth callback")
+        _logger.debug(
+            "LoopbackAuthorisationListener.await_code arguments: port=%d",
+            self._port,
+        )
         return await anyio.to_thread.run_sync(self._serve_once)
 
     def _serve_once(self) -> tuple[str, str | None]:
         """Serve exactly one redirect, then stop listening."""
+        _logger.info("Serving one Mail MCP OAuth callback")
+        _logger.debug(
+            "LoopbackAuthorisationListener._serve_once arguments: port=%d",
+            self._port,
+        )
         captured: dict[str, str] = {}
 
         class Handler(BaseHTTPRequestHandler):
@@ -175,11 +231,23 @@ class PinnedScopeOAuthProvider(OAuthClientProvider):
     """
 
     def __init__(self, *args: Any, pinned_scope: str, **kwargs: Any) -> None:
+        _logger.info("Initializing pinned-scope Mail MCP OAuth provider")
+        _logger.debug(
+            "PinnedScopeOAuthProvider.__init__ arguments: positional_count=%d, keyword_names=%s, scope_count=%d",
+            len(args),
+            tuple(sorted(kwargs)),
+            len(pinned_scope.split()),
+        )
         super().__init__(*args, **kwargs)
         self._pinned_scope = pinned_scope
 
     async def _perform_authorization_code_grant(self) -> tuple[str, str]:
         """Ask for the pinned scopes, whatever the server advertised."""
+        _logger.info("Performing Mail MCP OAuth authorization-code grant")
+        _logger.debug(
+            "PinnedScopeOAuthProvider._perform_authorization_code_grant arguments: scope_count=%d",
+            len(self._pinned_scope.split()),
+        )
         self.context.client_metadata.scope = self._pinned_scope
         return await super()._perform_authorization_code_grant()
 
@@ -188,10 +256,22 @@ class MailOAuthProvider:
     """Builds the authentication attached to a remote MCP transport."""
 
     def __init__(self, settings: MailOAuthSettings | None = None) -> None:
+        _logger.info("Initializing Mail MCP OAuth provider factory")
+        _logger.debug(
+            "MailOAuthProvider.__init__ arguments: injected_settings=%s",
+            settings is not None,
+        )
         self._settings = settings or MailOAuthSettings()
 
     def build(self, server_url: str) -> OAuthClientProvider:
         """Return the OAuth client the HTTP transport authenticates with."""
+        _logger.info("Building Mail MCP OAuth provider")
+        _logger.debug(
+            "MailOAuthProvider.build arguments: server_url_configured=%s, callback_port=%d, scope_count=%d",
+            bool(server_url),
+            self._settings.callback_port,
+            len(self._settings.scopes.split()),
+        )
         self._settings.require_client()
         listener = LoopbackAuthorisationListener(self._settings.callback_port)
         return PinnedScopeOAuthProvider(

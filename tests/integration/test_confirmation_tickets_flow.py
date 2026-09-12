@@ -22,11 +22,9 @@ from ai_agent_lab.core.security.tickets import (
     InMemoryPendingConfirmationStore,
     UnknownTicketError,
 )
+from ai_agent_lab.core.serving.confirmations import ConfirmedOperationRunner
 from ai_agent_lab.maf.approval import MafApprovalTranslator
-from ai_agent_lab.mail.application.approval.tickets import (
-    ConfirmedOperationRunner,
-    TicketApprovalResolver,
-)
+from ai_agent_lab.mail.application.approval.tickets import TicketApprovalResolver
 from ai_agent_lab.mail.application.composition import MailAgentCompositionRoot
 from ai_agent_lab.mail.application.session import MailAgentSession
 from ai_agent_lab.mail.capabilities.results import MailToolResultRenderer

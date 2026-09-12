@@ -4,18 +4,18 @@ A console asks about one operation and holds the turn, so the question is still
 on screen when the person answers. A chat surface has no such luxury: the reply
 is sent, the conversation moves on, and the answer may come several messages
 later - by which time a bare list of identifiers means nothing without scrolling
-back to find out which message each one was.
+back to find out which operation each one was.
 
 So each ticket is rendered with the facts the presenter already resolved for it -
-the subject, the sender, the label's name rather than its identifier - next to
-the words that answer it. Those facts are written by the application, from the
-very request that will authorise the operation, so what the reader judges is what
-gets executed and audited. A model paraphrasing the list could drop an entry or
-describe one it is not about.
+the subject of a message, the title of a page, a label's name rather than its
+identifier - next to the words that answer it. Those facts are written by the
+application, from the very request that will authorise the operation, so what
+the reader judges is what gets executed and audited. A model paraphrasing the
+list could drop an entry or describe one it is not about.
 
-The values come from mail, which is third-party data, so they are contained: one
-line each, and long ones are cut. A subject cannot become a new entry in the
-list, and cannot flood the reply.
+The values come from the enterprise system, which is third-party data, so they
+are contained: one line each, and long ones are cut. A subject cannot become a
+new entry in the list, and cannot flood the reply.
 """
 
 from __future__ import annotations
@@ -28,13 +28,13 @@ from ai_agent_lab.core.security.tickets import TICKET_PREFIX, ConfirmationTicket
 
 _HEADING = "Awaiting your confirmation - nothing has been changed yet:"
 
-# Long enough for a mail subject, short enough that a crafted one cannot bury
-# the rest of the reply.
+# Long enough for a mail subject or a page title, short enough that a crafted
+# one cannot bury the rest of the reply.
 _MAX_VALUE = 160
 _ELLIPSIS = "..."
 
-# A ticket reference is the one token the approval grammar turns on, so a mail
-# subject is not allowed to display one. Quoting an invented reference authorises
+# A ticket reference is the one token the approval grammar turns on, so retrieved
+# content is not allowed to display one. Quoting an invented reference authorises
 # nothing - identifiers are unguessable and an unknown one is refused - but it
 # lets third-party content imitate the application asking for an approval, and
 # that is a conversation nobody should have to second-guess.

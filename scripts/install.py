@@ -42,6 +42,7 @@ WIKI_PROTOCOL = Path("mcp-servers/wiki-protocol")
 WIKI_REFERENCE = Path("mcp-servers/wiki-reference")
 
 EXTRAS = {
+    CORE: "http",
     MAF: "azure",
     LANGGRAPH: "azure",
     MAIL: "maf,native,http",

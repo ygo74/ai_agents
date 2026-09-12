@@ -97,6 +97,43 @@ class TestPrincipalRefusesToGuess:
             principal.subject = "somebody-else"  # type: ignore[misc]
 
 
+class TestAnAgentThatDoesNotAddressByEmail:
+    """Not every agent identifies its subject by an e-mail address.
+
+    A wiki account is an account identifier on Cloud and a username on Data
+    Center, and an identity provider may assert neither. Such an agent says so
+    explicitly rather than being refused callers it can serve, and rather than
+    inventing an address that would then appear in every audit record.
+    """
+
+    def test_a_caller_without_an_email_is_accepted(self):
+        principal = Principal.from_auth_context(
+            auth_context(identity={"email": None}),
+            require_email=False,
+        )
+
+        assert principal.subject == "3f9a-user"
+        assert principal.email == ""
+
+    def test_an_address_is_still_kept_when_the_provider_asserts_one(self):
+        principal = Principal.from_auth_context(auth_context(), require_email=False)
+
+        assert principal.email == "ada@example.com"
+
+    def test_the_subject_is_still_mandatory(self):
+        """The subject is what state is partitioned by, so it is never optional."""
+        with pytest.raises(PrincipalError, match="no subject"):
+            Principal.from_auth_context(
+                auth_context(userId=None, identity={"subject": None, "userId": None}),
+                require_email=False,
+            )
+
+    def test_an_absent_authentication_is_still_refused(self):
+        """Relaxing the address never relaxes the need for a caller."""
+        with pytest.raises(PrincipalError, match="no authenticated caller"):
+            Principal.from_auth_context(None, require_email=False)
+
+
 class TestUserContext:
     """The principal is what every operation of a session is attributed to."""
 

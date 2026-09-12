@@ -52,9 +52,11 @@ From VS Code, press **F5** and pick a configuration from `.vscode/launch.json`:
 
 | Configuration | What it exercises |
 |---|---|
-| **Wiki Agent — mock dataset** | the agent, the skills, the framework. No MCP at all. |
-| **Wiki Agent — reference MCP server** | the above, plus a real stdio transport, a real handshake, the binding and the native dialect |
-| **Wiki Agent — Confluence** | the above, against a real wiki, through `mcp-atlassian` |
+| **Wiki Agent — Console (mock)** | the agent, the skills, the framework. No MCP at all. |
+| **Wiki Agent — Console (reference MCP stdio)** | the above, plus a real stdio transport, a real handshake, the binding and the native dialect |
+| **Wiki Agent — Console (mcp-atlassian)** | the above, against a real wiki, through `mcp-atlassian` |
+| **Wiki Agent — Console (mcp-atlassian HTTP)** | the above, on behalf of the caller, over streamable HTTP |
+| **Wiki Agent — HTTP (mock)** | the agent served on an OpenAI-compatible API, for LibreChat |
 | **Wiki MCP reference server** | the server alone, to inspect its payloads |
 | **Tests — wiki agent** | domain, MCP client, dialects, skills, security |
 
@@ -116,6 +118,22 @@ Against a real Confluence there is a second switch. `.env.example` ships
 `WIKI_MCP_READ_ONLY=true`, so the server itself refuses writes until you set it
 to `false` deliberately. The full reasoning is in
 [wiki-agent.md](./wiki-agent.md#writing-to-the-wiki).
+
+## 5. Serving it over HTTP
+
+Everything above drives one person at a console. To let LibreChat - or another
+agent - talk to it, run the OpenAI-compatible service instead:
+
+```powershell
+$env:WIKI_AGENT_HTTP_API_KEY = "demo-key"
+.\.venvs\wiki-agent\Scripts\python.exe -m uvicorn `
+  "ai_agent_lab.wiki.application.entrypoints.service:build_app" --factory --port 8124
+```
+
+A confirmation cannot hold an HTTP request open, so a gated write ends its turn
+unperformed and comes back as a ticket to answer in a later message. That, the
+authentication modes and the current limit on acting per-caller against
+Confluence are all in [wiki-agent-http.md](./wiki-agent-http.md).
 
 ---
 

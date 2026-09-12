@@ -23,6 +23,7 @@ written. It is an offer, never a condition.
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Callable, Mapping
 
 from ai_agent_lab.mail.mail_errors import MailToolUnavailableError
@@ -36,6 +37,7 @@ DialectFactory = Callable[[McpConnection, McpServerBinding, str], MailTools]
 
 NATIVE = "native"
 GMAIL = "gmail"
+_logger = logging.getLogger(__name__)
 
 
 def _native(connection: McpConnection, binding: McpServerBinding, owner_id: str) -> MailTools:
@@ -57,6 +59,12 @@ class MailDialectRegistry:
     """
 
     def __init__(self, dialects: Mapping[str, DialectFactory] | None = None) -> None:
+        _logger.info("Initializing Mail MCP dialect registry")
+        _logger.debug(
+            "MailDialectRegistry.__init__ arguments: custom_dialects=%s, names=%s",
+            dialects is not None,
+            tuple(sorted(dialects or {NATIVE: _native, GMAIL: _gmail})),
+        )
         self._dialects: dict[str, DialectFactory] = dict(dialects or {NATIVE: _native, GMAIL: _gmail})
 
     @property
@@ -66,12 +74,27 @@ class MailDialectRegistry:
 
     def register(self, name: str, factory: DialectFactory) -> None:
         """Add a dialect, refusing to silently replace one."""
+        _logger.info("Registering Mail MCP dialect")
+        _logger.debug(
+            "MailDialectRegistry.register arguments: name=%s, factory_type=%s",
+            name,
+            type(factory).__name__,
+        )
         if name in self._dialects:
             raise MailToolUnavailableError(f"dialect {name!r} is already registered")
         self._dialects[name] = factory
 
     def build(self, connection: McpConnection, binding: McpServerBinding, owner_id: str) -> MailTools:
         """Build the client a binding asks for."""
+        _logger.info("Building Mail MCP dialect client")
+        _logger.debug(
+            "MailDialectRegistry.build arguments: dialect=%s, server=%s, transport=%s, owner_id=%s, connection_type=%s",
+            binding.dialect,
+            binding.server,
+            binding.transport.value,
+            owner_id,
+            type(connection).__name__,
+        )
         factory = self._dialects.get(binding.dialect)
         if factory is None:
             raise MailToolUnavailableError(

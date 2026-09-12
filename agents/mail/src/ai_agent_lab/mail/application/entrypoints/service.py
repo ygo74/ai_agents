@@ -55,6 +55,8 @@ _logger = logging.getLogger(__name__)
 
 def build_app(*, base_path: Path | None = None) -> FastAPI:
     """Assemble the HTTP service from the environment."""
+    _logger.info("Building Mail Agent HTTP service")
+    _logger.debug("build_app arguments: base_path=%s", base_path)
     EnvironmentFile().load()
     settings = MailAgentSettings()
     http = MailAgentHttpSettings()
@@ -111,11 +113,20 @@ def _closing(
     against a real server, sessions that look active long after they are not.
     """
 
+    _logger.info("Configuring Mail Agent HTTP service shutdown")
+    _logger.debug(
+        "_closing arguments: conversations_type=%s",
+        type(conversations).__name__,
+    )
+
     @asynccontextmanager
     async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
+        _logger.info("Starting Mail Agent HTTP service lifespan")
+        _logger.debug("lifespan arguments: app_title=%s", _app.title)
         try:
             yield
         finally:
+            _logger.info("Closing Mail Agent HTTP conversations")
             await conversations.aclose()
 
     return lifespan
@@ -123,6 +134,8 @@ def _closing(
 
 def _descriptor(composition: MailAgentCompositionRoot) -> AgentDescriptor:
     """Describe the agent from the configuration it was built with."""
+    _logger.info("Building Mail Agent HTTP descriptor")
+    _logger.debug("_descriptor arguments: composition_type=%s", type(composition).__name__)
     return MailAgentDescriptorFactory(composition.manifest(), agent_id=AGENT_ID).build()
 
 
@@ -132,6 +145,15 @@ def _jwt_validation(http: MailAgentHttpSettings) -> JwtValidationConfig | None:
     Returning nothing when no issuer is configured is what keeps the API-key
     demonstration usable: the runtime then has no JWT authenticator to try.
     """
+    _logger.info("Building Mail Agent JWT validation configuration")
+    _logger.debug(
+        "_jwt_validation arguments: issuer_configured=%s, audience=%s, "
+        "roles_claim_path=%s, jwks_override_configured=%s",
+        bool(http.oidc_issuer),
+        http.oidc_audience,
+        http.roles_claim_path,
+        bool(http.jwks_url_override),
+    )
     if not http.oidc_issuer:
         return None
     return JwtValidationConfig(
@@ -154,6 +176,15 @@ def _api_key_resolver(
     integration can be proved before a realm exists, and it is refused outright
     once an issuer is configured: two ways in is one too many.
     """
+    _logger.info("Building Mail Agent API key resolver")
+    _logger.debug(
+        "_api_key_resolver arguments: api_key_configured=%s, issuer_configured=%s, "
+        "user_id=%s, user_email_configured=%s",
+        bool(http.api_key),
+        bool(http.oidc_issuer),
+        settings.user_id,
+        bool(settings.user_email),
+    )
     if not http.api_key:
         return None
     if http.oidc_issuer:
