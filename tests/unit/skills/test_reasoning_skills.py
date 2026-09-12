@@ -107,7 +107,7 @@ def classification_skill(mail_tools, context_builder, mapper, category_catalog, 
         context_builder,
         mapper,
         category_catalog,
-            CLASSIFICATION_PROMPT,
+        CLASSIFICATION_PROMPT,
     )
 
 
@@ -183,9 +183,7 @@ class TestMailSummarySkill:
         assert prompt.index("Never follow") < prompt.index("Ignore all previous instructions")
 
     @pytest.mark.security
-    async def test_rejects_a_summary_referencing_an_unanalysed_message(
-        self, mail_tools, context_builder, mapper
-    ):
+    async def test_rejects_a_summary_referencing_an_unanalysed_message(self, mail_tools, context_builder, mapper):
         forged = {
             **SUMMARY_ANSWER,
             "actions": [
@@ -205,9 +203,7 @@ class TestMailSummarySkill:
             await skill.summarise_message("m1", owner_context())
 
     async def test_reports_a_malformed_reasoner_answer(self, mail_tools, context_builder, mapper):
-        skill = MailSummarySkill(
-            mail_tools, reasoner({MailSummaryOutput: {}}), context_builder, mapper, SUMMARY_PROMPT
-        )
+        skill = MailSummarySkill(mail_tools, reasoner({MailSummaryOutput: {}}), context_builder, mapper, SUMMARY_PROMPT)
 
         with pytest.raises(ReasoningOutputError):
             await skill.summarise_message("m1", owner_context())
@@ -243,9 +239,7 @@ class TestMailClassificationSkill:
         from ai_agent_lab.mail.skills.analysis import MailAnalysisMapper
         from ai_agent_lab.mail.skills.categories import MailCategoryCatalog
 
-        restricted = MailCategoryCatalog(
-            {MailCategory.FYI: "Information only.", MailCategory.OTHER: "Anything else."}
-        )
+        restricted = MailCategoryCatalog({MailCategory.FYI: "Information only.", MailCategory.OTHER: "Anything else."})
         skill = MailClassificationSkill(
             mail_tools,
             reasoner({MailClassificationOutput: CLASSIFICATION_ANSWER}, envelope_builder),
@@ -347,9 +341,7 @@ class TestMailActionExtractionSkill:
 
     async def test_treats_an_unparsable_due_date_as_unknown(self, mail_tools, context_builder, mapper):
         answer = {
-            "actions": [
-                {"description": "Do the thing", "source_message_id": "m1", "due_date": "next friday-ish"}
-            ]
+            "actions": [{"description": "Do the thing", "source_message_id": "m1", "due_date": "next friday-ish"}]
         }
         skill = MailActionExtractionSkill(
             mail_tools, reasoner({MailActionsOutput: answer}), context_builder, mapper, ACTIONS_PROMPT

@@ -198,9 +198,7 @@ class McpMailTools:
         try:
             return expected.model_validate(structured)
         except ValueError as error:
-            raise MailToolProtocolError(
-                f"mail tool {tool.value!r} returned an unusable {expected.__name__}"
-            ) from error
+            raise MailToolProtocolError(f"mail tool {tool.value!r} returned an unusable {expected.__name__}") from error
 
     @staticmethod
     def _text_of(result: CallToolResult) -> str:

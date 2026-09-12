@@ -41,8 +41,6 @@ class ConfirmationMismatchError(SecurityError):
     """
 
     def __init__(self, expected_request_id: str, received_request_id: str) -> None:
-        super().__init__(
-            f"confirmation {received_request_id!r} does not match pending request {expected_request_id!r}"
-        )
+        super().__init__(f"confirmation {received_request_id!r} does not match pending request {expected_request_id!r}")
         self.expected_request_id = expected_request_id
         self.received_request_id = received_request_id

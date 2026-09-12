@@ -193,9 +193,7 @@ class TestDialectRegistry:
             command="docker",
         )
 
-        tools = WikiDialectRegistry().build(
-            McpConnection(binding), binding, DialectContext(account_id="diana")
-        )
+        tools = WikiDialectRegistry().build(McpConnection(binding), binding, DialectContext(account_id="diana"))
 
         assert tools._account_id == "diana"
         assert not tools._is_per_user
@@ -212,9 +210,7 @@ class TestDialectRegistry:
             url="https://wiki-mcp.internal/mcp",
         )
 
-        tools = WikiDialectRegistry().build(
-            McpConnection(binding), binding, DialectContext(is_per_user=True)
-        )
+        tools = WikiDialectRegistry().build(McpConnection(binding), binding, DialectContext(is_per_user=True))
 
         assert tools._is_per_user
 

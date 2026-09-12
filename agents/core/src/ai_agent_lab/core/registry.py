@@ -61,9 +61,7 @@ class SkillDescriptor:
     def __post_init__(self) -> None:
         """Reject a descriptor whose declared name does not match its operation."""
         if self.tool_name != self.operation.tool_name:
-            raise ValueError(
-                f"skill {self.tool_name!r} declares the operation of {self.operation.tool_name!r}"
-            )
+            raise ValueError(f"skill {self.tool_name!r} declares the operation of {self.operation.tool_name!r}")
 
     @classmethod
     def from_manifest(

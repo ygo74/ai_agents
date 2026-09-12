@@ -19,6 +19,7 @@ badly or forbid legitimate reads.
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Mapping
 from typing import Any
 
@@ -48,6 +49,8 @@ from wiki_mcp.protocol.tools import WikiToolName
 # Every tool name this dialect knows how to call. A binding names the ones it
 # serves; this is the whole vocabulary, kept for reference and for tests.
 ALL_ALIASES = tuple(name.value for name in WikiToolName)
+
+_logger = logging.getLogger(__name__)
 
 _ACCOUNT = "account"
 
@@ -96,9 +99,7 @@ class McpWikiTools:
 
     async def get_children(self, page_id: str, user: UserContext) -> WikiPageTree:
         """Return the direct children of a page."""
-        payload = await self._call(
-            WikiToolName.GET_PAGE_CHILDREN, user, page_id=page_id, expected=wire.PageTree
-        )
+        payload = await self._call(WikiToolName.GET_PAGE_CHILDREN, user, page_id=page_id, expected=wire.PageTree)
         return self._mapper.tree(payload)
 
     async def list_spaces(self, user: UserContext) -> tuple[WikiSpace, ...]:
@@ -108,16 +109,12 @@ class McpWikiTools:
 
     async def get_comments(self, page_id: str, user: UserContext) -> tuple[WikiComment, ...]:
         """Return the comments attached to a page."""
-        payload = await self._call(
-            WikiToolName.GET_COMMENTS, user, page_id=page_id, expected=wire.CommentList
-        )
+        payload = await self._call(WikiToolName.GET_COMMENTS, user, page_id=page_id, expected=wire.CommentList)
         return self._mapper.comments(payload)
 
     async def get_history(self, page_id: str, user: UserContext) -> WikiPageHistory:
         """Return the revision history of a page."""
-        payload = await self._call(
-            WikiToolName.GET_PAGE_HISTORY, user, page_id=page_id, expected=wire.PageHistory
-        )
+        payload = await self._call(WikiToolName.GET_PAGE_HISTORY, user, page_id=page_id, expected=wire.PageHistory)
         return self._mapper.history(payload)
 
     async def create_page(
@@ -215,17 +212,24 @@ class McpWikiTools:
         """
         session = await self._connection.session()
         payload = {key: value for key, value in arguments.items() if value is not None}
+        remote_tool = self._binding.remote(tool.value)
+        _logger.info("Calling Native MCP tool '%s' for user=%s", remote_tool, user.user_id)
+        _logger.debug("Native MCP tool '%s' payload: %s", remote_tool, payload)
         try:
             result = await session.call_tool(
-                self._binding.remote(tool.value),
+                remote_tool,
                 {_ACCOUNT: user.user_id, **payload},
             )
         except Exception as error:
+            _logger.exception("Failed to invoke Native MCP tool '%s'", remote_tool)
             raise WikiToolUnavailableError(
                 f"wiki tool {tool.value!r} could not be called: {type(error).__name__}"
             ) from error
         if result.isError:
-            raise decode_failure(self._text_of(result))
+            error_text = self._text_of(result)
+            _logger.warning("Native MCP tool '%s' returned error: %s", remote_tool, error_text)
+            raise decode_failure(error_text)
+        _logger.debug("Native MCP tool '%s' returned successfully", remote_tool)
         return result
 
     @staticmethod
@@ -241,9 +245,7 @@ class McpWikiTools:
         try:
             return expected.model_validate(structured)
         except ValueError as error:
-            raise WikiToolProtocolError(
-                f"wiki tool {tool.value!r} returned an unusable {expected.__name__}"
-            ) from error
+            raise WikiToolProtocolError(f"wiki tool {tool.value!r} returned an unusable {expected.__name__}") from error
 
     @staticmethod
     def _text_of(result: CallToolResult) -> str:

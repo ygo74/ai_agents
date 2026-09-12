@@ -12,6 +12,7 @@ slowly, a sprint plan ages in weeks - so it belongs to configuration.
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Callable, Sequence
 from datetime import UTC, datetime
 
@@ -28,6 +29,8 @@ from ai_agent_lab.wiki.domain.models import (
 from ai_agent_lab.wiki.domain.permissions import WikiPermission
 from ai_agent_lab.wiki.skills.errors import EmptyPageSelectionError
 from ai_agent_lab.wiki.tools_port import WikiReadTools
+
+_logger = logging.getLogger(__name__)
 
 DEFAULT_AGEING_AFTER_DAYS = 90
 DEFAULT_STALE_AFTER_DAYS = 180
@@ -142,9 +145,13 @@ class PageFreshnessSkill:
         """Judge an explicit set of pages."""
         user.require_permission(WikiPermission.READ)
         if not page_ids:
+            _logger.warning("Empty page selection for assess_pages from user=%s", user.user_id)
             raise EmptyPageSelectionError("PageFreshnessSkill")
+        _logger.info("Assessing freshness for %d pages (%s) for user=%s", len(page_ids), page_ids, user.user_id)
         pages = [await self._wiki_tools.get_page(page_id, user) for page_id in page_ids]
-        return self._detector.report([self._detector.assess(page) for page in pages])
+        report = self._detector.report([self._detector.assess(page) for page in pages])
+        _logger.info("Freshness report generated: %d pages assessed", len(report.pages))
+        return report
 
     async def assess_search(self, request: WikiSearchRequest, user: UserContext) -> WikiFreshnessReport:
         """Judge the pages a search returns.
@@ -154,7 +161,8 @@ class PageFreshnessSkill:
         cost a great deal to compute a subtraction.
         """
         user.require_permission(WikiPermission.READ)
+        _logger.info("Assessing freshness from search query='%s' for user=%s", request.text, user.user_id)
         result = await self._wiki_tools.search(request, user)
-        return self._detector.report(
-            [self._detector.assess_reference(reference) for reference in result.references]
-        )
+        report = self._detector.report([self._detector.assess_reference(reference) for reference in result.references])
+        _logger.info("Freshness report generated from search: %d references assessed", len(report.pages))
+        return report

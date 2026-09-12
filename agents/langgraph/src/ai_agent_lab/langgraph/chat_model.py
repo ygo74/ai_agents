@@ -14,6 +14,7 @@ OpenAI path while Azure variables are set - at the cost of a second import.
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Callable
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
@@ -25,6 +26,8 @@ from ai_agent_lab.core.errors import DomainError
 
 if TYPE_CHECKING:
     from azure.core.credentials import TokenCredential
+
+_logger = logging.getLogger(__name__)
 
 
 class ChatModelConfigurationError(DomainError):
@@ -67,6 +70,7 @@ class LangGraphChatModelFactory:
         """Build the direct OpenAI client, which resolves its own key."""
         if not model:
             raise ChatModelConfigurationError("the openai provider requires a model name (OPENAI_CHAT_MODEL)")
+        _logger.info("Building OpenAI chat model for model=%s", model)
         return ChatOpenAI(model=model)
 
     def azure_openai(
@@ -82,10 +86,19 @@ class LangGraphChatModelFactory:
         otherwise start failing partway through, once the first token expired.
         """
         self._require_route(route)
+        norm_endpoint = self._normalised_endpoint(route.endpoint)
+        api_ver = route.api_version or DEFAULT_AZURE_API_VERSION
+        _logger.info(
+            "Building Azure OpenAI chat model (deployment=%s, endpoint=%s, api_version=%s, entra_id=%s)",
+            route.model,
+            norm_endpoint,
+            api_ver,
+            credential is not None,
+        )
         return AzureChatOpenAI(
             azure_deployment=route.model,
-            azure_endpoint=self._normalised_endpoint(route.endpoint),
-            api_version=route.api_version or DEFAULT_AZURE_API_VERSION,
+            azure_endpoint=norm_endpoint,
+            api_version=api_ver,
             azure_ad_token_provider=self._token_provider(credential),
         )
 

@@ -109,10 +109,7 @@ class WikiContextBuilder:
 
     def _comment_section(self, comment: WikiComment) -> UntrustedSection:
         """Build the section describing one comment."""
-        label = (
-            f"comment_id={comment.comment_id} page_id={comment.page_id} "
-            f"created={comment.created_at.isoformat()}"
-        )
+        label = f"comment_id={comment.comment_id} page_id={comment.page_id} created={comment.created_at.isoformat()}"
         body = self._truncate(comment.body.expose(), self._max_comment_characters)
         return UntrustedSection(
             label=label,

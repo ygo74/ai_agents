@@ -132,9 +132,7 @@ class TestSkillToolAdapter:
 
     async def test_a_domain_failure_is_reported_not_raised(self, user: UserContext):
         """The model must learn the operation did not happen, and say so."""
-        tool = SkillToolAdapter(TextRenderer()).to_tool(
-            skill(WRITE_TOOL, write=True, confirm=True, fails=True), user
-        )
+        tool = SkillToolAdapter(TextRenderer()).to_tool(skill(WRITE_TOOL, write=True, confirm=True, fails=True), user)
 
         answer = await tool.ainvoke({"value": "x"})
 
@@ -143,9 +141,7 @@ class TestSkillToolAdapter:
 
     async def test_a_domain_failure_is_logged_as_a_warning(self, user: UserContext, caplog):
         """The framework records a successful call, so the log must not."""
-        tool = SkillToolAdapter(TextRenderer()).to_tool(
-            skill(WRITE_TOOL, write=True, confirm=True, fails=True), user
-        )
+        tool = SkillToolAdapter(TextRenderer()).to_tool(skill(WRITE_TOOL, write=True, confirm=True, fails=True), user)
 
         with caplog.at_level("WARNING"):
             await tool.ainvoke({"value": "x"})
@@ -165,9 +161,7 @@ class TestSkillToolAdapter:
 class TestInterruptPolicy:
     """Which capabilities the framework suspends, and on whose authority."""
 
-    def test_the_policy_decides_what_is_gated(
-        self, policy: ConfiguredConfirmationPolicy, user: UserContext
-    ):
+    def test_the_policy_decides_what_is_gated(self, policy: ConfiguredConfirmationPolicy, user: UserContext):
         registry = SkillRegistry(
             skills=[skill(READ_TOOL, write=False, confirm=False), skill(WRITE_TOOL, write=True, confirm=True)]
         )
@@ -177,9 +171,7 @@ class TestInterruptPolicy:
         assert mapping[READ_TOOL] is False
         assert mapping[WRITE_TOOL] is not False
 
-    def test_ungated_capabilities_are_listed_explicitly(
-        self, policy: ConfiguredConfirmationPolicy, user: UserContext
-    ):
+    def test_ungated_capabilities_are_listed_explicitly(self, policy: ConfiguredConfirmationPolicy, user: UserContext):
         """A missing entry means "never interrupt", so a typo must not ungate."""
         registry = SkillRegistry(skills=[skill(READ_TOOL, write=False, confirm=False)])
 
@@ -218,9 +210,7 @@ def interrupt_over(*names: str) -> FakeInterrupt:
     return FakeInterrupt(
         {
             "action_requests": [{"name": name, "args": {"value": name}} for name in names],
-            "review_configs": [
-                {"action_name": name, "allowed_decisions": list(ALLOWED_DECISIONS)} for name in names
-            ],
+            "review_configs": [{"action_name": name, "allowed_decisions": list(ALLOWED_DECISIONS)} for name in names],
         }
     )
 
@@ -248,9 +238,7 @@ class TestReadingInterrupts:
         assert pending == ()
 
     def test_a_malformed_payload_is_ignored_rather_than_guessed_at(self):
-        pending = LangGraphApprovalTranslator().pending_approvals(
-            [FakeInterrupt({"action_requests": "not a list"})]
-        )
+        pending = LangGraphApprovalTranslator().pending_approvals([FakeInterrupt({"action_requests": "not a list"})])
 
         assert pending == ()
 
@@ -275,9 +263,7 @@ class TestAnsweringInterrupts:
         translator = LangGraphApprovalTranslator()
         pending = translator.pending_approvals([interrupt_over("a", "b")])
 
-        command = translator.resume_command(
-            [pending[0].answer(approved=True), pending[1].answer(approved=False)]
-        )
+        command = translator.resume_command([pending[0].answer(approved=True), pending[1].answer(approved=False)])
 
         decisions = command.resume["decisions"]
         assert [decision["type"] for decision in decisions] == ["approve", "reject"]

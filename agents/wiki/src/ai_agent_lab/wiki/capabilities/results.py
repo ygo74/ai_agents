@@ -191,9 +191,7 @@ class WikiToolResultRenderer:
                 "version": version.version,
                 "modified_at": version.modified_at.isoformat(),
                 "is_minor_edit": version.is_minor_edit,
-                "modified_by_account_id": (
-                    None if version.modified_by is None else version.modified_by.account_id
-                ),
+                "modified_by_account_id": (None if version.modified_by is None else version.modified_by.account_id),
                 "message": (
                     None
                     if version.message is None

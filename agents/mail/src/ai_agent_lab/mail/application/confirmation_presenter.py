@@ -124,9 +124,7 @@ class MailConfirmationPresenter:
         already the readable one; deletion names an identifier, which is not.
         """
         if tool is MailToolName.CREATE_LABEL:
-            return self._skills.management.build_label_confirmation_request(
-                tool, str(arguments.get("name", "")), user
-            )
+            return self._skills.management.build_label_confirmation_request(tool, str(arguments.get("name", "")), user)
         label_id = str(arguments.get("label_id", ""))
         return self._skills.management.build_label_confirmation_request(
             tool,

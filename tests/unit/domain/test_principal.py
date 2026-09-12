@@ -56,9 +56,7 @@ class TestPrincipalFromAuthContext:
         assert not principal.has_role("admin")
 
     def test_it_falls_back_to_the_username_for_display(self):
-        principal = Principal.from_auth_context(
-            auth_context(identity={"name": None, "username": "ada"})
-        )
+        principal = Principal.from_auth_context(auth_context(identity={"name": None, "username": "ada"}))
 
         assert principal.display_name == "ada"
 

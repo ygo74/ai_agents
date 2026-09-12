@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 
 from ai_agent_lab.core.config.directory import ConfigurationDirectory
@@ -19,6 +20,8 @@ from ai_agent_lab.wiki.mcp.binding import McpServerBinding, McpServerBindingLoad
 from ai_agent_lab.wiki.mcp.connection import McpConnection
 from ai_agent_lab.wiki.mcp.dialects import DialectContext, WikiDialectRegistry
 from ai_agent_lab.wiki.tools_port import WikiTools
+
+_logger = logging.getLogger(__name__)
 
 
 class WikiToolsProvider:
@@ -56,6 +59,13 @@ class WikiToolsProvider:
 
     def build(self, *, base_path: Path | None = None) -> WikiTools:
         """Return the wiki tools matching the configured mode."""
+        _logger.info("Building wiki tools for mode=%s", self._settings.mode.value)
+        _logger.debug(
+            "WikiToolsProvider settings: user_id=%s, server=%s, auth_scheme=%s",
+            self._user_id,
+            self._mcp_settings.server,
+            self._mcp_settings.auth_scheme.value,
+        )
         if self._settings.mode is WikiAgentMode.MOCK:
             return self._build_mock(base_path or Path.cwd())
         return self._build_mcp(base_path)
@@ -63,13 +73,23 @@ class WikiToolsProvider:
     def capabilities(self, *, base_path: Path | None = None) -> frozenset[WikiToolName]:
         """Return the capabilities the configured backend can actually serve."""
         if self._settings.mode is WikiAgentMode.MOCK:
-            return frozenset(WikiToolName)
-        return self._binding(base_path).capabilities
+            caps = frozenset(WikiToolName)
+            _logger.debug("Mock mode capabilities count=%d", len(caps))
+            return caps
+        caps = self._binding(base_path).capabilities
+        _logger.debug(
+            "MCP binding '%s' capabilities count=%d: %s",
+            self._mcp_settings.server,
+            len(caps),
+            [c.value for c in caps],
+        )
+        return caps
 
     async def aclose(self) -> None:
         """Close the MCP session, if one was opened."""
         if self._connection is None:
             return
+        _logger.info("Closing MCP connection")
         await self._connection.aclose()
         self._connection = None
 
@@ -77,6 +97,7 @@ class WikiToolsProvider:
         """Build the wiki tools backed by the configured dataset."""
         dataset = self._settings.mock_dataset
         resolved = dataset if dataset.is_absolute() else base_path / dataset
+        _logger.info("Building in-memory wiki tools from dataset: %s", resolved)
         return InMemoryWikiTools(self._dataset_loader.load_file(resolved))
 
     def _build_mcp(self, base_path: Path | None) -> WikiTools:
@@ -89,6 +110,18 @@ class WikiToolsProvider:
         """
         binding = self._binding(base_path)
         authorization = self._authorization()
+        _logger.info(
+            "Building MCP wiki tools with server='%s', dialect='%s', transport='%s'",
+            binding.server,
+            binding.dialect,
+            binding.transport.value,
+        )
+        _logger.debug(
+            "MCP connection config: timeout=%ss, is_per_user=%s, account_id=%s",
+            self._mcp_settings.timeout_seconds,
+            authorization.is_per_user,
+            self._mcp_settings.account_id,
+        )
         self._connection = McpConnection(
             binding,
             timeout_seconds=self._mcp_settings.timeout_seconds,
@@ -105,6 +138,11 @@ class WikiToolsProvider:
 
     def _authorization(self) -> WikiAuthorization:
         """Build the authorisation identifying the caller to a remote server."""
+        _logger.debug(
+            "Resolving authorization for scheme=%s, user=%s",
+            self._mcp_settings.auth_scheme.value,
+            self._user_id,
+        )
         return authorization_for(
             self._mcp_settings.auth_scheme,
             user_id=self._user_id,

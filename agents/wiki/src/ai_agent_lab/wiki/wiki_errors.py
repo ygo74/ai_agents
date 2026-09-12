@@ -146,9 +146,7 @@ def decode_failure(reported: str) -> WikiToolError:
 
 def _first_code(reported: str) -> tuple[str, int] | None:
     """Return the earliest known code in a reported failure, if any."""
-    positions = [
-        (index, code) for code in _FAILURES if (index := reported.find(f"{code}{_SEPARATOR}")) >= 0
-    ]
+    positions = [(index, code) for code in _FAILURES if (index := reported.find(f"{code}{_SEPARATOR}")) >= 0]
     if not positions:
         return None
     index, code = min(positions)

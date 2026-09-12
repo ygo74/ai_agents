@@ -163,12 +163,8 @@ def authorization_for(
         return WikiAuthorization()
 
     if not secret.get_secret_value():
-        raise WikiAuthorizationError(
-            f"the {scheme.value!r} scheme also needs a credential (WIKI_MCP_USER_SECRET)"
-        )
+        raise WikiAuthorizationError(f"the {scheme.value!r} scheme also needs a credential (WIKI_MCP_USER_SECRET)")
     if scheme is WikiAuthScheme.BASIC and not account:
-        raise WikiAuthorizationError(
-            "the 'basic' scheme also needs the account email (WIKI_MCP_USER_ACCOUNT)"
-        )
+        raise WikiAuthorizationError("the 'basic' scheme also needs the account email (WIKI_MCP_USER_ACCOUNT)")
 
     return WikiAuthorization(scheme, ConfiguredUserCredentials({user_id: (account, secret)}))

@@ -7,6 +7,7 @@ wiki server backs its tools, or which agentic framework will drive it.
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 
 from ai_agent_lab.core.manifests import AgentManifest
@@ -20,6 +21,8 @@ from ai_agent_lab.wiki.skills.question_terms import QuestionTerms
 from ai_agent_lab.wiki.skills.search_skill import DocumentationSearchSkill
 from ai_agent_lab.wiki.skills.summary_skill import PageSummarySkill
 from ai_agent_lab.wiki.tools_port import WikiTools
+
+_logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True, slots=True)
@@ -54,25 +57,46 @@ class WikiSkillsFactory:
 
     def build(self) -> WikiSkills:
         """Assemble every skill."""
+        _logger.info("Assembling 4 domain skills for Wiki Agent (search, summary, answer, freshness)...")
         mapper = WikiAnalysisMapper()
+        summarise_prompt = self._prompt_of(SUMMARISE_PAGE)
+        answer_prompt = self._prompt_of(ANSWER_FROM_WIKI)
+        _logger.debug(
+            "Prompts loaded: summarise_page=%d chars, answer_from_wiki=%d chars",
+            len(summarise_prompt),
+            len(answer_prompt),
+        )
+        search_skill = DocumentationSearchSkill(self._wiki_tools)
+        _logger.debug("Built DocumentationSearchSkill")
+
+        summary_skill = PageSummarySkill(
+            self._wiki_tools,
+            self._reasoner,
+            self._context_builder,
+            mapper,
+            summarise_prompt,
+        )
+        _logger.debug("Built PageSummarySkill")
+
+        answer_skill = DocumentationAnswerSkill(
+            self._wiki_tools,
+            self._reasoner,
+            self._context_builder,
+            mapper,
+            answer_prompt,
+            question_terms=self._question_terms,
+        )
+        _logger.debug("Built DocumentationAnswerSkill")
+
+        freshness_skill = PageFreshnessSkill(self._wiki_tools, self._freshness_detector)
+        _logger.debug("Built PageFreshnessSkill")
+
+        _logger.info("All domain skills successfully assembled")
         return WikiSkills(
-            search=DocumentationSearchSkill(self._wiki_tools),
-            summary=PageSummarySkill(
-                self._wiki_tools,
-                self._reasoner,
-                self._context_builder,
-                mapper,
-                self._prompt_of(SUMMARISE_PAGE),
-            ),
-            answer=DocumentationAnswerSkill(
-                self._wiki_tools,
-                self._reasoner,
-                self._context_builder,
-                mapper,
-                self._prompt_of(ANSWER_FROM_WIKI),
-                question_terms=self._question_terms,
-            ),
-            freshness=PageFreshnessSkill(self._wiki_tools, self._freshness_detector),
+            search=search_skill,
+            summary=summary_skill,
+            answer=answer_skill,
+            freshness=freshness_skill,
         )
 
     def _prompt_of(self, tool_name: str) -> str:
@@ -84,6 +108,10 @@ class WikiSkillsFactory:
         somebody could later mistake for the delivered one.
         """
         try:
-            return self._manifest.skill(tool_name).prompt
+            prompt = self._manifest.skill(tool_name).prompt
         except KeyError:
+            _logger.debug("No manifest prompt found for skill '%s', using empty prompt", tool_name)
             return ""
+        else:
+            _logger.debug("Loaded prompt for skill '%s' (%d chars)", tool_name, len(prompt))
+            return prompt

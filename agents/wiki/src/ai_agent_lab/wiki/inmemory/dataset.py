@@ -156,9 +156,7 @@ class WikiDatasetLoader:
         display_name = self._optional_str(entry, "display_name")
         return WikiAuthor(
             account_id=self._require_str(entry, "account_id"),
-            display_name=(
-                None if display_name is None else untrusted(display_name, UntrustedOrigin.WIKI_AUTHOR_NAME)
-            ),
+            display_name=(None if display_name is None else untrusted(display_name, UntrustedOrigin.WIKI_AUTHOR_NAME)),
         )
 
     @staticmethod

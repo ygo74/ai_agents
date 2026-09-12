@@ -71,7 +71,5 @@ class LoopbackConsent:
             server.handle_request()
 
         if "code" not in captured:
-            raise AuthorisationFailedError(
-                f"authorisation failed: {captured.get('error', 'no code was returned')}"
-            )
+            raise AuthorisationFailedError(f"authorisation failed: {captured.get('error', 'no code was returned')}")
         return captured["code"], captured.get("state")

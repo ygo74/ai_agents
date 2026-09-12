@@ -94,8 +94,7 @@ class TestSeveralOperationsAreWaiting:
     def test_every_ticket_is_answerable_on_its_own(self):
         """Six labelled messages means six decisions, each identifiable."""
         tickets = tuple(
-            _ticket(_request(("Message", f"id-{index}"), ("Subject", f"subject {index}")))
-            for index in range(6)
+            _ticket(_request(("Message", f"id-{index}"), ("Subject", f"subject {index}"))) for index in range(6)
         )
 
         rendered = PendingConfirmationRenderer().render(tickets)

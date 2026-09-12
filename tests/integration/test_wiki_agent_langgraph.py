@@ -102,9 +102,7 @@ class TestCapabilityExposure:
         assert WikiToolName.GET_PAGE_HISTORY.value not in names
         assert WikiToolName.SEARCH_WIKI.value in names
 
-    def test_an_analysis_capability_needs_the_tools_it_retrieves_with(
-        self, tmp_path: Path, monkeypatch
-    ):
+    def test_an_analysis_capability_needs_the_tools_it_retrieves_with(self, tmp_path: Path, monkeypatch):
         """Summarising is useless against a server that cannot return a page."""
         self._deliver_binding(tmp_path, capabilities=["search_wiki"])
         monkeypatch.setenv("AI_AGENT_LAB_CONFIG_DIR", str(tmp_path))
@@ -259,9 +257,7 @@ def _tool_messages(runtime) -> str:
     """Return every tool result the model was shown."""
     state = runtime.agent.get_state({"configurable": {"thread_id": runtime.thread_id}})
     return "\n".join(
-        str(message.content)
-        for message in state.values["messages"]
-        if message.__class__.__name__ == "ToolMessage"
+        str(message.content) for message in state.values["messages"] if message.__class__.__name__ == "ToolMessage"
     )
 
 

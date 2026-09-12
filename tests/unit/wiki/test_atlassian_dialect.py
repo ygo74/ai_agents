@@ -245,26 +245,20 @@ class TestCqlBuilding:
         assert "type = page" in query
 
     def test_spaces_and_labels_are_combined(self):
-        query = CqlQueryBuilder().build(
-            WikiSearchRequest(space_keys=("APOLLO", "ENG"), labels=("scope", "project"))
-        )
+        query = CqlQueryBuilder().build(WikiSearchRequest(space_keys=("APOLLO", "ENG"), labels=("scope", "project")))
 
         assert 'space in ("APOLLO", "ENG")' in query
         assert 'label = "scope"' in query
         assert 'label = "project"' in query
 
     def test_a_window_is_rendered_as_dates(self):
-        query = CqlQueryBuilder().build(
-            WikiSearchRequest(text="x", modified_after=datetime(2026, 9, 1, tzinfo=UTC))
-        )
+        query = CqlQueryBuilder().build(WikiSearchRequest(text="x", modified_after=datetime(2026, 9, 1, tzinfo=UTC)))
 
         assert 'lastmodified >= "2026-09-01"' in query
 
     def test_ordering_is_expressed_where_it_exists(self):
         by_title = CqlQueryBuilder().build(WikiSearchRequest(text="x", sort_order=WikiSortOrder.TITLE))
-        by_relevance = CqlQueryBuilder().build(
-            WikiSearchRequest(text="x", sort_order=WikiSortOrder.RELEVANCE)
-        )
+        by_relevance = CqlQueryBuilder().build(WikiSearchRequest(text="x", sort_order=WikiSortOrder.RELEVANCE))
 
         assert by_title.endswith("order by title asc")
         assert "order by" not in by_relevance
@@ -279,7 +273,7 @@ class TestCqlBuilding:
 
     @pytest.mark.security
     def test_a_backslash_cannot_escape_the_escaping(self):
-        query = CqlQueryBuilder().build(WikiSearchRequest(text='back\\slash'))
+        query = CqlQueryBuilder().build(WikiSearchRequest(text="back\\slash"))
 
         assert "\\\\" in query
 
@@ -296,9 +290,7 @@ class TestFailuresReportedAsSuccess:
     @pytest.mark.security
     async def test_a_failed_deletion_is_not_reported_as_a_deletion(self, user: UserContext):
         """The agent would otherwise tell the user a page was deleted."""
-        tools, _ = build(
-            {"confluence_delete_page": {"success": False, "message": "Error deleting page 123456"}}
-        )
+        tools, _ = build({"confluence_delete_page": {"success": False, "message": "Error deleting page 123456"}})
 
         with pytest.raises(WikiToolProtocolError):
             await tools.delete_page("123456", user)

@@ -128,9 +128,7 @@ class TestConfirmationBypass:
     async def test_a_confirmation_cannot_be_replayed_across_operations(self, mail_tools, runner):
         management = MailManagementSkill(mail_tools, mail_tools, mail_tools, runner)
         send = SendMailSkill(mail_tools, mail_tools, runner)
-        harmless = management.build_confirmation_request(
-            MailToolName.MARK_READ, "m-alpha-1", LOCAL_USER, is_read=True
-        )
+        harmless = management.build_confirmation_request(MailToolName.MARK_READ, "m-alpha-1", LOCAL_USER, is_read=True)
         approval = ConfirmationDecision(request_id=harmless.request_id, approved=True, decided_by="local-user")
 
         with pytest.raises(ConfirmationMismatchError):

@@ -87,20 +87,37 @@ class WikiAgentSession:
         doing. The second is a ceiling on rounds of any kind, so a runaway loop
         still ends.
         """
+        _logger.info("Starting turn for thread_id=%s (message_length=%d)", self._runtime.thread_id, len(message))
+        _logger.debug("Turn user message: %s", message)
         result = await self._runtime.agent.ainvoke(
             {"messages": [{"role": "user", "content": message}]},
             config=self._config,
         )
         asked = 0
-        for _ in range(self._max_total_rounds):
+        for round_idx in range(self._max_total_rounds):
             pending = self._pending_of(result)
             if not pending:
-                return self._text_of(result)
+                response = self._text_of(result)
+                _logger.info("Turn completed normally in round %d (response_length=%d)", round_idx + 1, len(response))
+                _logger.debug("Turn assistant response: %s", response)
+                return response
+            _logger.info(
+                "Round %d: %d pending tool approval(s) suspended by middleware",
+                round_idx + 1,
+                len(pending),
+            )
+            _logger.debug(
+                "Pending approvals: %s",
+                [(p.tool_name, p.arguments) for p in pending],
+            )
             if self._resolver.will_question(pending):
                 asked += 1
+                _logger.debug("Approval round %d / max %d required human question", asked, self._max_asked_rounds)
                 if asked > self._max_asked_rounds:
+                    _logger.warning("Max approval rounds (%d) exceeded, abandoning turn", self._max_asked_rounds)
                     return await self._abandon(result, _INTERRUPTED)
             result = await self._resume(pending)
+        _logger.warning("Max total rounds (%d) exceeded, abandoning turn", self._max_total_rounds)
         return await self._abandon(result, _EXHAUSTED)
 
     def _pending_of(self, result: Any) -> tuple[PendingToolApproval, ...]:
@@ -124,7 +141,10 @@ class WikiAgentSession:
 
     async def _resume(self, pending: tuple[PendingToolApproval, ...]) -> Any:
         """Collect the user's answers and let the graph continue."""
+        _logger.debug("Resolving %d pending approvals with resolver", len(pending))
         decisions = await self._resolver.resolve(pending)
+        _logger.info("Resuming graph execution with %d decision(s)", len(decisions))
+        _logger.debug("Resume decisions: %s", decisions)
         return await self._runtime.agent.ainvoke(
             self._translator.resume_command(decisions),
             config=self._config,
@@ -137,12 +157,14 @@ class WikiAgentSession:
         the graph interrupted under this thread, and the next turn would resume
         a batch the user was told had been abandoned.
         """
+        _logger.info("Abandoning turn, reason: %s", reason)
         current = result
         for _ in range(self._max_asked_rounds):
             pending = self._pending_of(current)
             if not pending:
                 return reason
             answers = [approval.answer(approved=False) for approval in pending]
+            _logger.debug("Rejecting %d pending approval(s) during abandonment", len(answers))
             try:
                 current = await self._runtime.agent.ainvoke(
                     self._translator.resume_command(answers),

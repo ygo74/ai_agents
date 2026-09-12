@@ -154,9 +154,7 @@ class LoopbackAuthorisationListener:
             server.handle_request()
 
         if "code" not in captured:
-            raise MailToolUnavailableError(
-                f"authorisation failed: {captured.get('error', 'no code was returned')}"
-            )
+            raise MailToolUnavailableError(f"authorisation failed: {captured.get('error', 'no code was returned')}")
         return captured["code"], captured.get("state")
 
 

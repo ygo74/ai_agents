@@ -125,9 +125,7 @@ class InMemoryWikiTools:
         updated = entry.page.model_copy(
             update={
                 "body": untrusted(body, UntrustedOrigin.WIKI_PAGE_BODY),
-                "title": (
-                    entry.page.title if title is None else untrusted(title, UntrustedOrigin.WIKI_PAGE_TITLE)
-                ),
+                "title": (entry.page.title if title is None else untrusted(title, UntrustedOrigin.WIKI_PAGE_TITLE)),
                 "last_modified_at": now,
                 "version": entry.page.version + 1,
             }

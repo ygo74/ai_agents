@@ -16,6 +16,7 @@ language model is never consulted about it.
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Mapping, Sequence
 from typing import Any
 
@@ -30,6 +31,8 @@ from ai_agent_lab.core.security.confirmation import (
     ConfirmationRequest,
 )
 from ai_agent_lab.core.security.context import UserContext
+
+_logger = logging.getLogger(__name__)
 
 # The only two answers a gated capability accepts.
 #
@@ -88,10 +91,14 @@ class LangGraphApprovalTranslator:
         listing only the gated ones would make a typo silently ungate an
         operation instead of failing.
         """
-        return {
+        table = {
             descriptor.tool_name: self._entry(policy.requires_confirmation(descriptor.operation, user))
             for descriptor in definition.skills
         }
+        gated = [k for k, v in table.items() if v is not False]
+        _logger.info("Configured interrupt policy: %d total tools, %d gated (%s)", len(table), len(gated), gated)
+        _logger.debug("Interrupt configuration table: %s", {k: bool(v) for k, v in table.items()})
+        return table
 
     @staticmethod
     def _entry(gated: bool) -> bool | InterruptOnConfig:
@@ -102,11 +109,13 @@ class LangGraphApprovalTranslator:
 
     def pending_approvals(self, interrupts: Sequence[Any]) -> tuple[PendingToolApproval, ...]:
         """Every tool call the framework suspended in this response."""
-        return tuple(
-            PendingToolApproval(action)
-            for interrupt in interrupts
-            for action in self._action_requests(interrupt)
+        approvals = tuple(
+            PendingToolApproval(action) for interrupt in interrupts for action in self._action_requests(interrupt)
         )
+        if approvals:
+            _logger.info("Found %d pending tool approval(s) in interrupt payload", len(approvals))
+            _logger.debug("Pending approvals summary: %s", [(a.tool_name, a.arguments) for a in approvals])
+        return approvals
 
     @staticmethod
     def _action_requests(interrupt: Any) -> tuple[Mapping[str, Any], ...]:
@@ -130,6 +139,7 @@ class LangGraphApprovalTranslator:
         The framework matches decisions to actions by position, so the order the
         approvals were read in is the order they must be answered in.
         """
+        _logger.debug("Building LangGraph resume command with %d decisions", len(decisions))
         return Command(resume={"decisions": list(decisions)})
 
     def decision_for(
@@ -140,6 +150,12 @@ class LangGraphApprovalTranslator:
         approved: bool,
     ) -> ConfirmationDecision:
         """Build the domain decision matching a confirmation request."""
+        _logger.debug(
+            "Creating ConfirmationDecision (request_id=%s, approved=%s, decided_by=%s)",
+            request.request_id,
+            approved,
+            user.user_id,
+        )
         return ConfirmationDecision(
             request_id=request.request_id,
             approved=approved,
