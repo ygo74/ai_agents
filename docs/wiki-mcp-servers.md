@@ -81,8 +81,16 @@ remote topology.
 caller executes tools with the operator's credentials.
 
 **Narrow the surface.** `READ_ONLY_MODE=true` and
-`TOOLSETS=confluence_pages,confluence_comments` for the first increment. The
-server exposes around 98 tools across Jira and Confluence; the agent needs ten.
+`TOOLSETS=confluence_pages,confluence_comments` remain the delivered defaults.
+The server exposes around 98 tools across Jira and Confluence; the agent needs
+ten.
+
+The agent now delivers four write capabilities, each gated by the confirmation
+policy and two of them additionally pinned by the security floor. That changes
+nothing here: `READ_ONLY_MODE` is the server's own switch, and leaving it `true`
+means a misconfigured agent still cannot write. Set it to `false` deliberately,
+when writing is what the deployment is for. The delivered toolsets already carry
+the page and comment tools those capabilities need.
 
 ## Identity is the hard part
 

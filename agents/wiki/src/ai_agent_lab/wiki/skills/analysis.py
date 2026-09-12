@@ -60,6 +60,20 @@ class DocumentationGapOutput(ReasonerOutput):
     reason: str = ""
 
 
+class PageDraftOutput(ReasonerOutput):
+    """Page content a model composed, before anybody approved it.
+
+    Deliberately not carrying a space key, a page identifier or a version. Where
+    a draft is written is decided by the person asking, not by the model, and a
+    destination proposed by a language model reading third-party pages is exactly
+    the kind of thing a planted instruction would try to influence.
+    """
+
+    title: str = ""
+    body: str
+
+
+
 class DocumentationGapsOutput(ReasonerOutput):
     """The gaps found between an expected structure and what exists."""
 

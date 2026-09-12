@@ -4,14 +4,22 @@ name: wiki-agent
 
 description: >-
   Assists a member of a project team with the project documentation: finds pages, reads
-  them, summarises them, answers questions from them while citing its sources, and reports
-  which documentation has gone stale.
+  them, summarises them, answers questions from them while citing its sources, reports
+  which documentation has gone stale, and — on explicit request and after confirmation —
+  drafts and publishes pages and comments.
 
 # Capabilities offered to the model, in this order. Each name is a package
 # delivered under config/skills/wiki/. Removing a name removes the capability.
 #
-# Read-only for this increment. The write capabilities exist in the domain, in
-# the catalogue and in both dialects; they are simply not delivered here yet.
+# The write capabilities come last, and drafting comes before them, because that
+# is the order they are meant to be used in: compose, show the person, publish
+# only if they ask. Every write is gated by the confirmation policy, and
+# update_page and delete_page are additionally pinned by the security floor in
+# code, which no file here can lower.
+#
+# A capability the bound MCP server does not serve is filtered out at assembly
+# rather than offered and refused, so a server running read-only exposes none of
+# the four writes even though they are named here.
 skills:
   - answer_from_wiki
   - search_wiki
@@ -22,3 +30,8 @@ skills:
   - get_page_history
   - summarise_page
   - assess_page_freshness
+  - draft_page_content
+  - create_page
+  - update_page
+  - add_comment
+  - delete_page

@@ -22,6 +22,7 @@ from ai_agent_lab.core.security.confirmation import (
     ConfirmationRequest,
 )
 from ai_agent_lab.core.security.context import UserContext
+from ai_agent_lab.core.security.ledger import InMemoryConfirmationLedger
 from ai_agent_lab.maf.approval import PendingToolApproval
 from ai_agent_lab.mail.application.approval.resolver import ApprovalRound
 from ai_agent_lab.mail.application.confirmation_presenter import MailConfirmationPresenter
@@ -30,7 +31,6 @@ from ai_agent_lab.mail.application.console import (
     Console,
     ConsoleConfirmationPrompt,
 )
-from ai_agent_lab.mail.inmemory.confirmation_ledger import InMemoryConfirmationLedger
 
 
 class ConsoleApprovalResolver:

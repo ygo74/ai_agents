@@ -27,12 +27,14 @@ from ai_agent_lab.core.observability.audit import InMemoryAuditTrail, LoggingAud
 from ai_agent_lab.core.reasoning.envelope import PromptEnvelopeBuilder
 from ai_agent_lab.core.reasoning.ports import TextReasoner
 from ai_agent_lab.core.registry import SkillDescriptor, SkillRegistry
+from ai_agent_lab.core.security.broker import ConfirmationBroker
 from ai_agent_lab.core.security.confirmation import (
     ConfiguredConfirmationPolicy,
     ConfirmationPolicy,
     InMemoryConfirmationPreferenceStore,
 )
 from ai_agent_lab.core.security.context import UserContext
+from ai_agent_lab.core.security.ledger import InMemoryConfirmationLedger
 from ai_agent_lab.core.security.permissions import PermissionRegistry
 from ai_agent_lab.core.security.principal import Principal
 from ai_agent_lab.core.security.unattended import UnattendedApprovalAuthority
@@ -41,7 +43,6 @@ from ai_agent_lab.maf.tool_adapter import SkillToolAdapter
 from ai_agent_lab.mail.application.confirmation_presenter import MailConfirmationPresenter
 from ai_agent_lab.mail.application.mail_tools_provider import MailToolsProvider
 from ai_agent_lab.mail.application.skills_factory import MailSkills, MailSkillsFactory
-from ai_agent_lab.mail.capabilities.confirmation_broker import ConfirmationBroker
 from ai_agent_lab.mail.capabilities.converters import MailSearchRequestFactory
 from ai_agent_lab.mail.capabilities.read_capabilities import MailReadCapabilities
 from ai_agent_lab.mail.capabilities.results import MAIL_UNTRUSTED_SOURCE, MailToolResultRenderer
@@ -51,7 +52,6 @@ from ai_agent_lab.mail.config.local_principal import LocalPrincipalSource
 from ai_agent_lab.mail.config.mailbox_directory import ConfiguredMailboxOwnerDirectory
 from ai_agent_lab.mail.config.settings import ChatClientSettings, MailAgentSettings
 from ai_agent_lab.mail.domain.permissions import MailPermission
-from ai_agent_lab.mail.inmemory.confirmation_ledger import InMemoryConfirmationLedger
 from ai_agent_lab.mail.inmemory.dataset import MailDatasetLoader
 from ai_agent_lab.mail.inmemory.draft_store import InMemoryDraftStore
 from ai_agent_lab.mail.security_floor import MailSecurityFloor

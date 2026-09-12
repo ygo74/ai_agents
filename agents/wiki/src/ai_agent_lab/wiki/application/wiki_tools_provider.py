@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import os
+from collections.abc import Mapping
 from pathlib import Path
 
 from ai_agent_lab.core.config.directory import ConfigurationDirectory
@@ -46,12 +48,14 @@ class WikiToolsProvider:
         user_id: str = "",
         mcp_settings: WikiMcpSettings | None = None,
         dialects: WikiDialectRegistry | None = None,
+        environment: Mapping[str, str] | None = None,
     ) -> None:
         self._settings = settings
         self._dataset_loader = dataset_loader
         self._user_id = user_id or settings.user_id
         self._mcp_settings = mcp_settings or WikiMcpSettings()
         self._dialects = dialects or WikiDialectRegistry()
+        self._environment = dict(environment if environment is not None else os.environ)
         self._connection: McpConnection | None = None
 
     def build(self, *, base_path: Path | None = None) -> WikiTools:
@@ -61,10 +65,15 @@ class WikiToolsProvider:
         return self._build_mcp(base_path)
 
     def capabilities(self, *, base_path: Path | None = None) -> frozenset[WikiToolName]:
-        """Return the capabilities the configured backend can actually serve."""
+        """Return the capabilities the configured backend can actually serve.
+
+        The deployment is taken into account, not just the file: a server started
+        read-only exposes no write tool, so the write capabilities are withdrawn
+        rather than offered to the model and refused on the first call.
+        """
         if self._settings.mode is WikiAgentMode.MOCK:
             return frozenset(WikiToolName)
-        return self._binding(base_path).capabilities
+        return self._binding(base_path).capabilities_in(self._environment)
 
     async def aclose(self) -> None:
         """Close the MCP session, if one was opened."""

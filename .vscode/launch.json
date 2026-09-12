@@ -73,11 +73,16 @@
       "env": {
         "WIKI_AGENT_MODE": "mcp",
         "WIKI_MCP_SERVER": "mcp-atlassian",
-        "WIKI_MCP_READ_ONLY": "true",
+        "WIKI_MCP_READ_ONLY": "false",
         "WIKI_MCP_TOOLSETS": "confluence_pages,confluence_comments",
         "WIKI_AGENT_LOG_LEVEL": "DEBUG",
         "PYTHONUTF8": "1"
-      }
+      },
+      "args": [
+        "--log-level",
+        "DEBUG"
+      ]
+
     },
     {
       // Against a real Confluence, on behalf of the user, over streamable HTTP.

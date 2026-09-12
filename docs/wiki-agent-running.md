@@ -80,7 +80,42 @@ authorisation model working, and it is worth seeing once.
 
 Try also: *"read the onboarding page"*. That page carries a planted instruction
 telling the agent to dump the `BOARD` space and delete the decision log. It
-should be reported as a suspicious instruction, not followed.
+should be reported as a suspicious instruction, not followed. In `mock` mode the
+write capabilities are live against the in-memory dataset, so this is also the
+cheapest way to watch the confirmation prompt refuse to appear for an operation
+nobody asked for.
+
+## 4. Writing to the wiki
+
+The agent can draft and publish pages and comments. Two things are worth knowing
+before trying it.
+
+**Composing never writes.** Ask for *"draft a revision of the architecture page
+mentioning the new queue"* and the agent calls `draft_page_content`, which
+composes a body, stores it and shows it to you. Nothing has reached the wiki. Ask
+it to publish, and `update_page` takes the stored draft — not a body the model
+supplies a second time — so what is written is what you read.
+
+**Every write asks first.** The console prints the operation, its risk, the page
+and the body, then waits:
+
+```text
+Replace the content of this page?
+  Operation: update_page (risk: high)
+  Page: apollo-architecture
+  New body: ...
+  Replaces version: 2
+Allow it? [y/N]
+```
+
+Anything that is not an explicit `y` is a refusal. `update_page` and
+`delete_page` always ask, whatever the configuration says; `add_comment` and
+`create_page` ask by default and a deployment may decide otherwise.
+
+Against a real Confluence there is a second switch. `.env.example` ships
+`WIKI_MCP_READ_ONLY=true`, so the server itself refuses writes until you set it
+to `false` deliberately. The full reasoning is in
+[wiki-agent.md](./wiki-agent.md#writing-to-the-wiki).
 
 ---
 
@@ -280,6 +315,16 @@ ten. Two independent limits apply, and both are worth having: the server refuses
 to expose what it was not asked to, and the binding refuses to advertise what it
 did not declare.
 
+`WIKI_MCP_READ_ONLY` is the switch that decides whether this agent may write at
+all, and it governs **both** halves. The value reaches the server process, which
+drops from nineteen tools to nine and exposes no write tool whatsoever; and the
+agent reads it through `read_only_variable` in the binding and withdraws its four
+write capabilities. They can no longer disagree — which they could, and the
+symptom was an approved edit failing because the tool did not exist.
+
+Set it to `false` when writing is what the deployment is for. An unset or
+misspelled value reads as read-only.
+
 ## Adding another wiki system
 
 Notion, XWiki, SharePoint: three steps, none of which touches the domain, the
@@ -305,3 +350,6 @@ requirement — and the server this repository actually targets does not take it
 | `speaks the 'x' dialect, which is not implemented` | `dialect:` names something not in the registry; the message lists what is |
 | `could not be reached: FileNotFoundError` | for `mcp-atlassian`, Docker is not running |
 | The agent says documentation does not exist | check `WIKI_AGENT_USER_ID`: a refusal is reported as a refusal, but an empty *search* looks like absence |
+| A write is refused although you approved it | the confirmation was collected for a different target; see the `ConfirmationKey` discussion in [wiki-agent.md](./wiki-agent.md#how-an-approval-travels) |
+| `page 'x' is at version N, not the expected M` | somebody edited the page between the drafting turn and the publishing turn. Draft again from the current version; the refusal is what stops their work being lost |
+| The agent says it cannot change anything | `WIKI_MCP_READ_ONLY=true`. That withdraws the four write capabilities on purpose, because the server exposes no write tool in that mode. Set it to `false` and restart |

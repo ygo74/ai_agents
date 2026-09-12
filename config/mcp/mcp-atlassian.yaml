@@ -65,22 +65,30 @@ dialect: atlassian
 
 # What this server can actually serve.
 #
-# Read-only for the first increment. The write tools exist on the server and the
-# dialect implements them; they are simply not declared here, so they are never
-# offered to the model. Enabling them is this list plus WIKI_MCP_READ_ONLY=false,
-# and no code change.
+# The four write tools are declared now that the agent delivers the capabilities
+# that use them. Whether they are *offered* depends on the deployment:
+# `read_only_variable` names the switch, and the same variable is handed to the
+# server in the `env:` block above. With WIKI_MCP_READ_ONLY=true the server
+# exposes no write tool and the agent withdraws all four, so it never proposes an
+# edit it cannot carry out.
 #
 # Deliberately absent:
 #   get_page_history - confluence_get_page_history returns ONE named revision,
 #                      not the list of revisions, and no tool enumerates them.
 #                      Synthesising a history from a single revision would be a
 #                      lie the agent would then reason from.
+read_only_variable: WIKI_MCP_READ_ONLY
+
 capabilities:
   - search_wiki
   - get_page
   - get_page_children
   - list_spaces
   - get_comments
+  - create_page
+  - update_page
+  - add_comment
+  - delete_page
 
 # Names this server gives to the tools the dialect uses.
 #

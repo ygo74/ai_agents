@@ -362,3 +362,49 @@ class WikiFreshnessReport(DomainModel):
     def stale(self) -> tuple[WikiPageFreshness, ...]:
         """The pages judged stale."""
         return tuple(page for page in self.pages if page.freshness is WikiFreshness.STALE)
+
+
+class WikiPageDraft(DomainModel):
+    """Page content prepared but not yet written to the wiki.
+
+    Composing and writing are two separate turns, and the draft is what joins
+    them. The title and body are produced by reasoning over pages other people
+    wrote, so they stay untrusted until a human has approved them.
+
+    ``page_id`` distinguishes the two things a draft can become. Absent, the
+    draft creates a page in ``space_key``. Present, it replaces the body of that
+    page, and ``expected_version`` carries the revision it was composed against.
+
+    Refusing a draft that is neither is not pedantry: a draft with no space and
+    no page has no destination, and discovering that at write time would mean
+    discovering it after the user had already approved something.
+    """
+
+    space_key: str = ""
+    title: UntrustedText | None = None
+    body: UntrustedText
+    page_id: str | None = None
+    expected_version: int | None = Field(default=None, ge=1)
+    parent_id: str | None = None
+
+    @property
+    def replaces_a_page(self) -> bool:
+        """Whether writing this draft overwrites an existing page."""
+        return self.page_id is not None
+
+    @model_validator(mode="after")
+    def _validate_destination(self) -> WikiPageDraft:
+        """Refuse a draft that names nowhere to go."""
+        if self.page_id is None and not self.space_key:
+            raise ValueError("a page draft must name either the page it replaces or the space it is created in")
+        if self.page_id is None and self.title is None:
+            raise ValueError("a page draft that creates a page must carry a title")
+        return self
+
+    @model_validator(mode="after")
+    def _validate_parentage(self) -> WikiPageDraft:
+        """Refuse a draft parented to the very page it replaces."""
+        if self.parent_id is not None and self.parent_id == self.page_id:
+            raise ValueError("a page draft cannot be its own parent")
+        return self
+

@@ -33,21 +33,26 @@ from langgraph.checkpoint.memory import InMemorySaver
 from ai_agent_lab.core.config.directory import ConfigurationDirectory
 from ai_agent_lab.core.config.manifests import AgentManifestLoader, SkillManifestLoader
 from ai_agent_lab.core.manifests import AgentManifest
-from ai_agent_lab.core.observability.audit import InMemoryAuditTrail
+from ai_agent_lab.core.observability.audit import InMemoryAuditTrail, LoggingAuditTrail
 from ai_agent_lab.core.reasoning.envelope import PromptEnvelopeBuilder
 from ai_agent_lab.core.reasoning.ports import TextReasoner
 from ai_agent_lab.core.registry import SkillDescriptor, SkillRegistry
+from ai_agent_lab.core.security.broker import ConfirmationBroker
 from ai_agent_lab.core.security.confirmation import (
     ConfiguredConfirmationPolicy,
+    ConfirmationGate,
     ConfirmationPolicy,
     InMemoryConfirmationPreferenceStore,
 )
 from ai_agent_lab.core.security.context import UserContext
+from ai_agent_lab.core.security.ledger import InMemoryConfirmationLedger
 from ai_agent_lab.core.security.permissions import PermissionRegistry
 from ai_agent_lab.core.security.principal import Principal
+from ai_agent_lab.core.security.unattended import UnattendedApprovalAuthority
 from ai_agent_lab.langgraph.approval import LangGraphApprovalTranslator
 from ai_agent_lab.langgraph.reasoner import LangGraphTextReasoner
 from ai_agent_lab.langgraph.tool_adapter import SkillToolAdapter
+from ai_agent_lab.wiki.application.confirmation_presenter import WikiConfirmationPresenter
 from ai_agent_lab.wiki.application.skills_factory import WikiSkills, WikiSkillsFactory
 from ai_agent_lab.wiki.application.wiki_tools_provider import WikiToolsProvider
 from ai_agent_lab.wiki.capabilities.converters import WikiSearchRequestFactory
@@ -59,7 +64,11 @@ from ai_agent_lab.wiki.capabilities.results import (
     WIKI_UNTRUSTED_SOURCE,
     WikiToolResultRenderer,
 )
-from ai_agent_lab.wiki.catalog import WikiToolName
+from ai_agent_lab.wiki.capabilities.write_capabilities import (
+    REQUIRED_WRITE_MCP_CAPABILITY,
+    WikiWriteCapabilities,
+)
+from ai_agent_lab.wiki.catalog import DeliveredWikiOperations, WikiToolName
 from ai_agent_lab.wiki.config.settings import (
     ChatModelSettings,
     WikiAgentSettings,
@@ -67,9 +76,11 @@ from ai_agent_lab.wiki.config.settings import (
 )
 from ai_agent_lab.wiki.domain.permissions import WikiPermission
 from ai_agent_lab.wiki.inmemory.dataset import WikiDatasetLoader
+from ai_agent_lab.wiki.inmemory.draft_store import InMemoryWikiDraftStore
 from ai_agent_lab.wiki.security_floor import WikiSecurityFloor
 from ai_agent_lab.wiki.skills.context import WikiContextBuilder
 from ai_agent_lab.wiki.skills.freshness_skill import PageFreshnessDetector
+from ai_agent_lab.wiki.skills.gating import GatedWikiOperationRunner
 from ai_agent_lab.wiki.tools_port import WikiTools
 
 WIKI_AGENT = "wiki"
@@ -103,6 +114,9 @@ class WikiAgentRuntime:
     audit: InMemoryAuditTrail
     wiki_tools: WikiTools
     provider: WikiToolsProvider
+    presenter: WikiConfirmationPresenter
+    confirmation_ledger: InMemoryConfirmationLedger
+    draft_store: InMemoryWikiDraftStore
 
     async def aclose(self) -> None:
         """Release whatever the backend holds open, such as an MCP session."""
@@ -162,8 +176,17 @@ class WikiAgentCompositionRoot:
         audit = InMemoryAuditTrail()
         provider = WikiToolsProvider(self._settings, WikiDatasetLoader(), user_id=self._principal.subject)
         wiki_tools = self._wiki_tools_override or provider.build(base_path=self._base_path)
-        skills = self._skills(manifest, wiki_tools)
-        registry = self._registry(manifest, skills, provider.capabilities(base_path=self._base_path))
+        skills = self._skills(manifest, wiki_tools, policy, audit)
+
+        draft_store = InMemoryWikiDraftStore()
+        ledger = InMemoryConfirmationLedger()
+        registry = self._registry(
+            manifest,
+            skills,
+            draft_store,
+            ledger,
+            provider.capabilities(base_path=self._base_path),
+        )
 
         approvals = LangGraphApprovalTranslator()
         tools = SkillToolAdapter(WikiToolResultRenderer()).to_tools(registry, user)
@@ -197,6 +220,9 @@ class WikiAgentCompositionRoot:
             audit=audit,
             wiki_tools=wiki_tools,
             provider=provider,
+            presenter=WikiConfirmationPresenter(skills, draft_store),
+            confirmation_ledger=ledger,
+            draft_store=draft_store,
         )
 
     def _user_context(self, session_id: str) -> UserContext:
@@ -216,7 +242,13 @@ class WikiAgentCompositionRoot:
             WikiSecurityFloor().build(),
         )
 
-    def _skills(self, manifest: AgentManifest, wiki_tools: WikiTools) -> WikiSkills:
+    def _skills(
+        self,
+        manifest: AgentManifest,
+        wiki_tools: WikiTools,
+        policy: ConfirmationPolicy,
+        audit: InMemoryAuditTrail,
+    ) -> WikiSkills:
         """Assemble the reusable domain capabilities."""
         thresholds = WikiFreshnessSettings()
         return WikiSkillsFactory(
@@ -227,6 +259,12 @@ class WikiAgentCompositionRoot:
             freshness_detector=PageFreshnessDetector(
                 ageing_after_days=thresholds.ageing_after_days,
                 stale_after_days=thresholds.stale_after_days,
+            ),
+            runner=GatedWikiOperationRunner(
+                DeliveredWikiOperations(manifest),
+                policy,
+                ConfirmationGate(policy),
+                LoggingAuditTrail(audit),
             ),
         ).build()
 
@@ -253,6 +291,8 @@ class WikiAgentCompositionRoot:
         self,
         manifest: AgentManifest,
         skills: WikiSkills,
+        draft_store: InMemoryWikiDraftStore,
+        ledger: InMemoryConfirmationLedger,
         served: frozenset[WikiToolName],
     ) -> SkillRegistry:
         """Bind the delivered manifests to the code that runs them.
@@ -261,15 +301,31 @@ class WikiAgentCompositionRoot:
         advertised: a tool the model can select but no server can honour turns
         into a refusal in the middle of a conversation, after the person has
         already been told the agent could do it.
+
+        That filter matters more for the write capabilities than for the read
+        ones. A binding that declares no ``update_page`` is usually a deployment
+        that runs the server read-only, and offering the tool anyway would have
+        the agent promise an edit the server is configured to refuse.
         """
-        descriptors = WikiReadCapabilities(
-            manifest,
-            skills.search,
-            skills.summary,
-            skills.answer,
-            skills.freshness,
-            WikiSearchRequestFactory(),
-        ).descriptors()
+        broker = ConfirmationBroker(UnattendedApprovalAuthority(), ledger)
+        descriptors = (
+            *WikiReadCapabilities(
+                manifest,
+                skills.search,
+                skills.summary,
+                skills.answer,
+                skills.freshness,
+                WikiSearchRequestFactory(),
+            ).descriptors(),
+            *WikiWriteCapabilities(
+                manifest,
+                skills.drafting,
+                skills.authoring,
+                skills.comment,
+                draft_store,
+                broker,
+            ).descriptors(),
+        )
         return SkillRegistry(
             skills=[
                 descriptor for descriptor in descriptors if self._is_serviceable(descriptor, served)
@@ -280,11 +336,14 @@ class WikiAgentCompositionRoot:
     def _is_serviceable(descriptor: SkillDescriptor, served: frozenset[WikiToolName]) -> bool:
         """Whether the bound server can honour a capability.
 
-        A capability that maps onto one MCP tool needs that tool. An analysis
-        capability needs the tools it retrieves with, which are declared in
-        ``REQUIRED_MCP_CAPABILITY`` because they cannot be read off the name.
+        A capability that maps onto one MCP tool needs that tool. A capability
+        that retrieves before it reasons - or before it drafts - needs the tools
+        it retrieves with, which are declared in the two requirement tables
+        because they cannot be read off the name.
         """
-        required = REQUIRED_MCP_CAPABILITY.get(descriptor.tool_name)
+        required = REQUIRED_MCP_CAPABILITY.get(descriptor.tool_name) or REQUIRED_WRITE_MCP_CAPABILITY.get(
+            descriptor.tool_name
+        )
         if required is not None:
             return all(capability in served for capability in required)
         try:

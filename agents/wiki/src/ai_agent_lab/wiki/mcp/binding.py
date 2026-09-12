@@ -10,9 +10,18 @@ declares:
 - the name it gives to each tool the dialect needs.
 
 Anything a server does not declare is simply not offered to the model, instead of
-failing on the first call. That is how a read-only deployment is expressed:
-`READ_ONLY_MODE=true` on the server, and the write capabilities left out of the
-binding, so the model is never even tempted.
+failing on the first call.
+
+A read-only deployment is expressed once, not twice. `read_only_variable` names
+the environment variable that decides, and the same variable is what the binding
+hands the server process in its `env:` block. When it is true the server exposes
+no write tool, and the write capabilities declared below are withdrawn rather
+than advertised.
+
+Naming it in one place is the point. Declaring the writes in the binding while
+telling the server to refuse them - two files, both plausible on their own - has
+the agent promise an edit and then fail after the user has already approved it,
+which is the exact failure this module exists to prevent.
 
 Plugging a new wiki server is therefore a binding file plus a dialect class, and
 no change to a skill or to the agent.
@@ -28,10 +37,24 @@ from typing import Any
 import yaml
 
 from ai_agent_lab.core.config.directory import ConfigurationDirectory
-from ai_agent_lab.wiki.catalog import WikiToolName
+from ai_agent_lab.wiki.catalog import WikiToolCatalog, WikiToolName
 from ai_agent_lab.wiki.wiki_errors import WikiToolProtocolError
 
 MCP_DIRECTORY = "mcp"
+
+# What a deployment must say to mean "this server accepts writes". Anything else
+# - absent, misspelled, empty - reads as read-only.
+#
+# The asymmetry is deliberate. The question this answers is whether an agent may
+# change a wiki a team relies on, and the only safe way to get "yes" is for
+# somebody to have written it down unambiguously. A typo must cost a refusal,
+# never an unintended edit.
+_WRITABLE = frozenset({"0", "false", "no", "off"})
+
+
+def is_read_only(value: str) -> bool:
+    """Whether a deployment value leaves the server read-only."""
+    return value.strip().casefold() not in _WRITABLE
 
 
 class McpTransport(StrEnum):
@@ -60,6 +83,7 @@ class McpServerBinding:
         command: str = "",
         args: Iterable[str] = (),
         env: Mapping[str, str] | None = None,
+        read_only_variable: str = "",
     ) -> None:
         self._server = server
         self._transport = transport
@@ -70,6 +94,7 @@ class McpServerBinding:
         self._command = command
         self._args = tuple(args)
         self._env = dict(env or {})
+        self._read_only_variable = read_only_variable
 
     @property
     def server(self) -> str:
@@ -118,8 +143,43 @@ class McpServerBinding:
 
     @property
     def capabilities(self) -> frozenset[WikiToolName]:
-        """Capabilities this server declares it can serve."""
+        """Capabilities this server declares it can serve.
+
+        What the file says, before a deployment has been taken into account. Use
+        :meth:`capabilities_in` to know what is actually offered.
+        """
         return self._capabilities
+
+    @property
+    def read_only_variable(self) -> str:
+        """Environment variable deciding whether this server accepts writes."""
+        return self._read_only_variable
+
+    def capabilities_in(self, environment: Mapping[str, str]) -> frozenset[WikiToolName]:
+        """Capabilities this server serves in a given deployment.
+
+        A server told to be read-only exposes no write tool at all, so offering
+        one to the model would be advertising something that cannot happen. The
+        write capabilities are withdrawn instead, and the agent says plainly that
+        it cannot change this wiki rather than proposing an edit and failing.
+
+        A binding that names no variable is unaffected: it has no read-only mode
+        to speak of.
+
+        An unset or unrecognised value reads as read-only. Somebody has to say
+        plainly that this agent may write to a wiki; a missing variable is not
+        somebody saying it.
+        """
+        if not self._read_only_variable:
+            return self._capabilities
+        if not is_read_only(environment.get(self._read_only_variable, "")):
+            return self._capabilities
+        catalog = WikiToolCatalog()
+        return frozenset(
+            capability
+            for capability in self._capabilities
+            if not catalog.descriptor(capability).is_write
+        )
 
     def supports(self, capability: WikiToolName) -> bool:
         """Whether the server declares it can serve a capability."""
@@ -174,6 +234,7 @@ class McpServerBindingLoader:
             command=str(document.get("command", "")).strip(),
             args=tuple(str(item) for item in self._list(document, "args", path)),
             env=self._env(document, path),
+            read_only_variable=str(document.get("read_only_variable", "")).strip(),
         )
         self._require_endpoint(binding, path)
         return binding

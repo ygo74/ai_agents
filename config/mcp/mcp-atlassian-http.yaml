@@ -50,12 +50,22 @@ dialect: atlassian
 # No `env:` block: the credentials belong to the server process, which is
 # started separately, and the per-user credential travels in a header.
 
+# The server is started separately for this binding, so the agent cannot read its
+# configuration. `read_only_variable` still applies: set WIKI_MCP_READ_ONLY to
+# match how you started the container, and the agent withdraws the four write
+# capabilities rather than proposing edits the server will refuse.
+read_only_variable: WIKI_MCP_READ_ONLY
+
 capabilities:
   - search_wiki
   - get_page
   - get_page_children
   - list_spaces
   - get_comments
+  - create_page
+  - update_page
+  - add_comment
+  - delete_page
 
 tools:
   search_wiki: confluence_search

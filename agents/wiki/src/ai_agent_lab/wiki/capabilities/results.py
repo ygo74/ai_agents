@@ -68,6 +68,45 @@ class WikiCommentsResult(WikiToolResult):
     comments: tuple[WikiComment, ...] = ()
 
 
+class WikiPageDraftedResult(WikiToolResult):
+    """Page content composed but not written anywhere.
+
+    The reference is the only handle the model is given onto the content. It
+    cannot edit the draft, only ask for it to be written, which is what makes
+    the text a user approves the text the wiki receives.
+    """
+
+    draft_reference: str
+    space_key: str = ""
+    title: str = ""
+    body: str = ""
+    page_id: str | None = None
+    expected_version: int | None = None
+
+
+class WikiPageWrittenResult(WikiToolResult):
+    """A page as the wiki stored it, after a create or an update."""
+
+    page_id: str
+    space_key: str
+    title: str = ""
+    version: int
+    url: str = ""
+
+
+class WikiPageDeletedResult(WikiToolResult):
+    """Acknowledgement that a page was removed."""
+
+    page_id: str
+
+
+class WikiCommentPostedResult(WikiToolResult):
+    """A comment as the wiki stored it."""
+
+    comment_id: str
+    page_id: str
+
+
 class WikiToolResultRenderer:
     """Turns a capability result into the text a model receives."""
 
@@ -96,6 +135,10 @@ class WikiToolResultRenderer:
             WikiAnswer: self._render_answer,
             WikiPageSummary: self._render_summary,
             WikiFreshnessReport: self._render_freshness,
+            WikiPageDraftedResult: self._render_draft,
+            WikiPageWrittenResult: self._render_written_page,
+            WikiPageDeletedResult: self._render_deleted_page,
+            WikiCommentPostedResult: self._render_posted_comment,
         }
 
     def _render_pages(self, pages: Sequence[WikiPage]) -> str:
@@ -258,6 +301,66 @@ class WikiToolResultRenderer:
             "pages": rows,
         }
         return f"{WIKI_UNTRUSTED_CONTRACT}\n\n{json.dumps(payload, indent=2)}"
+
+    def _render_draft(self, draft: WikiPageDraftedResult) -> str:
+        """Render a prepared draft, fencing the text that was composed.
+
+        Composed from pages other people wrote, so it is fenced like anything
+        else that came out of the wiki. The model is being shown what it drafted
+        so it can describe it to the user, not given something to act on.
+        """
+        fence = UntrustedFence()
+        metadata = {
+            "draft_reference": draft.draft_reference,
+            "space_key": draft.space_key,
+            "page_id": draft.page_id,
+            "expected_version": draft.expected_version,
+            "writes_to": "an existing page" if draft.page_id else "a new page",
+        }
+        blocks = [
+            WIKI_UNTRUSTED_CONTRACT,
+            json.dumps(metadata, indent=2),
+            fence.render("drafted title", draft.title),
+            fence.render("drafted body", draft.body),
+            (
+                "Nothing has been written to the wiki. Show this to the user and, if they "
+                "want it published, call the write capability with the draft reference above."
+            ),
+        ]
+        return "\n\n".join(blocks)
+
+    def _render_written_page(self, page: WikiPageWrittenResult) -> str:
+        """Render the page the wiki stored."""
+        fence = UntrustedFence()
+        metadata = {
+            "page_id": page.page_id,
+            "space_key": page.space_key,
+            "version": page.version,
+            "url": page.url,
+        }
+        return "\n\n".join(
+            [
+                WIKI_UNTRUSTED_CONTRACT,
+                json.dumps(metadata, indent=2),
+                fence.render(f"title of {page.page_id}", page.title),
+            ]
+        )
+
+    @staticmethod
+    def _render_deleted_page(result: WikiPageDeletedResult) -> str:
+        """Render the acknowledgement of a deletion.
+
+        No title, deliberately: the page is gone, and echoing back text from a
+        page that no longer exists would be reporting something unverifiable.
+        """
+        payload = {"page_id": result.page_id, "deleted": True}
+        return json.dumps(payload, indent=2)
+
+    @staticmethod
+    def _render_posted_comment(result: WikiCommentPostedResult) -> str:
+        """Render the acknowledgement of a posted comment."""
+        payload = {"comment_id": result.comment_id, "page_id": result.page_id, "posted": True}
+        return json.dumps(payload, indent=2)
 
     @staticmethod
     def _render_analysis(result: BaseModel | Sequence[BaseModel]) -> str:

@@ -1,8 +1,9 @@
 # The Wiki Agent
 
 An agent for online project documentation. It finds pages, reads them,
-summarises them, answers questions **from them**, and reports which documentation
-has gone stale.
+summarises them, answers questions **from them**, reports which documentation has
+gone stale, and — on an explicit request, after an explicit confirmation — drafts
+and publishes pages and comments.
 
 It runs on **LangChain / LangGraph**. The Mail Agent runs on Microsoft Agent
 Framework. That is not an accident of history: the two exist to be compared, over
@@ -46,7 +47,6 @@ the same ones the Mail Agent reads. Both agents must run against the same model,
 or a comparison between the two frameworks measures two deployments instead.
 
 ## The three things this agent is careful about
-
 ### 1. An answer must be grounded, or say that it is not
 
 A language model asked about a project produces a fluent answer whether or not
@@ -99,27 +99,144 @@ precisely so this cannot quietly rot.
 
 ## Capabilities
 
-| Capability | Reasons? | What it does |
-|---|---|---|
-| `answer_from_wiki` | yes | searches, reads, answers with citations, flags ungrounded |
-| `summarise_page` | yes | one page, with its comments, or with its children |
-| `search_wiki` | no | structured query, returns references never bodies |
-| `get_page` | no | one complete page |
-| `get_page_children` | no | one level of the tree |
-| `list_spaces` | no | the spaces this person may read |
-| `get_comments` | no | the discussion of a page |
-| `get_page_history` | no | who changed a page, when, and their note |
-| `assess_page_freshness` | **no** | fresh / ageing / stale, arithmetically |
+| Capability | Reasons? | Changes the wiki? | What it does |
+|---|---|---|---|
+| `answer_from_wiki` | yes | no | searches, reads, answers with citations, flags ungrounded |
+| `summarise_page` | yes | no | one page, with its comments, or with its children |
+| `search_wiki` | no | no | structured query, returns references never bodies |
+| `get_page` | no | no | one complete page |
+| `get_page_children` | no | no | one level of the tree |
+| `list_spaces` | no | no | the spaces this person may read |
+| `get_comments` | no | no | the discussion of a page |
+| `get_page_history` | no | no | who changed a page, when, and their note |
+| `assess_page_freshness` | **no** | no | fresh / ageing / stale, arithmetically |
+| `draft_page_content` | yes | **no** | composes a page body and stores it, publishing nothing |
+| `create_page` | no | yes | publishes a draft as a new page |
+| `update_page` | no | yes | replaces the body of a page with a draft |
+| `add_comment` | no | yes | posts a comment on a page |
+| `delete_page` | no | yes | removes a page |
 
 `assess_page_freshness` drives no model on purpose. Whether a page has been
 untouched for two hundred days is a subtraction of two dates: one right answer,
 the same every run, at no cost. Asking a model would buy a plausible answer with
 a chance of being wrong.
 
-All read-only in this increment. The write capabilities (`create_page`,
-`update_page`, `add_comment`, `delete_page`) exist in the domain, the catalogue,
-the security floor and both dialects; they are simply not delivered in
-`config/agents/wiki/agent.yaml` yet.
+## Writing to the wiki
+
+### Composing and publishing are two capabilities
+
+`draft_page_content` composes a body and **writes nothing**. It stores the result
+and hands the model an opaque reference. `create_page` and `update_page` take
+that reference and nothing else.
+
+The split is not ceremony. It is what makes the confirmation mean something: the
+user approves a body resolved from the store, and the same body is what reaches
+the wiki. A model cannot rewrite the content between the moment it is shown and
+the moment it is written, because it never holds the content — only a reference
+to it.
+
+The same reasoning is why the LangGraph `edit` decision is refused. Letting a
+human change the arguments *after* the approval was granted would run arguments
+nobody confirmed, which is a confirmation bypass wearing the costume of a
+feature. `ALLOWED_DECISIONS` is `("approve", "reject")`, and a security test pins
+it.
+
+Drafting is classified `READ`, and genuinely is one. Requiring the authoring
+permission to *propose* text would gate an operation with no effect, and would
+stop somebody who may read the wiki from preparing a page for a colleague to
+publish.
+
+### Four writes, deliberately not equal
+
+| Capability | Risk | Permission | Floored in code? |
+|---|---|---|---|
+| `add_comment` | low | `wiki:comment` | no — a deployment may ungate it |
+| `create_page` | medium | `wiki:author` | no |
+| `update_page` | **high** | `wiki:author` | **yes** |
+| `delete_page` | **high** | `wiki:manage` | **yes** |
+
+`WikiSecurityFloor` pins `update_page` and `delete_page` at high risk with
+confirmation always required, and a delivered skill package that tried to lower
+either is refused when the manifest loads. Creating and commenting are not
+floored: they add without removing, and a deployment that wants an agent to draft
+pages unattended should be allowed to decide that. The floor holds the line at
+operations that damage what already exists.
+
+Note that `wiki:author` does not carry `wiki:manage`. Being able to write pages
+is not being able to delete them.
+
+### Two independent guards
+
+The LangGraph human-in-the-loop middleware suspends a gated call before the tool
+function runs, using an interrupt table built from the deterministic
+`ConfirmationPolicy` — never from anything the model said. Separately,
+`GatedWikiOperationRunner` re-checks the same policy inside the skill, so
+invoking a skill directly, from a script or another framework, cannot bypass what
+the framework enforces.
+
+Both read the posture from `DeliveredWikiOperations`, the *same* source. Two
+sources would allow a capability that is never asked about and always refused —
+impossible to perform, and reported to the user as the wiki having refused.
+
+### How an approval travels
+
+The framework collects the answer; the domain enforces it. The
+`WikiConfirmationPresenter` turns the raw arguments of a suspended call into the
+request the user reads — resolving the draft so they see the actual body — and
+the console resolver records that request and the answer in the confirmation
+ledger. When the capability runs, `ConfirmationBroker` finds it there.
+
+The join between the two halves is `ConfirmationKey`: the tool name and the
+target. The presenter and the capability must produce the same one, or the
+approval would not be found and a write the user authorised would fail as though
+nobody had. That equality is asserted through the ledger in
+`tests/unit/wiki/test_wiki_write_capabilities.py`, because a ledger lookup is
+what actually happens at runtime.
+
+An entry is consumed once, so one approval can never authorise two executions,
+and a turn abandoned mid-approval discards the ledger: an answer given under one
+premise must not authorise an operation in a later, unrelated turn.
+
+### Losing a colleague's edit is a failure mode, not an edge case
+
+A draft composed against a page carries the version it was composed against, and
+`update_page` passes it on. If somebody edited the page in between, the write is
+refused with `WikiConcurrentEditError` rather than silently discarding their
+work — and the person who lost it would have had no way of knowing an agent did
+it.
+
+### What the audit trail holds
+
+Every attempt that reaches the domain leaves a record: executed, blocked,
+declined or failed, with the tool, the risk, the target page and the
+confirmation request identifier. It never holds a page title or body, because a
+trail is read by people who are not necessarily entitled to the content of the
+page it names.
+
+One honest caveat, shared with the Mail Agent: when the user declines at the
+framework prompt, the tool function never runs, so **nothing is written to the
+trail for that call**. The trail records what happened to the wiki, and nothing
+happened. The `DECLINED` outcome is what the runner writes when a skill is
+invoked directly with a refusal in hand.
+
+### Enabling writes against a real Confluence
+
+`WIKI_MCP_READ_ONLY` is the one switch, and it governs both halves at once. Its
+value is handed to the server process — which exposes **no write tool** when it
+is true, nine tools instead of nineteen — and it is read back through
+`read_only_variable` in the binding, so the agent withdraws the four write
+capabilities rather than advertising them.
+
+Tying the two together is not decoration. Setting only one used to be possible,
+and it produced the worst available outcome: the agent composed a revision, asked
+the user to approve publishing it, and discovered `confluence_update_page` did
+not exist only after the approval had been given. The binding and the server can
+no longer disagree.
+
+It ships `true`. Set it to `false` when writing is what the deployment is for;
+the delivered `WIKI_MCP_TOOLSETS` already carries the page and comment tools the
+four capabilities need. An unset or misspelled value reads as read-only, so a
+typo costs a refusal rather than an unintended edit.
 
 ## A capability a server cannot serve is never offered
 
@@ -132,6 +249,12 @@ already been told the agent could do it.
 The rule extends to analysis capabilities: `summarise_page` needs `get_page`, and
 `answer_from_wiki` needs `search_wiki` too. A server offering neither withdraws
 both.
+
+It matters most for the writes. A binding that declares no `update_page` is
+usually a deployment running the server read-only, and offering the tool anyway
+would have the agent promise an edit the server is configured to refuse.
+`draft_page_content` needs `get_page`, because revising a page means reading it
+first.
 
 ## Confirmation, on LangGraph
 

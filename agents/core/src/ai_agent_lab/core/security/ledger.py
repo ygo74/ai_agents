@@ -1,4 +1,9 @@
-"""In-memory ledger of the confirmations already answered by a user."""
+"""In-memory ledger of the confirmations already answered by a user.
+
+Like :mod:`ai_agent_lab.core.security.broker`, this holds no knowledge of any
+domain: it carries an answer from where a framework collected it to where the
+domain enforces it. Every agent needs that carriage, so it is written once.
+"""
 
 from __future__ import annotations
 
@@ -14,7 +19,7 @@ class InMemoryConfirmationLedger(ConfirmationLedger):
     """Carries an answer from where it was collected to where it is enforced.
 
     Entries are scoped to their user and consumed once, so one approval can
-    neither authorise an operation on another mailbox nor authorise the same
+    neither authorise an operation for another user nor authorise the same
     operation twice.
     """
 

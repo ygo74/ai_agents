@@ -1,4 +1,11 @@
-"""Obtention of the user's answer before a state-changing operation."""
+"""Obtention of the user's answer before a state-changing operation.
+
+Every agent that offers a write capability needs exactly these three steps - ask
+the policy, obtain the answer, hand both to the skill - and none of them involves
+any single domain. The broker therefore lives in the core rather than next to one
+agent: a copy per agent would be one copy away from a weaker path, and the whole
+point of the confirmation machinery is that there is only one.
+"""
 
 from __future__ import annotations
 
@@ -15,9 +22,6 @@ from ai_agent_lab.core.security.context import UserContext
 
 class ConfirmationBroker:
     """Supplies the request and decision a gated skill needs.
-
-    Every gated capability needs the same three steps - ask the policy, obtain
-    the answer, hand both to the skill - so they are written once here.
 
     An agent framework normally collects the approval *before* it invokes the
     tool function. In that case the answer, together with the exact request the

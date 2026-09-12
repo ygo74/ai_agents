@@ -108,7 +108,16 @@ def build_cli(
 
     console = Console()
     return WikiAgentCli(
-        WikiAgentSession(runtime, ConsoleApprovalResolver(console), LangGraphApprovalTranslator()),
+        WikiAgentSession(
+            runtime,
+            ConsoleApprovalResolver(
+                console,
+                runtime.presenter,
+                runtime.confirmation_ledger,
+                runtime.user,
+            ),
+            LangGraphApprovalTranslator(),
+        ),
         console,
         runtime,
     )

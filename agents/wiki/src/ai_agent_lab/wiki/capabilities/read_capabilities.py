@@ -35,6 +35,11 @@ ASSESS_PAGE_FRESHNESS = "assess_page_freshness"
 
 # Every capability this agent can offer, whatever a binding declares. The
 # composition root filters this against what the bound server actually serves.
+#
+# Read-only names only. The write ones live next door, in
+# :mod:`ai_agent_lab.wiki.capabilities.write_capabilities`, because the division
+# between what changes the wiki and what does not is the one worth keeping
+# visible in the structure of the code.
 ALL_CAPABILITIES = (
     ANSWER_FROM_WIKI,
     WikiToolName.SEARCH_WIKI.value,

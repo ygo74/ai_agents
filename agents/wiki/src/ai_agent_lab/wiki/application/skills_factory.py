@@ -12,10 +12,15 @@ from dataclasses import dataclass
 from ai_agent_lab.core.manifests import AgentManifest
 from ai_agent_lab.core.reasoning.ports import TextReasoner
 from ai_agent_lab.wiki.capabilities.read_capabilities import ANSWER_FROM_WIKI, SUMMARISE_PAGE
+from ai_agent_lab.wiki.capabilities.write_capabilities import DRAFT_PAGE_CONTENT
 from ai_agent_lab.wiki.skills.analysis import WikiAnalysisMapper
 from ai_agent_lab.wiki.skills.answer_skill import DocumentationAnswerSkill
+from ai_agent_lab.wiki.skills.authoring_skill import PageAuthoringSkill
+from ai_agent_lab.wiki.skills.comment_skill import PageCommentSkill
 from ai_agent_lab.wiki.skills.context import WikiContextBuilder
+from ai_agent_lab.wiki.skills.drafting_skill import PageDraftingSkill
 from ai_agent_lab.wiki.skills.freshness_skill import PageFreshnessDetector, PageFreshnessSkill
+from ai_agent_lab.wiki.skills.gating import GatedWikiOperationRunner
 from ai_agent_lab.wiki.skills.question_terms import QuestionTerms
 from ai_agent_lab.wiki.skills.search_skill import DocumentationSearchSkill
 from ai_agent_lab.wiki.skills.summary_skill import PageSummarySkill
@@ -30,10 +35,19 @@ class WikiSkills:
     summary: PageSummarySkill
     answer: DocumentationAnswerSkill
     freshness: PageFreshnessSkill
+    drafting: PageDraftingSkill
+    authoring: PageAuthoringSkill
+    comment: PageCommentSkill
 
 
 class WikiSkillsFactory:
-    """Builds the wiki skills from injected collaborators."""
+    """Builds the wiki skills from injected collaborators.
+
+    The gated runner is injected rather than built here. It carries the
+    confirmation policy, the domain gate and the audit trail of one deployment,
+    and those belong to the composition root: a factory that built its own would
+    be a second opinion on which operations need approving.
+    """
 
     def __init__(
         self,
@@ -43,6 +57,7 @@ class WikiSkillsFactory:
         manifest: AgentManifest,
         context_builder: WikiContextBuilder,
         freshness_detector: PageFreshnessDetector,
+        runner: GatedWikiOperationRunner,
         question_terms: QuestionTerms | None = None,
     ) -> None:
         self._wiki_tools = wiki_tools
@@ -50,6 +65,7 @@ class WikiSkillsFactory:
         self._manifest = manifest
         self._context_builder = context_builder
         self._freshness_detector = freshness_detector
+        self._runner = runner
         self._question_terms = question_terms or QuestionTerms()
 
     def build(self) -> WikiSkills:
@@ -73,6 +89,14 @@ class WikiSkillsFactory:
                 question_terms=self._question_terms,
             ),
             freshness=PageFreshnessSkill(self._wiki_tools, self._freshness_detector),
+            drafting=PageDraftingSkill(
+                self._wiki_tools,
+                self._reasoner,
+                self._context_builder,
+                self._prompt_of(DRAFT_PAGE_CONTENT),
+            ),
+            authoring=PageAuthoringSkill(self._wiki_tools, self._wiki_tools, self._runner),
+            comment=PageCommentSkill(self._wiki_tools, self._runner),
         )
 
     def _prompt_of(self, tool_name: str) -> str:

@@ -1,0 +1,27 @@
+# Capability delivered to the Wiki Agent.
+# The reasoning instructions live next to this file, in SKILL.md.
+#
+# Drafting is where the model is genuinely useful and where it is also harmless:
+# nothing here reaches the wiki. Deciding that the result should be published is
+# a separate capability, and a separate decision, taken by a person.
+tool_name: draft_page_content
+implementation: wiki.draft_page_content
+
+description: >-
+  Compose the content of a wiki page without writing anything. Give page_id to revise an
+  existing page, or space_key and title to compose a new one. Returns a draft reference,
+  the composed title and the composed body. Nothing reaches the wiki: show the draft to the
+  user, and call create_page or update_page with the reference only if they ask for it.
+  Has no side effect.
+
+# READ, and genuinely so. Requiring the authoring permission to *propose* text
+# would gate an operation that changes nothing, and would stop somebody who may
+# read the wiki from preparing a page for a colleague to publish.
+operation:
+  type: READ
+  risk: LOW
+  permission: wiki:read
+  confirmation_required: false
+
+mcp_tools:
+  - get_page

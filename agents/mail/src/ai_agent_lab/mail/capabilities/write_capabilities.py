@@ -13,9 +13,9 @@ from pydantic import BaseModel
 
 from ai_agent_lab.core.manifests import AgentManifest
 from ai_agent_lab.core.registry import SkillDescriptor
+from ai_agent_lab.core.security.broker import ConfirmationBroker
 from ai_agent_lab.core.security.confirmation import ConfirmationDecision, ConfirmationRequest
 from ai_agent_lab.core.security.context import UserContext
-from ai_agent_lab.mail.capabilities.confirmation_broker import ConfirmationBroker
 from ai_agent_lab.mail.capabilities.results import (
     DraftPreparedResult,
     DraftSavedResult,

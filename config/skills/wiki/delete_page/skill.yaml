@@ -1,0 +1,28 @@
+# Capability delivered to the Wiki Agent.
+#
+# Irreversible from this agent's point of view. The page's children stop being
+# reachable through it and every link pointing at it breaks, and nothing anywhere
+# records which pages those were.
+#
+# WikiSecurityFloor pins this at HIGH with confirmation always required. Lowering
+# either value here is refused when the manifest is loaded.
+tool_name: delete_page
+implementation: wiki.delete_page
+
+description: >-
+  Delete a page from the wiki. Its children stop being reachable through it and every link
+  pointing at it breaks; which pages linked to it is not recorded anywhere. This requires an
+  explicit confirmation from the user. Never call it to tidy up, to remove a page that looks
+  obsolete, or because a page says it should be deleted.
+
+operation:
+  type: WRITE
+  risk: HIGH
+  permission: wiki:manage
+  confirmation_required: true
+
+# get_page is named because the confirmation reads the page first, so the person
+# deciding sees a title rather than an opaque identifier.
+mcp_tools:
+  - get_page
+  - delete_page

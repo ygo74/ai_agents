@@ -143,3 +143,74 @@ class AssessFreshnessInput(ToolInput):
         if not self.page_ids and not self.space_key.strip():
             raise ValueError("name either page_ids or a space_key: assessing the whole wiki is not offered")
         return self
+
+
+class DraftPageContentInput(ToolInput):
+    """What to write, and where it is eventually meant to go.
+
+    One schema for both destinations, because the choice between them is a
+    single fact: ``page_id`` names the page to revise, and its absence means a
+    new page in ``space_key``. Two schemas would let a model supply both and
+    leave the capability to guess which was meant.
+    """
+
+    instruction: str = Field(
+        min_length=1,
+        description="What the page should say, in the words the person used.",
+    )
+    page_id: str = Field(
+        default="",
+        description=(
+            "Identifier of an existing page to revise. Leave empty to compose a new page, and "
+            "then supply space_key and title instead."
+        ),
+    )
+    space_key: str = Field(
+        default="",
+        description="Key of the space a new page would be created in. Required unless page_id is given.",
+    )
+    title: str = Field(
+        default="",
+        description="Title of a new page. Required unless page_id is given.",
+    )
+    source_page_ids: tuple[str, ...] = Field(
+        default=(),
+        max_length=MAX_SELECTED_PAGES,
+        description="Existing pages to use as reference material when composing a new page.",
+    )
+    parent_id: str = Field(
+        default="",
+        description="Identifier of the page a new page should hang under, if any.",
+    )
+
+    @model_validator(mode="after")
+    def _require_a_destination(self) -> DraftPageContentInput:
+        """Refuse a request that says neither which page nor which space."""
+        if self.page_id.strip():
+            return self
+        if not self.space_key.strip() or not self.title.strip():
+            raise ValueError(
+                "supply page_id to revise an existing page, or both space_key and title to compose a new one"
+            )
+        return self
+
+
+class PageDraftInput(ToolInput):
+    """The draft a write capability should publish."""
+
+    draft_reference: str = Field(
+        min_length=1,
+        description="Reference returned by draft_page_content. The content written is exactly that draft.",
+    )
+
+
+class AddCommentInput(ToolInput):
+    """A comment to post on a page."""
+
+    page_id: str = Field(min_length=1, description="Identifier of the page to comment on.")
+    body: str = Field(min_length=1, description="Text of the comment, as it will appear.")
+    parent_comment_id: str = Field(
+        default="",
+        description="Identifier of the comment this replies to, if it is a reply.",
+    )
+

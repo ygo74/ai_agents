@@ -30,3 +30,24 @@ class UngroundedWikiResultError(WikiSkillError):
     def __init__(self, page_id: str) -> None:
         super().__init__(f"the model cited page {page_id!r}, which was not among the retrieved pages")
         self.page_id = page_id
+
+
+class EmptyPageContentError(WikiSkillError):
+    """Raised when a page would be written with no content at all.
+
+    An empty page is not a harmless no-op: it appears in the space, is
+    attributed to the user, notifies everyone watching, and replaces whatever a
+    colleague had written if it lands on an existing page.
+    """
+
+    def __init__(self, skill: str) -> None:
+        super().__init__(f"{skill} was asked to write a page with an empty body")
+        self.skill = skill
+
+
+class EmptyCommentError(WikiSkillError):
+    """Raised when a comment would be posted with no text."""
+
+    def __init__(self) -> None:
+        super().__init__("a comment cannot be posted with an empty body")
+

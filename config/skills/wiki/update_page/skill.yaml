@@ -1,0 +1,30 @@
+# Capability delivered to the Wiki Agent.
+#
+# The most damaging thing this agent can do. The previous revision survives in
+# the page history, but restoring it is a manual act outside this agent, and
+# everyone watching the space is notified of the change in the meantime.
+#
+# WikiSecurityFloor pins this at HIGH with confirmation always required. Lowering
+# either value here is refused when the manifest is loaded.
+tool_name: update_page
+implementation: wiki.update_page
+
+description: >-
+  Replace the body of an existing page with a draft prepared by draft_page_content,
+  identified by its draft reference. The text currently on the page is overwritten, and
+  restoring it means a person going through the page history by hand. Everyone watching the
+  space is notified. This always requires an explicit confirmation from the user. To add to
+  a page without touching what is there, use add_comment.
+
+operation:
+  type: WRITE
+  risk: HIGH
+  permission: wiki:author
+  confirmation_required: true
+
+# get_page is named because the write is version-checked: the draft carries the
+# revision it was composed against, so a colleague who edited the page in the
+# meantime causes a refusal rather than losing their work.
+mcp_tools:
+  - get_page
+  - update_page

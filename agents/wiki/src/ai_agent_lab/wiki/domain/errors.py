@@ -40,3 +40,17 @@ class UngroundedAnswerError(WikiDomainError):
     def __init__(self, question: str) -> None:
         super().__init__("no wiki page was retrieved, so the question cannot be answered from documentation")
         self.question = question
+
+
+class WikiDraftNotFoundError(WikiDomainError):
+    """Raised when a draft reference names nothing this user prepared.
+
+    Also raised when the reference belongs to somebody else. The two cases are
+    reported identically on purpose: telling a caller that a reference exists but
+    is not theirs would confirm what another person is drafting.
+    """
+
+    def __init__(self, reference: str) -> None:
+        super().__init__(f"no page draft is held under the reference {reference!r}")
+        self.reference = reference
+

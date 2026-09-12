@@ -136,7 +136,13 @@ class WikiAgentSession:
         Everything still suspended is rejected. Simply walking away would leave
         the graph interrupted under this thread, and the next turn would resume
         a batch the user was told had been abandoned.
+
+        The confirmation ledger is emptied for the same reason. An answer given
+        under one premise must never authorise an operation during a later,
+        unrelated turn, and an approval collected for a call that was then
+        abandoned is exactly such an answer.
         """
+        self._runtime.confirmation_ledger.discard(self._runtime.user)
         current = result
         for _ in range(self._max_asked_rounds):
             pending = self._pending_of(current)

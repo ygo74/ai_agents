@@ -104,7 +104,7 @@ class TestBindingLoading:
             McpServerBindingLoader(ConfigurationDirectory(tmp_path)).load("broken")
 
     def test_a_capability_the_binding_omits_is_never_offered(self):
-        """A read-only deployment is expressed by leaving writes out."""
+        """A server that simply cannot write says so by declaring nothing."""
         binding = McpServerBinding(
             server="read-only",
             transport=McpTransport.STDIO,
@@ -116,6 +116,92 @@ class TestBindingLoading:
         assert binding.supports(WikiToolName.SEARCH_WIKI)
         assert not binding.supports(WikiToolName.UPDATE_PAGE)
         assert not binding.supports(WikiToolName.DELETE_PAGE)
+
+
+class TestReadOnlyDeployments:
+    """A server told to refuse writes must not have writes offered for it.
+
+    `sooperset/mcp-atlassian` started with `READ_ONLY_MODE=true` exposes nine
+    tools and not one of them writes. A binding that declared the writes anyway
+    would have the agent propose an edit, ask the user to approve it, and only
+    then discover the tool does not exist.
+    """
+
+    def build(self, *, read_only_variable: str = "WIKI_MCP_READ_ONLY") -> McpServerBinding:
+        """A binding declaring reads and writes alike."""
+        return McpServerBinding(
+            server="atlassian-like",
+            transport=McpTransport.STDIO,
+            capabilities=(
+                WikiToolName.SEARCH_WIKI,
+                WikiToolName.GET_PAGE,
+                WikiToolName.CREATE_PAGE,
+                WikiToolName.UPDATE_PAGE,
+                WikiToolName.ADD_COMMENT,
+                WikiToolName.DELETE_PAGE,
+            ),
+            tools=ALL_TOOLS,
+            command="python",
+            read_only_variable=read_only_variable,
+        )
+
+    @pytest.mark.security
+    def test_writes_are_withdrawn_when_the_server_is_read_only(self):
+        served = self.build().capabilities_in({"WIKI_MCP_READ_ONLY": "true"})
+
+        assert WikiToolName.SEARCH_WIKI in served
+        assert WikiToolName.GET_PAGE in served
+        for write in (
+            WikiToolName.CREATE_PAGE,
+            WikiToolName.UPDATE_PAGE,
+            WikiToolName.ADD_COMMENT,
+            WikiToolName.DELETE_PAGE,
+        ):
+            assert write not in served
+
+    def test_writes_are_served_when_the_server_accepts_them(self):
+        served = self.build().capabilities_in({"WIKI_MCP_READ_ONLY": "false"})
+
+        assert WikiToolName.UPDATE_PAGE in served
+        assert WikiToolName.DELETE_PAGE in served
+
+    @pytest.mark.security
+    def test_an_absent_variable_is_read_as_read_only(self):
+        """The safe reading, since the delivered default is read-only."""
+        assert WikiToolName.UPDATE_PAGE not in self.build().capabilities_in({})
+
+    @pytest.mark.security
+    def test_an_unrecognised_value_is_read_as_read_only(self):
+        """A misspelled value gets the safe answer, not an unintended write."""
+        assert WikiToolName.UPDATE_PAGE not in self.build().capabilities_in(
+            {"WIKI_MCP_READ_ONLY": "tru"}
+        )
+
+    def test_yes_and_on_are_accepted(self):
+        for value in ("yes", "ON", "1", "True"):
+            assert WikiToolName.UPDATE_PAGE not in self.build().capabilities_in(
+                {"WIKI_MCP_READ_ONLY": value}
+            )
+
+    def test_the_ways_of_saying_writable_are_accepted(self):
+        for value in ("false", "FALSE", "0", "no", "off"):
+            assert WikiToolName.UPDATE_PAGE in self.build().capabilities_in(
+                {"WIKI_MCP_READ_ONLY": value}
+            )
+
+    def test_a_binding_naming_no_variable_is_unaffected(self):
+        """The reference server has no read-only mode to speak of."""
+        served = self.build(read_only_variable="").capabilities_in({"WIKI_MCP_READ_ONLY": "true"})
+
+        assert WikiToolName.UPDATE_PAGE in served
+
+    def test_the_delivered_atlassian_binding_names_the_variable(
+        self, configuration: ConfigurationDirectory
+    ):
+        """Otherwise the safeguard is code nothing reaches."""
+        for name in ("mcp-atlassian", "mcp-atlassian-http"):
+            binding = McpServerBindingLoader(configuration).load(name)
+            assert binding.read_only_variable == "WIKI_MCP_READ_ONLY", name
 
 
 class TestEnvironmentResolution:
