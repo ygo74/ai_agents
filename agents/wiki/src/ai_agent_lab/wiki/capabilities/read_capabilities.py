@@ -95,9 +95,7 @@ class WikiReadCapabilities:
             ASSESS_PAGE_FRESHNESS: self._assess_freshness,
         }
         return tuple(
-            builders[declared.tool_name]()
-            for declared in self._manifest.skills
-            if declared.tool_name in builders
+            builders[declared.tool_name]() for declared in self._manifest.skills if declared.tool_name in builders
         )
 
     def _bind(

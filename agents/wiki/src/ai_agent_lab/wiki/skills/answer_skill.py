@@ -18,6 +18,7 @@ nicely:
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Sequence
 
 from ai_agent_lab.core.reasoning.ports import ReasoningRequest, TextReasoner
@@ -34,6 +35,8 @@ from ai_agent_lab.wiki.skills.analysis import AnswerOutput, WikiAnalysisMapper
 from ai_agent_lab.wiki.skills.context import WikiContextBuilder
 from ai_agent_lab.wiki.skills.question_terms import QuestionTerms
 from ai_agent_lab.wiki.tools_port import WikiReadTools
+
+_logger = logging.getLogger(__name__)
 
 DEFAULT_PAGES_CONSULTED = 5
 
@@ -77,10 +80,13 @@ class DocumentationAnswerSkill:
         wrong.
         """
         user.require_permission(WikiPermission.READ)
+        _logger.info("Answering question from wiki for user=%s: '%s'", user.user_id, question)
         references = await self._retrieve(question, tuple(space_keys), user)
         if not references:
+            _logger.warning("No wiki pages retrieved for question: '%s'", question)
             raise UngroundedAnswerError(question)
 
+        _logger.info("Retrieved %d candidate page(s) for question", len(references))
         pages = [await self._wiki_tools.get_page(reference.page_id, user) for reference in references]
         return await self._answer_from(question, pages)
 
@@ -91,12 +97,16 @@ class DocumentationAnswerSkill:
         user: UserContext,
     ) -> tuple[WikiPageReference, ...]:
         """Search with progressively broader queries until something matches."""
-        for text in self._question_terms.ladder(question):
+        ladder = self._question_terms.ladder(question)
+        _logger.debug("Search ladder for question has %d query step(s)", len(ladder))
+        for idx, text in enumerate(ladder, 1):
+            _logger.debug("Ladder step %d/%d search query: '%s'", idx, len(ladder), text)
             result = await self._wiki_tools.search(
                 WikiSearchRequest(text=text, space_keys=space_keys, limit=self._pages_consulted),
                 user,
             )
             if result.references:
+                _logger.debug("Ladder step %d matched %d reference(s)", idx, len(result.references))
                 return result.references
         return ()
 
@@ -109,7 +119,9 @@ class DocumentationAnswerSkill:
         """Answer a question from an explicit set of pages."""
         user.require_permission(WikiPermission.READ)
         if not page_ids:
+            _logger.warning("No page_ids provided to answer_from_pages for question: '%s'", question)
             raise UngroundedAnswerError(question)
+        _logger.info("Answering question from %d explicit page(s) for user=%s", len(page_ids), user.user_id)
         pages = [await self._wiki_tools.get_page(page_id, user) for page_id in page_ids]
         return await self._answer_from(question, pages)
 
@@ -121,6 +133,7 @@ class DocumentationAnswerSkill:
         question inside the context instead would have blurred the one boundary
         the envelope exists to draw.
         """
+        _logger.debug("Running reasoner to answer question from %d page(s)", len(pages))
         request = ReasoningRequest(
             instructions=self._instructions,
             task=(
@@ -131,4 +144,7 @@ class DocumentationAnswerSkill:
             context=self._context_builder.build(pages),
         )
         output = await self._reasoner.reason(request, AnswerOutput)
-        return self._mapper.to_answer(output, question, pages)
+        answer = self._mapper.to_answer(output, question, pages)
+        _logger.info("Answer generated (is_grounded=%s, sources_count=%d)", answer.is_grounded, len(answer.sources))
+        _logger.debug("Answer content: %s", answer.answer)
+        return answer

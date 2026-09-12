@@ -19,6 +19,7 @@ could not be reached.
 from __future__ import annotations
 
 import asyncio
+import logging
 import os
 import sys
 from collections.abc import Mapping
@@ -32,6 +33,8 @@ from mcp.client.streamable_http import streamablehttp_client
 
 from ai_agent_lab.wiki.mcp.binding import McpServerBinding, McpTransport
 from ai_agent_lab.wiki.wiki_errors import WikiToolUnavailableError
+
+_logger = logging.getLogger(__name__)
 
 _PYTHON = "python"
 
@@ -81,20 +84,26 @@ class McpConnection:
         stack, self._stack, self._session = self._stack, None, None
         if stack is None:
             return
+        _logger.info("Closing MCP connection to server '%s'", self._binding.server)
         try:
             await stack.aclose()
-        except (OSError, RuntimeError, httpx.HTTPError):
+        except (OSError, RuntimeError, httpx.HTTPError) as error:
+            _logger.debug("Silently caught error during MCP connection close: %s", error)
             # The conversation is over; a server that already went away must not
             # turn a clean exit into a crash.
             return
 
     async def _connect(self) -> ClientSession:
         """Open the transport and initialise the protocol session."""
+        _logger.info("Connecting to wiki MCP server '%s' via %s", self._binding.server, self._binding.transport.value)
         stack = AsyncExitStack()
         try:
             session = await self._open(stack)
+            _logger.debug("Initializing MCP ClientSession protocol")
             await session.initialize()
+            _logger.info("MCP ClientSession initialized successfully for '%s'", self._binding.server)
         except Exception as error:
+            _logger.exception("Failed to connect/initialize MCP server '%s'", self._binding.server)
             await stack.aclose()
             raise WikiToolUnavailableError(
                 f"wiki MCP server {self._binding.server!r} could not be reached: {type(error).__name__}"
@@ -105,6 +114,7 @@ class McpConnection:
     async def _open(self, stack: AsyncExitStack) -> ClientSession:
         """Open the transport the binding asks for."""
         if self._binding.transport is McpTransport.HTTP:
+            _logger.debug("Opening streamable HTTP MCP transport to %s (timeout=%ds)", self._binding.url, self._timeout)
             read, write, _ = await stack.enter_async_context(
                 streamablehttp_client(
                     self._binding.url,
@@ -114,7 +124,9 @@ class McpConnection:
                 )
             )
         else:
-            read, write = await stack.enter_async_context(stdio_client(self._stdio_parameters()))
+            params = self._stdio_parameters()
+            _logger.debug("Spawning stdio MCP process: command=%s, args=%s", params.command, params.args)
+            read, write = await stack.enter_async_context(stdio_client(params))
         return await stack.enter_async_context(
             ClientSession(read, write, read_timeout_seconds=timedelta(seconds=self._timeout))
         )
@@ -160,7 +172,17 @@ class McpConnection:
                 resolved[name] = value
 
         if missing:
+            _logger.error(
+                "MCP server '%s' missing required environment variables: %s",
+                self._binding.server,
+                sorted(missing),
+            )
             raise WikiToolUnavailableError(
                 f"wiki MCP server {self._binding.server!r} needs environment variable(s) {sorted(missing)}"
             )
+        _logger.debug(
+            "Resolved environment variables for MCP server '%s': %s",
+            self._binding.server,
+            sorted(resolved.keys()),
+        )
         return resolved

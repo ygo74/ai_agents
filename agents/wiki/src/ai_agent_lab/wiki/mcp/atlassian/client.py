@@ -36,6 +36,7 @@ else.
 from __future__ import annotations
 
 import json
+import logging
 from collections.abc import Mapping, Sequence
 from datetime import UTC, datetime
 from typing import Any
@@ -68,6 +69,8 @@ from ai_agent_lab.wiki.wiki_errors import (
     WikiToolProtocolError,
     WikiToolUnavailableError,
 )
+
+_logger = logging.getLogger(__name__)
 
 # Aliases this dialect knows how to call. A binding names the ones it serves;
 # `list_spaces` is absent because this server has no space-listing tool and the
@@ -286,9 +289,7 @@ class AtlassianWikiTools:
         """
         self._require_served_account(user)
         if parent_comment_id is not None:
-            raise WikiToolUnavailableError(
-                "this wiki server posts replies through a separate tool, which is not bound"
-            )
+            raise WikiToolUnavailableError("this wiki server posts replies through a separate tool, which is not bound")
         payload = await self._call("add_comment", page_id=page_id, body=body)
         document = self._as_object(payload, "add_comment")
         comment = document.get("comment")
@@ -379,9 +380,7 @@ class AtlassianWikiTools:
             page_id=self._identifier(entry, "id"),
             space_key=self._space_key(entry),
             title=untrusted(str(entry.get("title", "")), UntrustedOrigin.WIKI_PAGE_TITLE),
-            excerpt=(
-                None if not excerpt else untrusted(excerpt, UntrustedOrigin.WIKI_PAGE_EXCERPT)
-            ),
+            excerpt=(None if not excerpt else untrusted(excerpt, UntrustedOrigin.WIKI_PAGE_EXCERPT)),
             status=WikiPageStatus.CURRENT,
             last_modified_at=self._moment(entry.get("updated")) or created,
             version=self._version_of(entry),
@@ -520,23 +519,29 @@ class AtlassianWikiTools:
         try:
             return model(**fields)
         except ValueError as error:
-            raise WikiToolProtocolError(
-                f"the wiki server returned an unusable {model.__name__}: {error}"
-            ) from error
+            raise WikiToolProtocolError(f"the wiki server returned an unusable {model.__name__}: {error}") from error
 
     async def _call(self, alias: str, **arguments: Any) -> object:
         """Invoke a tool and decode the JSON document it returned as text."""
         session = await self._connection.session()
         payload = {key: value for key, value in arguments.items() if value is not None}
+        remote_tool = self._binding.remote(alias)
+        _logger.info("Calling Atlassian MCP tool '%s' (alias='%s')", remote_tool, alias)
+        _logger.debug("Atlassian MCP tool '%s' payload: %s", remote_tool, payload)
         try:
-            result = await session.call_tool(self._binding.remote(alias), payload)
+            result = await session.call_tool(remote_tool, payload)
         except Exception as error:
+            _logger.exception("Failed to invoke Atlassian MCP tool '%s'", remote_tool)
             raise WikiToolUnavailableError(
                 f"wiki tool {alias!r} could not be called: {type(error).__name__}"
             ) from error
         if result.isError:
-            raise _translated(self._text_of(result), alias)
-        return self._decoded(result, alias)
+            error_text = self._text_of(result)
+            _logger.warning("Atlassian MCP tool '%s' returned error: %s", remote_tool, error_text)
+            raise _translated(error_text, alias)
+        decoded = self._decoded(result, alias)
+        _logger.debug("Atlassian MCP tool '%s' returned successfully", remote_tool)
+        return decoded
 
     def _decoded(self, result: CallToolResult, alias: str) -> object:
         """Parse the JSON document a tool returned.

@@ -43,9 +43,7 @@ class SkillManifest(BaseModel):
     def _check_operation_matches(self) -> SkillManifest:
         """Reject a manifest declaring the security posture of another tool."""
         if self.operation.tool_name != self.tool_name:
-            raise ValueError(
-                f"skill {self.tool_name!r} declares the operation of {self.operation.tool_name!r}"
-            )
+            raise ValueError(f"skill {self.tool_name!r} declares the operation of {self.operation.tool_name!r}")
         return self
 
     @property

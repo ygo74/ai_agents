@@ -75,18 +75,14 @@ def outsider() -> UserContext:
 class TestDocumentationSearchSkill:
     """Finding pages."""
 
-    async def test_a_search_returns_what_the_wiki_returned(
-        self, sample_tools: InMemoryWikiTools, reader: UserContext
-    ):
+    async def test_a_search_returns_what_the_wiki_returned(self, sample_tools: InMemoryWikiTools, reader: UserContext):
         skill = DocumentationSearchSkill(sample_tools)
 
         result = await skill.search(WikiSearchRequest(text="VAT"), reader)
 
         assert [reference.page_id for reference in result.references] == ["apollo-scope"]
 
-    async def test_a_search_constraining_nothing_is_refused(
-        self, sample_tools: InMemoryWikiTools, reader: UserContext
-    ):
+    async def test_a_search_constraining_nothing_is_refused(self, sample_tools: InMemoryWikiTools, reader: UserContext):
         """It asks for the whole wiki and would be answered with noise."""
         skill = DocumentationSearchSkill(sample_tools)
 
@@ -94,9 +90,7 @@ class TestDocumentationSearchSkill:
             await skill.search(WikiSearchRequest(), reader)
 
     @pytest.mark.security
-    async def test_reading_requires_the_read_permission(
-        self, sample_tools: InMemoryWikiTools, outsider: UserContext
-    ):
+    async def test_reading_requires_the_read_permission(self, sample_tools: InMemoryWikiTools, outsider: UserContext):
         skill = DocumentationSearchSkill(sample_tools)
 
         with pytest.raises(AuthorizationError):
@@ -117,9 +111,7 @@ class TestPageSummarySkill:
         )
         return skill, reasoner
 
-    async def test_a_summary_cites_the_page_it_read(
-        self, sample_tools: InMemoryWikiTools, reader: UserContext
-    ):
+    async def test_a_summary_cites_the_page_it_read(self, sample_tools: InMemoryWikiTools, reader: UserContext):
         skill, _ = self._skill(
             sample_tools,
             PageSummaryOutput(summary="An architecture page.", cited_page_ids=["apollo-architecture"]),
@@ -144,9 +136,7 @@ class TestPageSummarySkill:
         assert summary.sources[0].version == 4
 
     @pytest.mark.security
-    async def test_a_citation_of_an_unread_page_is_refused(
-        self, sample_tools: InMemoryWikiTools, reader: UserContext
-    ):
+    async def test_a_citation_of_an_unread_page_is_refused(self, sample_tools: InMemoryWikiTools, reader: UserContext):
         """A planted instruction must not produce a fabricated source."""
         skill, _ = self._skill(
             sample_tools,
@@ -156,9 +146,7 @@ class TestPageSummarySkill:
         with pytest.raises(UngroundedWikiResultError, match="board-budget"):
             await skill.summarise_page("apollo-architecture", reader)
 
-    async def test_repeated_citations_collapse(
-        self, sample_tools: InMemoryWikiTools, reader: UserContext
-    ):
+    async def test_repeated_citations_collapse(self, sample_tools: InMemoryWikiTools, reader: UserContext):
         skill, _ = self._skill(
             sample_tools,
             PageSummaryOutput(summary="x", cited_page_ids=["apollo-scope"] * 5),
@@ -168,17 +156,13 @@ class TestPageSummarySkill:
 
         assert len(summary.sources) == 1
 
-    async def test_summarising_nothing_is_refused(
-        self, sample_tools: InMemoryWikiTools, reader: UserContext
-    ):
+    async def test_summarising_nothing_is_refused(self, sample_tools: InMemoryWikiTools, reader: UserContext):
         skill, _ = self._skill(sample_tools, PageSummaryOutput(summary="x"))
 
         with pytest.raises(EmptyPageSelectionError):
             await skill.summarise_pages([], reader)
 
-    async def test_a_subtree_summary_reads_the_children(
-        self, sample_tools: InMemoryWikiTools, reader: UserContext
-    ):
+    async def test_a_subtree_summary_reads_the_children(self, sample_tools: InMemoryWikiTools, reader: UserContext):
         skill, reasoner = self._skill(sample_tools, PageSummaryOutput(summary="x"))
 
         await skill.summarise_subtree("apollo-home", reader)
@@ -218,9 +202,7 @@ class TestDocumentationAnswerSkill:
         )
         return skill, reasoner
 
-    async def test_an_answer_cites_the_pages_it_used(
-        self, sample_tools: InMemoryWikiTools, reader: UserContext
-    ):
+    async def test_an_answer_cites_the_pages_it_used(self, sample_tools: InMemoryWikiTools, reader: UserContext):
         skill, _ = self._skill(
             sample_tools,
             AnswerOutput(answer="BE VAT rules are in scope.", cited_page_ids=["apollo-scope"]),
@@ -246,9 +228,7 @@ class TestDocumentationAnswerSkill:
         assert not answer.is_grounded
         assert answer.sources == ()
 
-    async def test_a_question_matching_nothing_is_refused(
-        self, sample_tools: InMemoryWikiTools, reader: UserContext
-    ):
+    async def test_a_question_matching_nothing_is_refused(self, sample_tools: InMemoryWikiTools, reader: UserContext):
         """With nothing retrieved there is nothing to answer from."""
         skill, _ = self._skill(sample_tools, AnswerOutput(answer="x"))
 
@@ -290,9 +270,7 @@ class TestDocumentationAnswerSkill:
 
         request = reasoner.requests[0]
         assert "What is the VAT scope?" in request.task
-        assert all(
-            "What is the VAT scope?" not in section.content.expose() for section in request.context
-        )
+        assert all("What is the VAT scope?" not in section.content.expose() for section in request.context)
 
 
 @pytest.mark.security
@@ -459,9 +437,7 @@ class TestPageFreshnessDetector:
         assert [page.page_id for page in report.pages] == ["ancient", "fresh"]
         assert [page.page_id for page in report.stale] == ["ancient"]
 
-    async def test_assessing_a_search_fetches_no_page_body(
-        self, sample_tools: InMemoryWikiTools, reader: UserContext
-    ):
+    async def test_assessing_a_search_fetches_no_page_body(self, sample_tools: InMemoryWikiTools, reader: UserContext):
         """Downloading a hundred pages to compute a subtraction would be absurd."""
         skill = PageFreshnessSkill(sample_tools, self._detector())
 

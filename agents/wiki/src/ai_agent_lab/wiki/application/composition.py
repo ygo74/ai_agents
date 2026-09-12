@@ -21,6 +21,7 @@ only half.
 from __future__ import annotations
 
 import hashlib
+import logging
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -84,6 +85,8 @@ from ai_agent_lab.wiki.skills.gating import GatedWikiOperationRunner
 from ai_agent_lab.wiki.tools_port import WikiTools
 
 WIKI_AGENT = "wiki"
+
+_logger = logging.getLogger(__name__)
 
 
 def thread_id_of(principal: Principal, conversation_id: str) -> str:
@@ -170,50 +173,90 @@ class WikiAgentCompositionRoot:
 
     def build(self, *, session_id: str) -> WikiAgentRuntime:
         """Assemble the Wiki Agent and everything driving it."""
+        _logger.info(
+            "Assembling Wiki Agent runtime for principal '%s' (session_id='%s')",
+            self._principal.subject,
+            session_id,
+        )
+        _logger.info("Calling WikiAgentCompositionRoot._manifest() to load agent manifest...")
         manifest = self._manifest()
+        _logger.info("Agent manifest '%s' loaded (%d skills declared)", manifest.name, len(manifest.skills))
+
+        _logger.info("Calling WikiAgentCompositionRoot._user_context() to create security context...")
         user = self._user_context(session_id)
+        _logger.debug("Created user context: user_id='%s', session_id='%s'", user.user_id, user.session_id)
+
+        _logger.info("Calling WikiAgentCompositionRoot._policy() to configure confirmation policy...")
         policy = self._policy()
         audit = InMemoryAuditTrail()
+
+        _logger.info(
+            "Calling WikiToolsProvider.build() to assemble wiki tools backend (mode=%s)...",
+            self._settings.mode.value,
+        )
         provider = WikiToolsProvider(self._settings, WikiDatasetLoader(), user_id=self._principal.subject)
         wiki_tools = self._wiki_tools_override or provider.build(base_path=self._base_path)
+        _logger.info("Calling WikiAgentCompositionRoot._skills() to assemble domain capabilities...")
         skills = self._skills(manifest, wiki_tools, policy, audit)
 
         draft_store = InMemoryWikiDraftStore()
         ledger = InMemoryConfirmationLedger()
+
+        capabilities = provider.capabilities(base_path=self._base_path)
+        _logger.info("Served capabilities count: %d", len(capabilities))
+
         registry = self._registry(
             manifest,
             skills,
             draft_store,
             ledger,
-            provider.capabilities(base_path=self._base_path),
+            capabilities,
         )
 
         approvals = LangGraphApprovalTranslator()
+        interrupts = approvals.interrupt_on(registry, policy, user)
+        _logger.debug("Configured interrupt_on table: %s", interrupts)
+
+        _logger.info(
+            "Calling SkillToolAdapter.to_tools() to adapt %d registered skills to LangChain...",
+            len(registry.skills),
+        )
         tools = SkillToolAdapter(WikiToolResultRenderer()).to_tools(registry, user)
 
+        thread_id = thread_id_of(self._principal, session_id)
+        _logger.debug("Derived LangGraph thread_id: %s", thread_id)
+
+        _logger.info(
+            "Calling LangChain create_agent() with model '%s' and %d tools...",
+            type(self._chat_model).__name__,
+            len(tools),
+        )
+        agent = create_agent(
+            model=self._chat_model,
+            tools=list(tools),
+            system_prompt=manifest.instructions,
+            middleware=[
+                HumanInTheLoopMiddleware(
+                    interrupt_on=interrupts,
+                    description_prefix="This operation changes the wiki and needs approval",
+                )
+            ],
+            # Human-in-the-loop requires checkpointing: an interrupted turn
+            # is resumed from persisted state. In-memory is right for a
+            # console session and for tests; an HTTP deployment serving
+            # several people wants a durable saver instead.
+            checkpointer=InMemorySaver(),
+            name=manifest.name,
+        )
+
+        _logger.info("Wiki Agent runtime successfully assembled with %d tool(s)", len(tools))
         return WikiAgentRuntime(
             principal=self._principal,
             user=user,
             manifest=manifest,
             registry=registry,
-            agent=create_agent(
-                model=self._chat_model,
-                tools=list(tools),
-                system_prompt=manifest.instructions,
-                middleware=[
-                    HumanInTheLoopMiddleware(
-                        interrupt_on=approvals.interrupt_on(registry, policy, user),
-                        description_prefix="This operation changes the wiki and needs approval",
-                    )
-                ],
-                # Human-in-the-loop requires checkpointing: an interrupted turn
-                # is resumed from persisted state. In-memory is right for a
-                # console session and for tests; an HTTP deployment serving
-                # several people wants a durable saver instead.
-                checkpointer=InMemorySaver(),
-                name=manifest.name,
-            ),
-            thread_id=thread_id_of(self._principal, session_id),
+            agent=agent,
+            thread_id=thread_id,
             skills=skills,
             policy=policy,
             approvals=approvals,
@@ -236,9 +279,7 @@ class WikiAgentCompositionRoot:
     def _policy(self) -> ConfirmationPolicy:
         """Build the deterministic confirmation policy of this deployment."""
         return ConfiguredConfirmationPolicy(
-            InMemoryConfirmationPreferenceStore(
-                {self._principal.subject: self._settings.confirmation_preferences()}
-            ),
+            InMemoryConfirmationPreferenceStore({self._principal.subject: self._settings.confirmation_preferences()}),
             WikiSecurityFloor().build(),
         )
 
@@ -251,6 +292,11 @@ class WikiAgentCompositionRoot:
     ) -> WikiSkills:
         """Assemble the reusable domain capabilities."""
         thresholds = WikiFreshnessSettings()
+        _logger.debug(
+            "assembling wiki skills (freshness thresholds: ageing=%d days, stale=%d days)",
+            thresholds.ageing_after_days,
+            thresholds.stale_after_days,
+        )
         return WikiSkillsFactory(
             wiki_tools=wiki_tools,
             reasoner=self._reasoner(),
@@ -272,10 +318,12 @@ class WikiAgentCompositionRoot:
         """Build the reasoner used by the analysis skills."""
         if self._reasoner_override is not None:
             return self._reasoner_override
+        temp = ChatModelSettings().sampling_temperature()
+        _logger.debug("building LangGraphTextReasoner (temperature=%s)", temp)
         return LangGraphTextReasoner(
             self._chat_model,
             PromptEnvelopeBuilder(source=WIKI_UNTRUSTED_SOURCE),
-            temperature=ChatModelSettings().sampling_temperature(),
+            temperature=temp,
         )
 
     def _manifest(self) -> AgentManifest:
@@ -326,11 +374,25 @@ class WikiAgentCompositionRoot:
                 broker,
             ).descriptors(),
         )
-        return SkillRegistry(
-            skills=[
-                descriptor for descriptor in descriptors if self._is_serviceable(descriptor, served)
-            ]
+        _logger.info("Evaluating %d wiki capabilities against server capabilities...", len(descriptors))
+        serviceable: list[SkillDescriptor] = []
+        unserviceable: list[str] = []
+        for descriptor in descriptors:
+            if self._is_serviceable(descriptor, served):
+                _logger.debug("Capability '%s': serviceable=True (registered)", descriptor.tool_name)
+                serviceable.append(descriptor)
+            else:
+                _logger.debug("Capability '%s': serviceable=False (excluded)", descriptor.tool_name)
+                unserviceable.append(descriptor.tool_name)
+
+        _logger.info(
+            "Registered %d serviceable capabilities out of %d total descriptors (excluded: %s)",
+            len(serviceable),
+            len(descriptors),
+            unserviceable or "none",
         )
+
+        return SkillRegistry(skills=serviceable)
 
     @staticmethod
     def _is_serviceable(descriptor: SkillDescriptor, served: frozenset[WikiToolName]) -> bool:

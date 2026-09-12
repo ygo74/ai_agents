@@ -29,9 +29,7 @@ class TestPromptEnvelopeBuilder:
     """Structure of the rendered prompt."""
 
     def test_renders_instructions_and_task_without_context(self):
-        prompt = PromptEnvelopeBuilder().build(
-            ReasoningRequest(instructions="Instructions here.", task="Do the task.")
-        )
+        prompt = PromptEnvelopeBuilder().build(ReasoningRequest(instructions="Instructions here.", task="Do the task."))
 
         assert "Instructions here." in prompt
         assert "Do the task." in prompt

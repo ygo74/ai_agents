@@ -96,9 +96,7 @@ AGENT_LAYERS: dict[str, frozenset[str]] = {
 # Modules sitting directly in an agent package rather than in a sub-layer. They
 # are the ports and the policies the layers agree on, so they import nothing but
 # the domain.
-AGENT_ROOT_MODULES = frozenset(
-    {"catalog", "mail_errors", "wiki_errors", "security_floor", "tools_port"}
-)
+AGENT_ROOT_MODULES = frozenset({"catalog", "mail_errors", "wiki_errors", "security_floor", "tools_port"})
 
 AGENT_FRAMEWORK_ROOTS = frozenset(
     {"agent_framework", "langchain", "langchain_core", "langchain_openai", "langgraph", "crewai"}

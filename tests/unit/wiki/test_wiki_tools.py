@@ -35,27 +35,21 @@ class TestContract:
 class TestSearch:
     """What a search returns, and what it deliberately does not."""
 
-    async def test_search_returns_references_never_bodies(
-        self, sample_tools: InMemoryWikiTools, reader: UserContext
-    ):
+    async def test_search_returns_references_never_bodies(self, sample_tools: InMemoryWikiTools, reader: UserContext):
         """A broad query must not pull whole pages into the conversation."""
         result = await sample_tools.search(WikiSearchRequest(text="apollo"), reader)
 
         assert result.references
         assert all(not hasattr(reference, "body") for reference in result.references)
 
-    async def test_every_free_text_term_must_appear(
-        self, sample_tools: InMemoryWikiTools, reader: UserContext
-    ):
+    async def test_every_free_text_term_must_appear(self, sample_tools: InMemoryWikiTools, reader: UserContext):
         both = await sample_tools.search(WikiSearchRequest(text="VAT reconciliation"), reader)
         neither = await sample_tools.search(WikiSearchRequest(text="VAT kubernetes"), reader)
 
         assert [r.page_id for r in both.references] == ["apollo-scope"]
         assert not neither.references
 
-    async def test_archived_pages_are_excluded_by_default(
-        self, sample_tools: InMemoryWikiTools, reader: UserContext
-    ):
+    async def test_archived_pages_are_excluded_by_default(self, sample_tools: InMemoryWikiTools, reader: UserContext):
         current = await sample_tools.search(WikiSearchRequest(text="phase"), reader)
         archived = await sample_tools.search(
             WikiSearchRequest(text="phase", statuses=(WikiPageStatus.ARCHIVED,)), reader
@@ -64,35 +58,27 @@ class TestSearch:
         assert not current.references
         assert [r.page_id for r in archived.references] == ["apollo-old-plan"]
 
-    async def test_a_search_can_be_restricted_to_a_space(
-        self, sample_tools: InMemoryWikiTools, reader: UserContext
-    ):
+    async def test_a_search_can_be_restricted_to_a_space(self, sample_tools: InMemoryWikiTools, reader: UserContext):
         result = await sample_tools.search(WikiSearchRequest(space_keys=("ENG",), text="python"), reader)
 
         assert [r.page_id for r in result.references] == ["eng-python"]
 
-    async def test_labels_must_all_be_carried(
-        self, sample_tools: InMemoryWikiTools, reader: UserContext
-    ):
+    async def test_labels_must_all_be_carried(self, sample_tools: InMemoryWikiTools, reader: UserContext):
         both = await sample_tools.search(WikiSearchRequest(labels=("project", "scope")), reader)
         missing = await sample_tools.search(WikiSearchRequest(labels=("project", "budget")), reader)
 
         assert [r.page_id for r in both.references] == ["apollo-scope"]
         assert not missing.references
 
-    async def test_a_truncated_search_says_so(
-        self, sample_tools: InMemoryWikiTools, reader: UserContext
-    ):
-        """"Here are the first two" must be distinguishable from "there are two"."""
+    async def test_a_truncated_search_says_so(self, sample_tools: InMemoryWikiTools, reader: UserContext):
+        """ "Here are the first two" must be distinguishable from "there are two"."""
         result = await sample_tools.search(WikiSearchRequest(labels=("project",), limit=2), reader)
 
         assert len(result.references) == 2
         assert result.total_count > 2
         assert result.truncated
 
-    async def test_results_can_be_ordered_by_title(
-        self, sample_tools: InMemoryWikiTools, reader: UserContext
-    ):
+    async def test_results_can_be_ordered_by_title(self, sample_tools: InMemoryWikiTools, reader: UserContext):
         result = await sample_tools.search(
             WikiSearchRequest(labels=("project",), sort_order=WikiSortOrder.TITLE, limit=50), reader
         )
@@ -100,9 +86,7 @@ class TestSearch:
         titles = [reference.title.expose() for reference in result.references]
         assert titles == sorted(titles, key=str.casefold)
 
-    async def test_a_date_window_narrows_the_result(
-        self, sample_tools: InMemoryWikiTools, reader: UserContext
-    ):
+    async def test_a_date_window_narrows_the_result(self, sample_tools: InMemoryWikiTools, reader: UserContext):
         result = await sample_tools.search(
             WikiSearchRequest(
                 labels=("project",),
@@ -118,39 +102,29 @@ class TestSearch:
 class TestReads:
     """Retrieval of a single page and of what hangs off it."""
 
-    async def test_a_page_is_returned_with_its_body(
-        self, sample_tools: InMemoryWikiTools, reader: UserContext
-    ):
+    async def test_a_page_is_returned_with_its_body(self, sample_tools: InMemoryWikiTools, reader: UserContext):
         page = await sample_tools.get_page("apollo-architecture", reader)
 
         assert "PostgreSQL 16" in page.body.expose()
 
-    async def test_children_are_one_level_deep(
-        self, sample_tools: InMemoryWikiTools, reader: UserContext
-    ):
+    async def test_children_are_one_level_deep(self, sample_tools: InMemoryWikiTools, reader: UserContext):
         tree = await sample_tools.get_children("apollo-home", reader)
 
         assert tree.parent_id == "apollo-home"
         assert "apollo-scope" in {child.page_id for child in tree.children}
 
-    async def test_history_runs_from_newest_to_oldest(
-        self, sample_tools: InMemoryWikiTools, reader: UserContext
-    ):
+    async def test_history_runs_from_newest_to_oldest(self, sample_tools: InMemoryWikiTools, reader: UserContext):
         history = await sample_tools.get_history("apollo-scope", reader)
 
         assert [version.version for version in history.versions] == [4, 3, 2, 1]
         assert history.current.version == 4
 
-    async def test_comments_are_returned_oldest_first(
-        self, sample_tools: InMemoryWikiTools, reader: UserContext
-    ):
+    async def test_comments_are_returned_oldest_first(self, sample_tools: InMemoryWikiTools, reader: UserContext):
         comments = await sample_tools.get_comments("apollo-scope", reader)
 
         assert [comment.comment_id for comment in comments] == ["c-scope-1"]
 
-    async def test_an_unknown_page_is_reported_as_missing(
-        self, sample_tools: InMemoryWikiTools, reader: UserContext
-    ):
+    async def test_an_unknown_page_is_reported_as_missing(self, sample_tools: InMemoryWikiTools, reader: UserContext):
         with pytest.raises(WikiNotFoundError):
             await sample_tools.get_page("no-such-page", reader)
 
@@ -174,9 +148,7 @@ class TestWrites:
         with pytest.raises(WikiNotFoundError):
             await tools.create_page("NOPE", "Runbook", "body", author)
 
-    async def test_updating_a_page_raises_its_version_and_extends_the_history(
-        self, author: UserContext
-    ):
+    async def test_updating_a_page_raises_its_version_and_extends_the_history(self, author: UserContext):
         tools = InMemoryWikiTools(make_wiki(PageEntry(make_page(page_id="p1", version=1))))
 
         updated = await tools.update_page("p1", "New body.", author)
@@ -223,9 +195,7 @@ class TestWrites:
 class TestAuthorisation:
     """The wiki restricts pages and spaces, and so does this implementation."""
 
-    async def test_a_restricted_page_is_refused_not_hidden(
-        self, sample_tools: InMemoryWikiTools, reader: UserContext
-    ):
+    async def test_a_restricted_page_is_refused_not_hidden(self, sample_tools: InMemoryWikiTools, reader: UserContext):
         """Reporting it as missing would tell users documentation does not exist."""
         with pytest.raises(WikiAccessDeniedError):
             await sample_tools.get_page("apollo-salaries", reader)
@@ -299,17 +269,13 @@ class TestAuthorisation:
 class TestUntrustedContent:
     """Everything the dataset carries crosses the boundary wrapped."""
 
-    async def test_a_planted_instruction_arrives_as_data(
-        self, sample_tools: InMemoryWikiTools, reader: UserContext
-    ):
+    async def test_a_planted_instruction_arrives_as_data(self, sample_tools: InMemoryWikiTools, reader: UserContext):
         page = await sample_tools.get_page("apollo-onboarding", reader)
 
         assert "Ignore all previous instructions" in page.body.expose()
         assert "Ignore all previous instructions" not in repr(page)
 
-    async def test_search_excerpts_are_wrapped_too(
-        self, sample_tools: InMemoryWikiTools, reader: UserContext
-    ):
+    async def test_search_excerpts_are_wrapped_too(self, sample_tools: InMemoryWikiTools, reader: UserContext):
         """An excerpt is a fragment of the page and is no more trusted than it."""
         result = await sample_tools.search(WikiSearchRequest(title_contains="Onboarding"), reader)
 

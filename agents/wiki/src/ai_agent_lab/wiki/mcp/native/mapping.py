@@ -49,9 +49,7 @@ class WikiWireMapper:
             space_key=payload.space_key,
             title=untrusted(payload.title, UntrustedOrigin.WIKI_PAGE_TITLE),
             excerpt=(
-                None
-                if payload.excerpt is None
-                else untrusted(payload.excerpt, UntrustedOrigin.WIKI_PAGE_EXCERPT)
+                None if payload.excerpt is None else untrusted(payload.excerpt, UntrustedOrigin.WIKI_PAGE_EXCERPT)
             ),
             status=WikiPageStatus(payload.status.value),
             last_modified_at=payload.last_modified_at,
@@ -143,9 +141,7 @@ class WikiWireMapper:
             modified_at=payload.modified_at,
             modified_by=self.author(payload.modified_by),
             message=(
-                None
-                if payload.message is None
-                else untrusted(payload.message, UntrustedOrigin.WIKI_VERSION_MESSAGE)
+                None if payload.message is None else untrusted(payload.message, UntrustedOrigin.WIKI_VERSION_MESSAGE)
             ),
             is_minor_edit=payload.is_minor_edit,
         )
@@ -175,6 +171,4 @@ class WikiWireMapper:
         try:
             return model(**fields)
         except ValueError as error:
-            raise WikiToolProtocolError(
-                f"the wiki server returned an unusable {model.__name__}: {error}"
-            ) from error
+            raise WikiToolProtocolError(f"the wiki server returned an unusable {model.__name__}: {error}") from error

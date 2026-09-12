@@ -129,16 +129,14 @@ class TestMailReplySkill:
 
         assert mail_tools.mailbox_of(owner).drafts == ()
 
-    async def test_derives_a_subject_when_the_reasoner_returns_none(
-        self, mail_tools, context_builder, owner
-    ):
+    async def test_derives_a_subject_when_the_reasoner_returns_none(self, mail_tools, context_builder, owner):
         skill = MailReplySkill(
             mail_tools,
             ScriptedTextReasoner({MailReplyOutput: {"subject": "  ", "body": "ok"}}),
             context_builder,
             ConfiguredMailboxOwnerDirectory({"owner": "owner@example.com"}),
             ReplyRecipientPlanner(),
-        REPLY_PROMPT,
+            REPLY_PROMPT,
         )
 
         result = await skill.draft_reply_to_message("m1", "Say I agree", owner)
@@ -252,9 +250,7 @@ class TestSendMailSkill:
         assert len(mail_tools.mailbox_of(owner).sent) == 1
 
     @pytest.mark.security
-    async def test_sending_cannot_be_auto_approved_by_preferences(
-        self, mail_tools, audit, preference_store, owner
-    ):
+    async def test_sending_cannot_be_auto_approved_by_preferences(self, mail_tools, audit, preference_store, owner):
         preference_store.set_preferences(
             "owner", ConfirmationPreferences(auto_approved_tools=frozenset({MailToolName.SEND_MAIL.value}))
         )
@@ -319,9 +315,7 @@ class TestMailManagementSkill:
         ],
     )
     @pytest.mark.security
-    async def test_every_operation_refuses_to_run_unconfirmed(
-        self, management_skill, mail_tools, owner, tool, call
-    ):
+    async def test_every_operation_refuses_to_run_unconfirmed(self, management_skill, mail_tools, owner, tool, call):
         with pytest.raises(ConfirmationRequiredError):
             await call(management_skill, owner)
 
@@ -370,9 +364,7 @@ class TestMailManagementSkill:
 
         assert "PROJECT" not in (await mail_tools.get_message("m1", owner)).label_ids
 
-    async def test_mark_read_can_be_auto_approved_by_preferences(
-        self, mail_tools, audit, preference_store, owner
-    ):
+    async def test_mark_read_can_be_auto_approved_by_preferences(self, mail_tools, audit, preference_store, owner):
         preference_store.set_preferences(
             "owner", ConfirmationPreferences(auto_approved_tools=frozenset({MailToolName.MARK_READ.value}))
         )
@@ -426,9 +418,7 @@ class TestLabelLifecycle:
         assert outcome.created
         assert outcome.label.name.expose() == "Invoices"
 
-    async def test_creating_a_label_can_be_gated_by_preferences(
-        self, mail_tools, audit, preference_store, owner
-    ):
+    async def test_creating_a_label_can_be_gated_by_preferences(self, mail_tools, audit, preference_store, owner):
         """A deployment that wants the model to ask can say so, in configuration."""
         preference_store.set_preferences(
             "owner", ConfirmationPreferences(always_confirm_tools=frozenset({MailToolName.CREATE_LABEL.value}))
@@ -469,9 +459,7 @@ class TestLabelLifecycle:
         assert request.operation.risk_level is RiskLevel.HIGH
 
     @pytest.mark.security
-    async def test_a_deletion_approval_cannot_be_replayed_on_another_label(
-        self, management_skill, mail_tools, owner
-    ):
+    async def test_a_deletion_approval_cannot_be_replayed_on_another_label(self, management_skill, mail_tools, owner):
         approved = management_skill.build_label_confirmation_request(MailToolName.DELETE_LABEL, "PROJECT", owner)
         decision = ConfirmationDecision(request_id=approved.request_id, approved=True, decided_by="owner")
         other = management_skill.build_label_confirmation_request(MailToolName.DELETE_LABEL, "INBOX", owner)

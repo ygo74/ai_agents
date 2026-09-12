@@ -94,9 +94,7 @@ class WikiDialectRegistry:
     """
 
     def __init__(self, dialects: Mapping[str, DialectFactory] | None = None) -> None:
-        self._dialects: dict[str, DialectFactory] = dict(
-            dialects or {NATIVE: _native, ATLASSIAN: _atlassian}
-        )
+        self._dialects: dict[str, DialectFactory] = dict(dialects or {NATIVE: _native, ATLASSIAN: _atlassian})
 
     @property
     def known(self) -> tuple[str, ...]:

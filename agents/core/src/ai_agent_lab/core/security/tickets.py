@@ -197,9 +197,7 @@ class InMemoryPendingConfirmationStore:
     def discard(self, *, subject: str, conversation_id: str) -> None:
         """Drop every ticket of a conversation, answered or not."""
         for ticket_id in [
-            ticket_id
-            for ticket_id, ticket in self._tickets.items()
-            if ticket.belongs_to(subject, conversation_id)
+            ticket_id for ticket_id, ticket in self._tickets.items() if ticket.belongs_to(subject, conversation_id)
         ]:
             del self._tickets[ticket_id]
 

@@ -34,10 +34,19 @@ class SkillToolAdapter:
 
     def to_tools(self, definition: SkillRegistry, user: UserContext) -> tuple[StructuredTool, ...]:
         """Expose every capability of an agent definition as a framework tool."""
-        return tuple(self.to_tool(descriptor, user) for descriptor in definition.skills)
+        _logger.info(
+            "Adapting %d skills to LangChain StructuredTools for user=%s",
+            len(definition.skills),
+            user.user_id,
+        )
+        tools = tuple(self.to_tool(descriptor, user) for descriptor in definition.skills)
+        _logger.info("Adapted %d skills to LangChain StructuredTools successfully", len(tools))
+        _logger.debug("Adapted tools: %s", [t.name for t in tools])
+        return tools
 
     def to_tool(self, descriptor: SkillDescriptor, user: UserContext) -> StructuredTool:
         """Expose one capability as a framework tool."""
+        _logger.debug("Adapting skill '%s' (input_model=%s)", descriptor.tool_name, descriptor.input_model.__name__)
 
         async def invoke(**arguments: Any) -> str:
             return await self._run(descriptor, user, arguments)
@@ -56,12 +65,17 @@ class SkillToolAdapter:
         arguments: dict[str, Any],
     ) -> str:
         """Validate the arguments, run the skill and render the result."""
+        _logger.info("Executing capability '%s' for user=%s", descriptor.tool_name, user.user_id)
+        _logger.debug("Capability '%s' input arguments: %s", descriptor.tool_name, arguments)
         payload = descriptor.input_model.model_validate(arguments)
         try:
             result = await descriptor.invoke(payload, user)
         except DomainError as error:
             return self._render_refusal(descriptor, error)
-        return self._renderer.render(result)
+        rendered = self._renderer.render(result)
+        _logger.info("Capability '%s' succeeded (output_length=%d)", descriptor.tool_name, len(rendered))
+        _logger.debug("Capability '%s' rendered output: %s", descriptor.tool_name, rendered)
+        return rendered
 
     @staticmethod
     def _render_refusal(descriptor: SkillDescriptor, error: DomainError) -> str:

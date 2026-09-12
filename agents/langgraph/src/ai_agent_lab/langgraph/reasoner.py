@@ -53,9 +53,20 @@ class LangGraphTextReasoner:
         response_model: type[ReasoningOutputT],
     ) -> ReasoningOutputT:
         """Return a validated instance of ``response_model``."""
+        _logger.info("Executing reasoning request -> target_model=%s", response_model.__name__)
+        _logger.debug(
+            "Reasoning request details: instructions_length=%d, context_items=%d, temperature=%s",
+            len(request.instructions),
+            len(request.context),
+            self._temperature,
+        )
         prompt = self._envelope_builder.build(request)
+        _logger.debug("Built reasoning prompt envelope (length=%d)", len(prompt))
         answer = await self._invoke(prompt, response_model)
-        return self._validated(answer, response_model)
+        validated = self._validated(answer, response_model)
+        _logger.info("Reasoning completed successfully for %s", response_model.__name__)
+        _logger.debug("Reasoning output: %s", validated)
+        return validated
 
     async def _invoke(
         self,
@@ -72,8 +83,10 @@ class LangGraphTextReasoner:
         """
         structured = self._structured(response_model)
         try:
+            _logger.debug("Invoking structured output chat model for %s", response_model.__name__)
             return await structured.ainvoke([HumanMessage(content=prompt)])
         except Exception as error:
+            _logger.warning("Reasoning invocation failed: %s (%s)", type(error).__name__, error)
             raise ReasoningUnavailableError(f"the reasoning backend failed: {type(error).__name__}") from error
 
     def _structured(self, response_model: type[ReasoningOutputT]) -> Runnable[Any, Any]:

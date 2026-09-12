@@ -258,9 +258,7 @@ class McpServerBindingLoader:
             return McpTransport(declared)
         except ValueError as error:
             accepted = ", ".join(member.value for member in McpTransport)
-            raise McpBindingError(
-                f"{path}: 'transport' must be one of {accepted}, got {declared!r}"
-            ) from error
+            raise McpBindingError(f"{path}: 'transport' must be one of {accepted}, got {declared!r}") from error
 
     @staticmethod
     def _list(document: dict[str, Any], key: str, path: Path) -> list[Any]:

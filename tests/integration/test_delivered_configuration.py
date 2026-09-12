@@ -168,16 +168,28 @@ class TestRefusedConfiguration:
 
     @pytest.mark.security
     def test_a_configuration_cannot_disarm_a_mandatory_confirmation(self, tmp_path):
-        package = write_package(tmp_path / "send_mail", tool_name="send_mail", type="WRITE", risk="HIGH",
-                                permission="mail:send", confirmation="false")
+        package = write_package(
+            tmp_path / "send_mail",
+            tool_name="send_mail",
+            type="WRITE",
+            risk="HIGH",
+            permission="mail:send",
+            confirmation="false",
+        )
 
         with pytest.raises(SecurityFloorViolationError, match="always requires a confirmation"):
             skill_loader().load(package)
 
     @pytest.mark.security
     def test_a_configuration_cannot_lower_the_risk_of_sending(self, tmp_path):
-        package = write_package(tmp_path / "send_mail", tool_name="send_mail", type="WRITE", risk="LOW",
-                                permission="mail:send", confirmation="true")
+        package = write_package(
+            tmp_path / "send_mail",
+            tool_name="send_mail",
+            type="WRITE",
+            risk="LOW",
+            permission="mail:send",
+            confirmation="true",
+        )
 
         with pytest.raises(SecurityFloorViolationError, match="below the required HIGH"):
             skill_loader().load(package)
@@ -276,8 +288,7 @@ class TestMcpBinding:
     def test_an_unknown_capability_is_refused(self, tmp_path):
         (tmp_path / "mcp").mkdir()
         (tmp_path / "mcp" / "x.yaml").write_text(
-            "server: x\ntransport: stdio\ncommand: python\n"
-            "capabilities:\n  - delete_everything\ntools:\n  a: b\n",
+            "server: x\ntransport: stdio\ncommand: python\ncapabilities:\n  - delete_everything\ntools:\n  a: b\n",
             encoding="utf-8",
         )
 

@@ -183,9 +183,5 @@ def _content_text(content: object) -> str:
         return content.strip()
     if not isinstance(content, list):
         return ""
-    parts = [
-        str(part.get(_TEXT, "")).strip()
-        for part in content
-        if isinstance(part, Mapping) and part.get(_TEXT)
-    ]
+    parts = [str(part.get(_TEXT, "")).strip() for part in content if isinstance(part, Mapping) and part.get(_TEXT)]
     return "\n".join(part for part in parts if part)
