@@ -11,21 +11,21 @@ from typing import Any
 
 import pytest
 from pydantic import BaseModel
-
-from ai_agent_lab.core.errors import DomainError
-from ai_agent_lab.core.registry import SkillDescriptor, SkillRegistry
-from ai_agent_lab.core.security.confirmation import (
-    ConfiguredConfirmationPolicy,
-    InMemoryConfirmationPreferenceStore,
-)
-from ai_agent_lab.core.security.context import UserContext
-from ai_agent_lab.core.security.floor import OperationFloor, SecurityFloor
-from ai_agent_lab.core.security.operations import (
+from ygo74.agent_runtime.domains.contracts.capability_registry import SkillDescriptor, SkillRegistry
+from ygo74.agent_runtime.domains.security.floor import OperationFloor, SecurityFloor
+from ygo74.agent_runtime.domains.security.operations import (
     OperationType,
     RiskLevel,
     ToolOperationDescriptor,
 )
-from ai_agent_lab.core.security.permissions import Permission
+from ygo74.agent_runtime.domains.security.permissions import Permission
+from ygo74.agent_runtime.domains.security.user_context import UserContext
+
+from ai_agent_lab.core.errors import DomainError
+from ai_agent_lab.core.security.confirmation import (
+    ConfiguredConfirmationPolicy,
+    InMemoryConfirmationPreferenceStore,
+)
 from ai_agent_lab.langgraph.approval import (
     ALLOWED_DECISIONS,
     LangGraphApprovalTranslator,

@@ -20,15 +20,15 @@ from collections.abc import Mapping
 from typing import Any
 
 import pytest
-
-from ai_agent_lab.core.errors import DomainError
-from ai_agent_lab.core.security.confirmation import ConfirmationDetail, ConfirmationRequest
-from ai_agent_lab.core.security.context import UserContext
-from ai_agent_lab.core.security.operations import (
+from ygo74.agent_runtime.domains.security.operations import (
     OperationType,
     RiskLevel,
     ToolOperationDescriptor,
 )
+from ygo74.agent_runtime.domains.security.user_context import UserContext
+
+from ai_agent_lab.core.errors import DomainError
+from ai_agent_lab.core.security.confirmation import ConfirmationDetail, ConfirmationRequest
 from ai_agent_lab.core.security.tickets import InMemoryPendingConfirmationStore
 from ai_agent_lab.langgraph.approval import REJECT, PendingToolApproval
 from ai_agent_lab.wiki.application.approval.tickets import WikiTicketApprovalResolver

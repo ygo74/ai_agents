@@ -115,10 +115,8 @@ packages = [
 module = "tests.*"
 disallow_untyped_defs = false
 
-# `ygo74-agent-runtime` ships no `py.typed` marker yet, so mypy cannot read its
-# annotations even though the source is fully typed. Adding the marker upstream
-# is tracked; until then this is the narrowest possible waiver, and it applies to
-# the serving library alone rather than relaxing the strict settings above.
-[[tool.mypy.overrides]]
-module = "ygo74.*"
-ignore_missing_imports = true
+# `ygo74-agent-runtime` ships `py.typed` since 0.0.4, so mypy reads its
+# annotations directly. The waiver that used to sit here - `ignore_missing_imports`
+# for the whole `ygo74.*` namespace - turned every type it exposes into `Any`,
+# which silently weakened this repository's strict settings at exactly the
+# boundary that now carries the security model.

@@ -6,8 +6,8 @@ import logging
 
 import pytest
 from pydantic import SecretStr
+from ygo74.agent_runtime.domains.security.user_context import UserContext
 
-from ai_agent_lab.core.security.context import UserContext
 from ai_agent_lab.mail.domain.models import MailSearchRequest
 from ai_agent_lab.mail.inmemory.mail_tools import InMemoryMailTools
 from ai_agent_lab.mail.mcp.google.query import GmailQueryBuilder

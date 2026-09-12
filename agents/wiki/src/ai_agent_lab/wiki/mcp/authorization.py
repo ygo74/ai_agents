@@ -33,8 +33,8 @@ from base64 import b64encode
 from typing import Protocol, runtime_checkable
 
 from pydantic import SecretStr
+from ygo74.agent_runtime.domains.security.user_context import UserContext
 
-from ai_agent_lab.core.security.context import UserContext
 from ai_agent_lab.wiki.domain.auth import WikiAuthScheme
 from ai_agent_lab.wiki.wiki_errors import WikiAccessDeniedError, WikiToolError
 

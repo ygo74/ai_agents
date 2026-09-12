@@ -7,7 +7,7 @@ split the Mail Agent applies, so the two are served identically and a comparison
 between the frameworks measures the frameworks.
 
 Reading the runtime's loosely-typed payload is not specific to a wiki, so it
-lives in :mod:`ai_agent_lab.core.serving.payloads` and this module composes it.
+lives in :mod:`ygo74.agent_runtime.domains.endpoints.conversation_payloads` and this module composes it.
 
 **One thing is specific, and it is stated here.** A wiki account is not an e-mail
 address. Confluence identifies a person by an account identifier, Data Center by
@@ -25,21 +25,21 @@ from datetime import UTC, datetime
 from typing import Any
 
 from ygo74.agent_runtime import AgentDescriptor
-
-from ai_agent_lab.core.manifests import AgentManifest
-from ai_agent_lab.core.serving.conversation import AgentReply, ConversationTurn
-from ai_agent_lab.core.serving.discovery import AgentDescriptorFactory
-from ai_agent_lab.core.serving.payloads import (
-    CONVERSATION_HEADER,
+from ygo74.agent_runtime.domains.contracts.contract_errors import EmptyRequestError
+from ygo74.agent_runtime.domains.contracts.conversation import AgentReply, ConversationTurn
+from ygo74.agent_runtime.domains.contracts.manifests import AgentManifest
+from ygo74.agent_runtime.domains.endpoints.conversation_payloads import (
     DEFAULT_CONVERSATION,
     AgentReplyRenderer,
     ConversationPayloadReader,
-    EmptyRequestError,
 )
+from ygo74.agent_runtime.domains.endpoints.header_forwarding import DEFAULT_CONVERSATION_HEADER
+
+from ai_agent_lab.core.serving.discovery import AgentDescriptorFactory
 from ai_agent_lab.wiki.application.entrypoints.conversation import WikiConversationEngine
 
 __all__ = [
-    "CONVERSATION_HEADER",
+    "DEFAULT_CONVERSATION_HEADER",
     "EmptyRequestError",
     "WikiAgentDescriptorFactory",
     "WikiAgentEntrypoint",

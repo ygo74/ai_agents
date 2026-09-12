@@ -12,12 +12,13 @@ ticket they belong to.
 
 from __future__ import annotations
 
-from ai_agent_lab.core.security.confirmation import ConfirmationDetail, ConfirmationRequest
-from ai_agent_lab.core.security.operations import (
+from ygo74.agent_runtime.domains.security.operations import (
     OperationType,
     RiskLevel,
     ToolOperationDescriptor,
 )
+
+from ai_agent_lab.core.security.confirmation import ConfirmationDetail, ConfirmationRequest
 from ai_agent_lab.core.security.tickets import ConfirmationTicket
 from ai_agent_lab.core.serving.pending import PendingConfirmationRenderer
 from ai_agent_lab.mail.domain.permissions import MailPermission

@@ -13,8 +13,8 @@ tool names, and no send tool at all.
 from __future__ import annotations
 
 import pytest
+from ygo74.agent_runtime.domains.security.user_context import UserContext
 
-from ai_agent_lab.core.security.context import UserContext
 from ai_agent_lab.mail.catalog import MailToolName
 from ai_agent_lab.mail.domain.models import (
     MailDraft,

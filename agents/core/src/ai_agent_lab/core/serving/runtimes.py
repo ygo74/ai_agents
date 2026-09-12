@@ -30,7 +30,7 @@ from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 
-from ai_agent_lab.core.security.principal import Principal
+from ygo74.agent_runtime.domains.auth.agent_principal import AgentPrincipal
 
 DEFAULT_IDLE_LIFETIME = timedelta(minutes=30)
 DEFAULT_MAX_CONVERSATIONS = 200
@@ -74,7 +74,7 @@ class ConversationRuntimeCache[RuntimeT]:
 
     def __init__(
         self,
-        factory: Callable[[Principal, str], Awaitable[RuntimeT]],
+        factory: Callable[[AgentPrincipal, str], Awaitable[RuntimeT]],
         closer: Callable[[RuntimeT], Awaitable[None]],
         *,
         max_conversations: int = DEFAULT_MAX_CONVERSATIONS,
@@ -91,7 +91,7 @@ class ConversationRuntimeCache[RuntimeT]:
         self._entries: dict[tuple[str, str], _Entry[RuntimeT]] = {}
         self._lock = asyncio.Lock()
 
-    async def acquire(self, principal: Principal, conversation_id: str) -> RuntimeT:
+    async def acquire(self, principal: AgentPrincipal, conversation_id: str) -> RuntimeT:
         """Return the runtime of a conversation, building it if needed.
 
         Concurrent callers of the same conversation share one build. A model
@@ -125,7 +125,7 @@ class ConversationRuntimeCache[RuntimeT]:
             await self._forget(key, close=False)
             raise
 
-    async def release(self, principal: Principal, conversation_id: str) -> None:
+    async def release(self, principal: AgentPrincipal, conversation_id: str) -> None:
         """Close and forget one conversation."""
         await self._forget((principal.subject, conversation_id), close=True)
 

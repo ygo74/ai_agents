@@ -23,9 +23,10 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Any
 
+from ygo74.agent_runtime.domains.security.user_context import UserContext
+
 from ai_agent_lab.core.errors import DomainError
 from ai_agent_lab.core.security.confirmation import ConfirmationRequest
-from ai_agent_lab.core.security.context import UserContext
 from ai_agent_lab.wiki.application.skills_factory import WikiSkills
 from ai_agent_lab.wiki.catalog import WikiToolName
 from ai_agent_lab.wiki.domain.ports import WikiDraftStore

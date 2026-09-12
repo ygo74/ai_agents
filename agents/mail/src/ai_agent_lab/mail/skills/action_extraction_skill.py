@@ -5,8 +5,9 @@ from __future__ import annotations
 import logging
 from collections.abc import Sequence
 
+from ygo74.agent_runtime.domains.security.user_context import UserContext
+
 from ai_agent_lab.core.reasoning.ports import ReasoningRequest, TextReasoner
-from ai_agent_lab.core.security.context import UserContext
 from ai_agent_lab.mail.domain.enums import ActionOrigin
 from ai_agent_lab.mail.domain.models import MailAction, MailMessage, MailSearchRequest
 from ai_agent_lab.mail.domain.permissions import MailPermission

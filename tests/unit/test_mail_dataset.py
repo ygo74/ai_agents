@@ -5,8 +5,8 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
+from ygo74.agent_runtime.domains.security.user_context import UserContext
 
-from ai_agent_lab.core.security.context import UserContext
 from ai_agent_lab.mail.domain.permissions import MailPermission
 from ai_agent_lab.mail.inmemory.dataset import MailDatasetError, MailDatasetLoader
 from ai_agent_lab.mail.inmemory.mail_tools import InMemoryMailTools

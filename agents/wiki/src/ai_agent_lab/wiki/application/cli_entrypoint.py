@@ -12,11 +12,12 @@ from collections.abc import Sequence
 from pathlib import Path
 
 from langchain_core.language_models import BaseChatModel
+from ygo74.agent_runtime.domains.auth.agent_principal import AgentPrincipal
+from ygo74.agent_runtime.domains.security.security_errors import SecurityError
 
 from ai_agent_lab.core.config.azure_credentials import AzureIdentityCredentialProvider
 from ai_agent_lab.core.config.environment import EnvironmentFile
 from ai_agent_lab.core.errors import DomainError
-from ai_agent_lab.core.security.principal import Principal
 from ai_agent_lab.langgraph.approval import LangGraphApprovalTranslator
 from ai_agent_lab.langgraph.chat_model import AzureOpenAIRoute, LangGraphChatModelFactory
 from ai_agent_lab.wiki.application.composition import WikiAgentCompositionRoot, WikiAgentRuntime
@@ -87,7 +88,7 @@ class WikiAgentCli:
         _logger.debug("user turn input: %r", message)
         try:
             answer = await self._session.ask(message)
-        except DomainError as error:
+        except (DomainError, SecurityError) as error:
             _logger.warning("user turn failed with domain error: %s: %s", type(error).__name__, error)
             self._console.write(f"\nAgent > the request could not be completed: {error}\n")
             return
@@ -148,7 +149,7 @@ def build_cli(
     runtime = WikiAgentCompositionRoot(
         settings,
         model,
-        principal=Principal(subject=settings.user_id),
+        principal=AgentPrincipal(subject=settings.user_id),
         base_path=base_path or Path.cwd(),
     ).build(session_id=f"cli-{uuid.uuid4().hex[:8]}")
 

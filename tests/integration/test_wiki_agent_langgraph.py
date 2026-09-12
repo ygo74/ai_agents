@@ -19,9 +19,9 @@ from tests.support.langgraph_fakes import (
     calls,
     says,
 )
+from ygo74.agent_runtime.domains.auth.agent_principal import AgentPrincipal
+from ygo74.agent_runtime.domains.security.audit import AuditOutcome
 
-from ai_agent_lab.core.security.audit import AuditOutcome
-from ai_agent_lab.core.security.principal import Principal
 from ai_agent_lab.langgraph.approval import LangGraphApprovalTranslator
 from ai_agent_lab.wiki.application.composition import (
     WikiAgentCompositionRoot,
@@ -61,14 +61,14 @@ def build_runtime(
     *,
     reasoner: object | None = None,
     settings: WikiAgentSettings | None = None,
-    principal: Principal | None = None,
+    principal: AgentPrincipal | None = None,
     session_id: str = "integration",
 ) -> WikiAgentRuntime:
     """Assemble the Wiki Agent with a scripted model and the sample dataset."""
     return WikiAgentCompositionRoot(
         settings or WikiAgentSettings(mode=WikiAgentMode.MOCK),
         ScriptedChatModel(script or [says("nothing to do")]),
-        principal=principal or Principal(subject="diana"),
+        principal=principal or AgentPrincipal(subject="diana"),
         reasoner=reasoner or ScriptedReasoner(AnswerOutput(answer="scripted", cited_page_ids=[])),
         base_path=REPOSITORY_ROOT,
     ).build(session_id=session_id)
@@ -238,28 +238,28 @@ class TestThreadIsolation:
 
     def test_the_same_conversation_of_two_people_is_two_threads(self):
         """A caller-supplied identifier must not reach another person's state."""
-        mine = thread_id_of(Principal(subject="diana"), "conversation-1")
-        theirs = thread_id_of(Principal(subject="alice"), "conversation-1")
+        mine = thread_id_of(AgentPrincipal(subject="diana"), "conversation-1")
+        theirs = thread_id_of(AgentPrincipal(subject="alice"), "conversation-1")
 
         assert mine != theirs
 
     def test_the_identifier_is_stable_for_one_person(self):
-        first = thread_id_of(Principal(subject="diana"), "conversation-1")
-        second = thread_id_of(Principal(subject="diana"), "conversation-1")
+        first = thread_id_of(AgentPrincipal(subject="diana"), "conversation-1")
+        second = thread_id_of(AgentPrincipal(subject="diana"), "conversation-1")
 
         assert first == second
 
     def test_a_subject_cannot_be_shaped_to_collide_with_another(self):
         """A delimiter inside a subject is the classic composite-key ambiguity."""
-        crafted = thread_id_of(Principal(subject="diana:conversation"), "1")
-        genuine = thread_id_of(Principal(subject="diana"), "conversation:1")
+        crafted = thread_id_of(AgentPrincipal(subject="diana:conversation"), "1")
+        genuine = thread_id_of(AgentPrincipal(subject="diana"), "conversation:1")
 
         assert crafted != genuine
 
     def test_the_runtime_uses_the_derived_identifier(self):
         runtime = build_runtime(session_id="conversation-1")
 
-        assert runtime.thread_id == thread_id_of(Principal(subject="diana"), "conversation-1")
+        assert runtime.thread_id == thread_id_of(AgentPrincipal(subject="diana"), "conversation-1")
 
     def test_the_conversation_identifier_never_appears_in_the_thread(self):
         """It is opaque, so nothing can be guessed back out of it."""
@@ -316,7 +316,7 @@ class TestAgentLoop:
                 calls(ToolCall("get_page", {"page_id": "apollo-salaries"})),
                 says("done"),
             ],
-            principal=Principal(subject="alice"),
+            principal=AgentPrincipal(subject="alice"),
         )
 
         await runtime.agent.ainvoke(
@@ -402,7 +402,7 @@ def build_write_runtime(
     script: list[ScriptedTurn],
     *,
     body: str = "A revised body.",
-    principal: Principal | None = None,
+    principal: AgentPrincipal | None = None,
 ) -> tuple[WikiAgentRuntime, ScriptedChatModel]:
     """Assemble a runtime whose reasoner drafts a fixed page body.
 
@@ -414,7 +414,7 @@ def build_write_runtime(
     runtime = WikiAgentCompositionRoot(
         WikiAgentSettings(mode=WikiAgentMode.MOCK),
         model,
-        principal=principal or Principal(subject="diana"),
+        principal=principal or AgentPrincipal(subject="diana"),
         reasoner=ScriptedReasoner(
             AnswerOutput(answer="scripted", cited_page_ids=[]),
             PageDraftOutput=PageDraftOutput(title="Architecture overview", body=body),

@@ -14,14 +14,14 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 
 import pytest
-
-from ai_agent_lab.core.security.commands import ConfirmationCommandParser, ConfirmationVerb
-from ai_agent_lab.core.security.confirmation import ConfirmationRequest
-from ai_agent_lab.core.security.operations import (
+from ygo74.agent_runtime.domains.security.operations import (
     OperationType,
     RiskLevel,
     ToolOperationDescriptor,
 )
+
+from ai_agent_lab.core.security.commands import ConfirmationCommandParser, ConfirmationVerb
+from ai_agent_lab.core.security.confirmation import ConfirmationRequest
 from ai_agent_lab.core.security.tickets import (
     ConfirmationTicket,
     InMemoryPendingConfirmationStore,

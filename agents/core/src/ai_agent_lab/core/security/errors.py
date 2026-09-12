@@ -1,21 +1,21 @@
-"""Security errors of the domain layer."""
+"""Security errors that are specific to this laboratory.
+
+The base class, and the refusal raised when a caller lacks a permission, now live
+in ``ygo74.agent_runtime.domains.security.security_errors``: they describe a model
+that no longer belongs to one application. The refusal is named
+``PermissionDeniedError`` there, because the runtime already had an
+``AuthorizationError`` meaning something else - what an HTTP surface does with a
+request a handler denied, which it maps to a 403.
+
+What stays here is the confirmation vocabulary. It is the language of the
+human-approval mechanism, which is not yet part of the runtime, and it is re-based
+on the runtime's :class:`SecurityError` so that one ``except`` still catches every
+security failure of an agent.
+"""
 
 from __future__ import annotations
 
-from ai_agent_lab.core.errors import DomainError
-
-
-class SecurityError(DomainError):
-    """Base class for security-related domain errors."""
-
-
-class AuthorizationError(SecurityError):
-    """Raised when a user context lacks the permission required by an operation."""
-
-    def __init__(self, user_id: str, required_permission: str) -> None:
-        super().__init__(f"user {user_id!r} is not allowed to perform {required_permission!r}")
-        self.user_id = user_id
-        self.required_permission = required_permission
+from ygo74.agent_runtime.domains.security.security_errors import SecurityError
 
 
 class ConfirmationRequiredError(SecurityError):

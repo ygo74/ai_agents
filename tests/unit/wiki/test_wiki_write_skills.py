@@ -18,9 +18,10 @@ from __future__ import annotations
 
 import pytest
 from tests.unit.wiki.conftest import make_page, make_wiki
+from ygo74.agent_runtime.domains.security.audit import AuditOutcome, InMemoryAuditTrail
+from ygo74.agent_runtime.domains.security.security_errors import PermissionDeniedError
+from ygo74.agent_runtime.domains.security.user_context import UserContext
 
-from ai_agent_lab.core.observability.audit import InMemoryAuditTrail
-from ai_agent_lab.core.security.audit import AuditOutcome
 from ai_agent_lab.core.security.confirmation import (
     ConfiguredConfirmationPolicy,
     ConfirmationDecision,
@@ -28,9 +29,7 @@ from ai_agent_lab.core.security.confirmation import (
     ConfirmationPreferences,
     InMemoryConfirmationPreferenceStore,
 )
-from ai_agent_lab.core.security.context import UserContext
 from ai_agent_lab.core.security.errors import (
-    AuthorizationError,
     ConfirmationMismatchError,
     ConfirmationRejectedError,
     ConfirmationRequiredError,
@@ -204,7 +203,7 @@ class TestAuthoringRefusals:
             )
 
     async def test_a_reader_may_not_author(self, authoring, reader):
-        with pytest.raises(AuthorizationError):
+        with pytest.raises(PermissionDeniedError):
             await authoring.create_page(draft_for_new_page(), reader)
 
     async def test_authoring_is_not_managing(self, authoring, tools):
@@ -215,7 +214,7 @@ class TestAuthoringRefusals:
             permissions=frozenset({WikiPermission.READ, WikiPermission.AUTHOR}),
         )
 
-        with pytest.raises(AuthorizationError):
+        with pytest.raises(PermissionDeniedError):
             await authoring.delete_page("p1", writer)
 
         assert await tools.get_page("p1", writer) is not None
@@ -285,7 +284,7 @@ class TestAuditTrail:
         assert audit.records_for(WikiToolName.UPDATE_PAGE.value)[0].outcome is AuditOutcome.DECLINED
 
     async def test_a_write_without_permission_is_recorded_as_blocked(self, authoring, reader, audit):
-        with pytest.raises(AuthorizationError):
+        with pytest.raises(PermissionDeniedError):
             await authoring.create_page(draft_for_new_page(), reader)
 
         assert audit.records_for(WikiToolName.CREATE_PAGE.value)[0].outcome is AuditOutcome.BLOCKED
@@ -384,7 +383,7 @@ class TestComments:
             user_id="diana", session_id="s", permissions=frozenset({WikiPermission.READ})
         )
 
-        with pytest.raises(AuthorizationError):
+        with pytest.raises(PermissionDeniedError):
             await commenting.add_comment("p1", "A remark.", reader_only)
 
         assert await tools.get_comments("p1", reader_only) == ()

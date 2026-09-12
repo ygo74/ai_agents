@@ -23,15 +23,15 @@ from datetime import UTC, datetime
 from typing import Protocol, runtime_checkable
 
 from pydantic import BaseModel, ConfigDict, Field
+from ygo74.agent_runtime.domains.security.floor import SecurityFloor
+from ygo74.agent_runtime.domains.security.operations import RiskLevel, ToolOperationDescriptor
+from ygo74.agent_runtime.domains.security.user_context import UserContext
 
-from ai_agent_lab.core.security.context import UserContext
 from ai_agent_lab.core.security.errors import (
     ConfirmationMismatchError,
     ConfirmationRejectedError,
     ConfirmationRequiredError,
 )
-from ai_agent_lab.core.security.floor import SecurityFloor
-from ai_agent_lab.core.security.operations import RiskLevel, ToolOperationDescriptor
 
 _RISK_SEVERITY: Mapping[RiskLevel, int] = {
     RiskLevel.LOW: 0,
@@ -274,7 +274,7 @@ class ConfirmationGate:
         """Raise unless the operation may proceed.
 
         Raises:
-            AuthorizationError: the user lacks the required permission.
+            PermissionDeniedError: the user lacks the required permission.
             ConfirmationRequiredError: no decision was supplied for a gated operation.
             ConfirmationRejectedError: the user declined the operation.
             ConfirmationMismatchError: the decision answers a different request,

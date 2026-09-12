@@ -42,8 +42,8 @@ from datetime import UTC, datetime
 from typing import Any
 
 from mcp.types import CallToolResult, TextContent
+from ygo74.agent_runtime.domains.security.user_context import UserContext
 
-from ai_agent_lab.core.security.context import UserContext
 from ai_agent_lab.core.security.untrusted import UntrustedOrigin, untrusted
 from ai_agent_lab.wiki.catalog import WikiToolName
 from ai_agent_lab.wiki.domain.enums import WikiContentFormat, WikiPageStatus, WikiSortOrder

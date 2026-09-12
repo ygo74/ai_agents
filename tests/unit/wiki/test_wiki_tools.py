@@ -11,8 +11,8 @@ from datetime import UTC, datetime
 
 import pytest
 from tests.unit.wiki.conftest import make_page, make_space, make_wiki
+from ygo74.agent_runtime.domains.security.user_context import UserContext
 
-from ai_agent_lab.core.security.context import UserContext
 from ai_agent_lab.wiki.domain.enums import WikiPageStatus, WikiSortOrder
 from ai_agent_lab.wiki.domain.models import WikiSearchRequest
 from ai_agent_lab.wiki.inmemory.wiki import PageEntry, SpaceEntry

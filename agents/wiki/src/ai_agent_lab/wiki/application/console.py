@@ -17,6 +17,9 @@ from __future__ import annotations
 
 from typing import Any
 
+from ygo74.agent_runtime.domains.security.security_errors import SecurityError
+from ygo74.agent_runtime.domains.security.user_context import UserContext
+
 from ai_agent_lab.core.errors import DomainError
 from ai_agent_lab.core.security.confirmation import (
     ConfirmationDecision,
@@ -24,7 +27,6 @@ from ai_agent_lab.core.security.confirmation import (
     ConfirmationOutcome,
     ConfirmationRequest,
 )
-from ai_agent_lab.core.security.context import UserContext
 from ai_agent_lab.langgraph.approval import PendingToolApproval
 from ai_agent_lab.wiki.application.confirmation_presenter import WikiConfirmationPresenter
 
@@ -87,7 +89,7 @@ class ConsoleApprovalResolver:
         """
         try:
             request = await self._presenter.present(approval.tool_name, approval.arguments, self._user)
-        except DomainError as error:
+        except (DomainError, SecurityError) as error:
             self._console.write(f"\n[confirmation] cannot describe {approval.tool_name}: {error}")
             self._console.write("  -> declined")
             return approval.answer(approved=False)

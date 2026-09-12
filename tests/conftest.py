@@ -5,8 +5,8 @@ from __future__ import annotations
 from datetime import UTC, datetime
 
 import pytest
+from ygo74.agent_runtime.domains.security.user_context import UserContext
 
-from ai_agent_lab.core.security.context import UserContext
 from ai_agent_lab.core.security.untrusted import UntrustedOrigin, untrusted
 from ai_agent_lab.mail.domain.models import (
     EmailAddress,

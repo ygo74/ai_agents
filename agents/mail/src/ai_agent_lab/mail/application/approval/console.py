@@ -15,6 +15,9 @@ from __future__ import annotations
 import logging
 from collections.abc import Sequence
 
+from ygo74.agent_runtime.domains.security.security_errors import SecurityError
+from ygo74.agent_runtime.domains.security.user_context import UserContext
+
 from ai_agent_lab.core.errors import DomainError
 from ai_agent_lab.core.security.confirmation import (
     ConfirmationDecision,
@@ -22,7 +25,6 @@ from ai_agent_lab.core.security.confirmation import (
     ConfirmationPolicy,
     ConfirmationRequest,
 )
-from ai_agent_lab.core.security.context import UserContext
 from ai_agent_lab.core.security.ledger import InMemoryConfirmationLedger
 from ai_agent_lab.maf.approval import PendingToolApproval
 from ai_agent_lab.mail.application.approval.resolver import ApprovalRound
@@ -104,7 +106,7 @@ class ConsoleApprovalResolver:
         )
         try:
             request = await self._presenter.present(approval.tool_name, approval.arguments, self._user)
-        except DomainError as error:
+        except (DomainError, SecurityError) as error:
             self._console.write(f"[confirmation] cannot describe {approval.tool_name}: {error}")
             self._console.write("  -> declined")
             return False

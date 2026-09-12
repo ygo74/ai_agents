@@ -6,7 +6,7 @@ convert protocol data, and the application owns the route, the identity and the
 partitioning of state. That is exactly the split here.
 
 Reading the runtime's loosely-typed payload is not specific to mail, so it lives
-in :mod:`ai_agent_lab.core.serving.payloads` and this module composes it. What
+in :mod:`ygo74.agent_runtime.domains.endpoints.conversation_payloads` and this module composes it. What
 *is* specific is stated here and nowhere else: a caller of this agent must carry
 an e-mail address, because a mailbox is addressed by one and defaulting it would
 pick a victim.
@@ -20,21 +20,21 @@ from datetime import UTC, datetime
 from typing import Any
 
 from ygo74.agent_runtime import AgentDescriptor
-
-from ai_agent_lab.core.manifests import AgentManifest
-from ai_agent_lab.core.serving.conversation import AgentReply, ConversationTurn
-from ai_agent_lab.core.serving.discovery import AgentDescriptorFactory
-from ai_agent_lab.core.serving.payloads import (
-    CONVERSATION_HEADER,
+from ygo74.agent_runtime.domains.contracts.contract_errors import EmptyRequestError
+from ygo74.agent_runtime.domains.contracts.conversation import AgentReply, ConversationTurn
+from ygo74.agent_runtime.domains.contracts.manifests import AgentManifest
+from ygo74.agent_runtime.domains.endpoints.conversation_payloads import (
     DEFAULT_CONVERSATION,
     AgentReplyRenderer,
     ConversationPayloadReader,
-    EmptyRequestError,
 )
+from ygo74.agent_runtime.domains.endpoints.header_forwarding import DEFAULT_CONVERSATION_HEADER
+
+from ai_agent_lab.core.serving.discovery import AgentDescriptorFactory
 from ai_agent_lab.mail.application.entrypoints.conversation import MailConversationEngine
 
 __all__ = [
-    "CONVERSATION_HEADER",
+    "DEFAULT_CONVERSATION_HEADER",
     "EmptyRequestError",
     "MailAgentDescriptorFactory",
     "MailAgentEntrypoint",

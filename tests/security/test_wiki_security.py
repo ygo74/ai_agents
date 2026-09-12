@@ -19,10 +19,10 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
+from ygo74.agent_runtime.domains.auth.agent_principal import AgentPrincipal
+from ygo74.agent_runtime.domains.security.user_context import UserContext
 
 from ai_agent_lab.core.reasoning.envelope import PromptEnvelopeBuilder
-from ai_agent_lab.core.security.context import UserContext
-from ai_agent_lab.core.security.principal import Principal
 from ai_agent_lab.wiki.application.composition import thread_id_of
 from ai_agent_lab.wiki.capabilities.results import (
     WIKI_UNTRUSTED_SOURCE,
@@ -242,12 +242,13 @@ class TestConfirmationBypass:
         assert ALLOWED_DECISIONS == ("approve", "reject")
 
     def test_the_security_floor_pins_the_destructive_operations(self):
-        from ai_agent_lab.core.security.floor import SecurityFloorViolationError
-        from ai_agent_lab.core.security.operations import (
+        from ygo74.agent_runtime.domains.security.floor import SecurityFloorViolationError
+        from ygo74.agent_runtime.domains.security.operations import (
             OperationType,
             RiskLevel,
             ToolOperationDescriptor,
         )
+
         from ai_agent_lab.wiki.catalog import WikiToolName
         from ai_agent_lab.wiki.domain.permissions import WikiPermission
         from ai_agent_lab.wiki.security_floor import WikiSecurityFloor
@@ -272,11 +273,14 @@ class TestThreadConfusion:
     """LangGraph state is addressed by a caller-influenced identifier."""
 
     def test_two_people_never_share_a_thread(self):
-        assert thread_id_of(Principal(subject="diana"), "c1") != thread_id_of(Principal(subject="alice"), "c1")
+        diana = thread_id_of(AgentPrincipal(subject="diana"), "c1")
+        alice = thread_id_of(AgentPrincipal(subject="alice"), "c1")
+
+        assert diana != alice
 
     def test_a_crafted_subject_cannot_collide(self):
-        crafted = thread_id_of(Principal(subject="diana:c"), "1")
-        genuine = thread_id_of(Principal(subject="diana"), "c:1")
+        crafted = thread_id_of(AgentPrincipal(subject="diana:c"), "1")
+        genuine = thread_id_of(AgentPrincipal(subject="diana"), "c:1")
 
         assert crafted != genuine
 
@@ -311,9 +315,10 @@ class TestWritesAskedForByAPage:
 
     def test_no_write_is_ungated_by_the_delivered_configuration(self):
         """Every delivered write asks, whatever a skill package declares."""
+        from ygo74.agent_runtime.domains.security.permissions import PermissionRegistry
+
         from ai_agent_lab.core.config.directory import ConfigurationDirectory
         from ai_agent_lab.core.config.manifests import AgentManifestLoader, SkillManifestLoader
-        from ai_agent_lab.core.security.permissions import PermissionRegistry
         from ai_agent_lab.wiki.security_floor import WikiSecurityFloor
 
         manifest = AgentManifestLoader(

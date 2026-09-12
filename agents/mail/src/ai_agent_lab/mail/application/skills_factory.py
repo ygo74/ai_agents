@@ -14,9 +14,10 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass
 
-from ai_agent_lab.core.manifests import AgentManifest
+from ygo74.agent_runtime.domains.contracts.manifests import AgentManifest
+from ygo74.agent_runtime.domains.security.audit import AuditTrail
+
 from ai_agent_lab.core.reasoning.ports import TextReasoner
-from ai_agent_lab.core.security.audit import AuditTrail
 from ai_agent_lab.core.security.confirmation import ConfirmationGate, ConfirmationPolicy
 from ai_agent_lab.mail.catalog import MailOperations
 from ai_agent_lab.mail.domain.ports import MailboxOwnerDirectory

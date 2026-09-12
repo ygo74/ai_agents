@@ -8,12 +8,12 @@ naming a permission in text can never invent one.
 from __future__ import annotations
 
 import pytest
-
-from ai_agent_lab.core.security.permissions import (
+from ygo74.agent_runtime.domains.security.permissions import (
     Permission,
     PermissionRegistry,
     UnknownPermissionError,
 )
+
 from ai_agent_lab.mail.domain.permissions import MailPermission
 
 

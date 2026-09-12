@@ -17,8 +17,10 @@ from __future__ import annotations
 import logging
 from collections.abc import Sequence
 
+from ygo74.agent_runtime.domains.security.security_errors import SecurityError
+from ygo74.agent_runtime.domains.security.user_context import UserContext
+
 from ai_agent_lab.core.errors import DomainError
-from ai_agent_lab.core.security.context import UserContext
 from ai_agent_lab.core.security.tickets import (
     ConfirmationTicket,
     PendingConfirmationStore,
@@ -109,7 +111,7 @@ class TicketApprovalResolver:
         )
         try:
             request = await self._presenter.present(approval.tool_name, approval.arguments, self._user)
-        except DomainError:
+        except (DomainError, SecurityError):
             return
 
         self._store.issue(

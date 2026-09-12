@@ -354,7 +354,8 @@ class TestMailActionExtractionSkill:
 
 def owner_context():
     """Build a mailbox owner context outside of a fixture."""
-    from ai_agent_lab.core.security.context import UserContext
+    from ygo74.agent_runtime.domains.security.user_context import UserContext
+
     from ai_agent_lab.mail.domain.permissions import MailPermission
 
     return UserContext(user_id="owner", session_id="s1", permissions=MailPermission.declared())

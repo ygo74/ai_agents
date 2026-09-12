@@ -5,8 +5,8 @@ from __future__ import annotations
 from datetime import UTC, datetime
 
 import pytest
+from ygo74.agent_runtime.domains.security.security_errors import PermissionDeniedError
 
-from ai_agent_lab.core.security.errors import AuthorizationError
 from ai_agent_lab.mail.domain.models import EmailAddress, MailSearchRequest
 from ai_agent_lab.mail.mail_errors import MailNotFoundError
 from ai_agent_lab.mail.skills.search_skill import MailReadSkill, MailSearchSkill
@@ -57,11 +57,11 @@ class TestMailSearchSkill:
 
     @pytest.mark.security
     async def test_requires_the_read_permission(self, search_skill):
-        from ai_agent_lab.core.security.context import UserContext
+        from ygo74.agent_runtime.domains.security.user_context import UserContext
 
         anonymous = UserContext(user_id="owner", session_id="s", permissions=frozenset())
 
-        with pytest.raises(AuthorizationError):
+        with pytest.raises(PermissionDeniedError):
             await search_skill.search(MailSearchRequest(keywords="a"), anonymous)
 
 
@@ -89,9 +89,9 @@ class TestMailReadSkill:
 
     @pytest.mark.security
     async def test_requires_the_read_permission(self, read_skill, reader):
-        from ai_agent_lab.core.security.context import UserContext
+        from ygo74.agent_runtime.domains.security.user_context import UserContext
 
         anonymous = UserContext(user_id="owner", session_id="s", permissions=frozenset())
 
-        with pytest.raises(AuthorizationError):
+        with pytest.raises(PermissionDeniedError):
             await read_skill.read_thread("t1", anonymous)

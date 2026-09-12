@@ -20,25 +20,26 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from agent_framework import Agent, SupportsChatGetResponse, ToolApprovalMiddleware
+from ygo74.agent_runtime.domains.auth.agent_principal import AgentPrincipal
+from ygo74.agent_runtime.domains.contracts.capability_registry import SkillDescriptor, SkillRegistry
+from ygo74.agent_runtime.domains.contracts.manifests import AgentManifest
+from ygo74.agent_runtime.domains.security.audit import InMemoryAuditTrail, LoggingAuditTrail
+from ygo74.agent_runtime.domains.security.permissions import PermissionRegistry
+from ygo74.agent_runtime.domains.security.user_context import UserContext
 
 from ai_agent_lab.core.config.directory import ConfigurationDirectory
 from ai_agent_lab.core.config.manifests import AgentManifestLoader, SkillManifestLoader
-from ai_agent_lab.core.manifests import AgentManifest
-from ai_agent_lab.core.observability.audit import InMemoryAuditTrail, LoggingAuditTrail
 from ai_agent_lab.core.reasoning.envelope import PromptEnvelopeBuilder
 from ai_agent_lab.core.reasoning.ports import TextReasoner
-from ai_agent_lab.core.registry import SkillDescriptor, SkillRegistry
 from ai_agent_lab.core.security.broker import ConfirmationBroker
 from ai_agent_lab.core.security.confirmation import (
     ConfiguredConfirmationPolicy,
     ConfirmationPolicy,
     InMemoryConfirmationPreferenceStore,
 )
-from ai_agent_lab.core.security.context import UserContext
 from ai_agent_lab.core.security.ledger import InMemoryConfirmationLedger
-from ai_agent_lab.core.security.permissions import PermissionRegistry
-from ai_agent_lab.core.security.principal import Principal
 from ai_agent_lab.core.security.unattended import UnattendedApprovalAuthority
+from ai_agent_lab.core.security.user_contexts import UserContextFactory
 from ai_agent_lab.maf.reasoner import MafTextReasoner
 from ai_agent_lab.maf.tool_adapter import SkillToolAdapter
 from ai_agent_lab.mail.application.confirmation_presenter import MailConfirmationPresenter
@@ -69,7 +70,7 @@ _logger = logging.getLogger(__name__)
 class MailAgentRuntime:
     """Everything the console, a test or another host needs to drive the agent."""
 
-    principal: Principal
+    principal: AgentPrincipal
     user: UserContext
     manifest: AgentManifest
     registry: SkillRegistry
@@ -102,7 +103,7 @@ class MailAgentCompositionRoot:
         settings: MailAgentSettings,
         chat_client: SupportsChatGetResponse,
         *,
-        principal: Principal | None = None,
+        principal: AgentPrincipal | None = None,
         mail_tools: MailTools | None = None,
         reasoner: TextReasoner | None = None,
         base_path: Path | None = None,
@@ -125,7 +126,7 @@ class MailAgentCompositionRoot:
         self._reasoner_override = reasoner
         self._base_path = base_path
 
-    def for_principal(self, principal: Principal) -> MailAgentCompositionRoot:
+    def for_principal(self, principal: AgentPrincipal) -> MailAgentCompositionRoot:
         """Return a root that assembles the agent for another caller.
 
         Serving several people means building the same wiring for a different
@@ -360,7 +361,8 @@ class MailAgentCompositionRoot:
             session_id,
             self._principal.subject,
         )
-        return self._principal.to_user_context(
+        return UserContextFactory().for_principal(
+            self._principal,
             session_id=session_id,
             permissions=MailPermission.declared(),
         )

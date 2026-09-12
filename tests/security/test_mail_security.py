@@ -12,9 +12,10 @@ from datetime import UTC
 
 import pytest
 from tests.unit.test_mail_dataset import SAMPLE_DATASET
+from ygo74.agent_runtime.domains.security.audit import AuditOutcome, InMemoryAuditTrail, LoggingAuditTrail
+from ygo74.agent_runtime.domains.security.security_errors import PermissionDeniedError
+from ygo74.agent_runtime.domains.security.user_context import UserContext
 
-from ai_agent_lab.core.observability.audit import InMemoryAuditTrail, LoggingAuditTrail
-from ai_agent_lab.core.security.audit import AuditOutcome
 from ai_agent_lab.core.security.confirmation import (
     ConfiguredConfirmationPolicy,
     ConfirmationDecision,
@@ -22,9 +23,7 @@ from ai_agent_lab.core.security.confirmation import (
     ConfirmationPreferences,
     InMemoryConfirmationPreferenceStore,
 )
-from ai_agent_lab.core.security.context import UserContext
 from ai_agent_lab.core.security.errors import (
-    AuthorizationError,
     ConfirmationMismatchError,
     ConfirmationRejectedError,
     ConfirmationRequiredError,
@@ -192,13 +191,13 @@ class TestAuthorisation:
     async def test_sending_requires_the_send_permission(self, mail_tools, runner, permissions):
         limited = UserContext(user_id="local-user", session_id="s", permissions=permissions)
 
-        with pytest.raises(AuthorizationError):
+        with pytest.raises(PermissionDeniedError):
             await SendMailSkill(mail_tools, mail_tools, runner).send(_draft(), limited)
 
     async def test_reading_requires_the_read_permission(self, mail_tools):
         anonymous = UserContext(user_id="local-user", session_id="s", permissions=frozenset())
 
-        with pytest.raises(AuthorizationError):
+        with pytest.raises(PermissionDeniedError):
             await MailReadSkill(mail_tools).read_message("m-alpha-1", anonymous)
 
 
@@ -222,7 +221,10 @@ class TestDataLeakage:
         request = skill.build_confirmation_request(_draft(), LOCAL_USER)
         decision = ConfirmationDecision(request_id=request.request_id, approved=True, decided_by="local-user")
 
-        with caplog.at_level(logging.INFO, logger="ai_agent_lab.audit"):
+        # The audit trail moved to `ygo74-agent-runtime`, and so did the name of
+        # its logger. An operator filtering on the old `ai_agent_lab.audit` would
+        # see nothing at all, which is why the name is pinned by a test.
+        with caplog.at_level(logging.INFO, logger="ygo74.agent_runtime.audit"):
             await skill.send(_draft(), LOCAL_USER, request=request, decision=decision)
 
         logged = caplog.text

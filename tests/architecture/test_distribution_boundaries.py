@@ -21,6 +21,9 @@ Four rules matter most:
 from __future__ import annotations
 
 import ast
+import subprocess
+import sys
+import textwrap
 from collections.abc import Iterator
 from pathlib import Path
 
@@ -128,6 +131,20 @@ LAYERS_WITHOUT_FRAMEWORKS = frozenset({"domain", "mcp", "skills", "capabilities"
 # the dialects are the adapters, and speaking MCP is their job.
 LAYERS_WITHOUT_SDKS = frozenset({"domain", "skills", "capabilities", "inmemory"})
 
+# `ygo74-agent-runtime` is a foundation dependency now that it owns the security
+# model and the agent contracts, so naming it is not in itself a layer violation.
+# One of its domains is a transport all the same: `domains.endpoints` is where
+# FastAPI lives. A module that must stay free of a transport must stay free of
+# that domain, which is what this prefix pins. Without it, the property the layers
+# used to have by construction - `core` knew no web stack - would be gone with no
+# test to notice.
+RUNTIME_TRANSPORT_MODULE = "ygo74.agent_runtime.domains.endpoints"
+
+# The one part of `core` allowed to know a transport. Everything else in that
+# distribution - the security model, the reasoning port, the configuration
+# loaders - must import without one.
+CORE_SERVING_PREFIX = "ai_agent_lab.core.serving"
+
 NAMESPACES = ("ai_agent_lab", "mail_mcp", "wiki_mcp")
 
 
@@ -161,6 +178,10 @@ class ModuleUnderTest:
         """Top-level package name of every import in the module."""
         for name in self._imported_names():
             yield name.split(".", 1)[0]
+
+    def imported_modules(self) -> Iterator[str]:
+        """Full dotted name of every import in the module."""
+        yield from self._imported_names()
 
     def imported_distributions(self) -> Iterator[str]:
         """Distribution of every intra-repository import in the module."""
@@ -197,6 +218,17 @@ def _modules() -> list[ModuleUnderTest]:
 
 ALL_MODULES = _modules()
 MODULE_IDS = [module.dotted_name for module in ALL_MODULES]
+
+
+def _must_avoid_the_transport(module: ModuleUnderTest) -> bool:
+    """Whether this module has to import without a web stack.
+
+    Two families qualify: the business layers of an agent, and every part of
+    `core` outside `core.serving`.
+    """
+    if module.distribution == "ai_agent_lab.core":
+        return not module.dotted_name.startswith(CORE_SERVING_PREFIX)
+    return module.agent_layer in LAYERS_WITHOUT_SDKS
 
 
 def test_every_distribution_has_sources():
@@ -327,6 +359,75 @@ def test_an_agent_never_sees_an_enterprise_system(module: ModuleUnderTest):
     violations = ENTERPRISE_SDK_ROOTS.intersection(module.imported_roots())
 
     assert not violations, f"{module.dotted_name} must not import external system SDK(s) {sorted(violations)}"
+
+
+@pytest.mark.security
+@pytest.mark.parametrize("module", ALL_MODULES, ids=MODULE_IDS)
+def test_business_code_ignores_the_runtime_transport(module: ModuleUnderTest):
+    """No transport-free module names the serving side of the runtime.
+
+    ``ygo74-agent-runtime`` is a foundation dependency: it owns the security
+    model, the authenticated caller and the agent contracts, and naming it is
+    expected. Its ``domains.endpoints`` package is a different matter - that is
+    where FastAPI is imported - and a module that must run in a domain test with
+    no web stack must not reach it.
+
+    Before the security model moved into the library, this property held by
+    construction because ``core`` imported no serving code at all. It now needs a
+    test, and ``core`` is most of what that test exists for: ``core.serving`` is
+    the one part allowed to know a transport, and every other part of ``core`` is
+    not.
+    """
+    if not _must_avoid_the_transport(module):
+        pytest.skip("adapter, composition root, serving module or server")
+
+    violations = sorted(
+        imported for imported in module.imported_modules() if imported.startswith(RUNTIME_TRANSPORT_MODULE)
+    )
+
+    assert not violations, f"{module.dotted_name} must not import the runtime transport: {violations}"
+
+
+@pytest.mark.security
+def test_a_domain_layer_runs_without_a_web_stack():
+    """Importing the business layers must not drag a web framework in.
+
+    The check above reads import statements, which is not the whole story: a
+    package can pull a transport in through its own ``__init__``. That is exactly
+    what the runtime used to do, so importing the permission model loaded FastAPI
+    into a process that had no use for one.
+
+    This test is the end-to-end version, and it is deliberately a subprocess: the
+    test session itself exercises the HTTP surfaces, so ``fastapi`` is long since
+    imported by the time this runs and an in-process assertion would be vacuous.
+    """
+    probe = textwrap.dedent(
+        """
+        import sys
+
+        import ai_agent_lab.core.security.confirmation
+        import ai_agent_lab.core.security.tickets
+        import ai_agent_lab.mail.capabilities.write_capabilities
+        import ai_agent_lab.mail.domain.models
+        import ai_agent_lab.mail.skills.send_skill
+        import ai_agent_lab.wiki.capabilities.write_capabilities
+        import ai_agent_lab.wiki.domain.models
+        import ai_agent_lab.wiki.skills.answer_skill
+
+        loaded = sorted(name for name in sys.modules if name in {"fastapi", "starlette", "uvicorn"})
+        print(",".join(loaded))
+        """
+    )
+
+    finished = subprocess.run(  # noqa: S603 - fixed argument list, no shell
+        [sys.executable, "-c", probe],
+        capture_output=True,
+        text=True,
+        check=True,
+        cwd=REPOSITORY_ROOT,
+    )
+
+    assert finished.stdout.strip() == "", f"a business layer pulled in a web stack: {finished.stdout.strip()}"
 
 
 @pytest.mark.parametrize("namespace", NAMESPACES)

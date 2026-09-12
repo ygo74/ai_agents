@@ -14,7 +14,11 @@ import uuid
 from collections.abc import Awaitable, Callable, Sequence
 from typing import TypeVar
 
-from ai_agent_lab.core.security.audit import AuditOutcome, AuditRecord, AuditTrail
+from ygo74.agent_runtime.domains.security.audit import AuditOutcome, AuditRecord, AuditTrail
+from ygo74.agent_runtime.domains.security.operations import ToolOperationDescriptor
+from ygo74.agent_runtime.domains.security.security_errors import SecurityError
+from ygo74.agent_runtime.domains.security.user_context import UserContext
+
 from ai_agent_lab.core.security.confirmation import (
     ConfirmationDecision,
     ConfirmationDetail,
@@ -22,9 +26,7 @@ from ai_agent_lab.core.security.confirmation import (
     ConfirmationPolicy,
     ConfirmationRequest,
 )
-from ai_agent_lab.core.security.context import UserContext
-from ai_agent_lab.core.security.errors import ConfirmationRejectedError, SecurityError
-from ai_agent_lab.core.security.operations import ToolOperationDescriptor
+from ai_agent_lab.core.security.errors import ConfirmationRejectedError
 from ai_agent_lab.mail.catalog import MailOperations, MailToolName
 
 ResultT = TypeVar("ResultT")

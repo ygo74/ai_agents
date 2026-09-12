@@ -20,8 +20,9 @@ would be one copy away from one of them quietly approving.
 
 from __future__ import annotations
 
+from ygo74.agent_runtime.domains.security.user_context import UserContext
+
 from ai_agent_lab.core.security.confirmation import ConfirmationDecision, ConfirmationRequest
-from ai_agent_lab.core.security.context import UserContext
 from ai_agent_lab.core.security.errors import ConfirmationRequiredError
 
 

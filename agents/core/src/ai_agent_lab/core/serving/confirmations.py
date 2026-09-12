@@ -22,7 +22,9 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Any, Protocol, runtime_checkable
 
-from ai_agent_lab.core.registry import ResultRenderer, SkillRegistry
+from ygo74.agent_runtime.domains.contracts.capability_registry import ResultRenderer, SkillRegistry
+from ygo74.agent_runtime.domains.security.user_context import UserContext
+
 from ai_agent_lab.core.security.commands import ConfirmationCommand
 from ai_agent_lab.core.security.confirmation import (
     ConfirmationDecision,
@@ -30,7 +32,6 @@ from ai_agent_lab.core.security.confirmation import (
     ConfirmationOutcome,
     ConfirmationRequest,
 )
-from ai_agent_lab.core.security.context import UserContext
 from ai_agent_lab.core.security.tickets import ConfirmationTicket, PendingConfirmationStore
 
 

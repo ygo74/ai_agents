@@ -9,12 +9,12 @@ from __future__ import annotations
 
 import pytest
 from tests.support.maf_fakes import ScriptedChatClient, says
+from ygo74.agent_runtime.domains.security.user_context import UserContext
 
 from ai_agent_lab.core.security.confirmation import (
     ConfiguredConfirmationPolicy,
     InMemoryConfirmationPreferenceStore,
 )
-from ai_agent_lab.core.security.context import UserContext
 from ai_agent_lab.maf.tool_adapter import SkillToolAdapter
 from ai_agent_lab.mail.application.composition import MailAgentCompositionRoot
 from ai_agent_lab.mail.capabilities.read_capabilities import CLASSIFY_MAIL, SUMMARISE_MAIL

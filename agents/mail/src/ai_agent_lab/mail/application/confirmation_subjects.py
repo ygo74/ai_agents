@@ -21,8 +21,10 @@ from __future__ import annotations
 
 import logging
 
+from ygo74.agent_runtime.domains.security.security_errors import SecurityError
+from ygo74.agent_runtime.domains.security.user_context import UserContext
+
 from ai_agent_lab.core.errors import DomainError
-from ai_agent_lab.core.security.context import UserContext
 from ai_agent_lab.mail.skills.management_skill import MailManagementSkill
 from ai_agent_lab.mail.skills.search_skill import MailReadSkill
 
@@ -102,7 +104,7 @@ class ConfirmationSubjectResolver:
             return None
         try:
             message = await self._read_skill.read_message(message_id, user)
-        except DomainError:
+        except (DomainError, SecurityError):
             return None
         return MailSubject(subject=_shortened(message.subject.expose()), sender=str(message.sender.address))
 
@@ -118,7 +120,7 @@ class ConfirmationSubjectResolver:
             return self._labels
         try:
             labels = await self._management_skill.list_labels(user)
-        except DomainError:
+        except (DomainError, SecurityError):
             self._labels = {}
             return self._labels
         self._labels = {label.label_id: label.name.expose() for label in labels}

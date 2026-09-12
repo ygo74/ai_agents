@@ -168,3 +168,33 @@ dependencies never leak into a comparison:
 `ai_agent_lab.core` is framework free; only `ai_agent_lab.maf` depends on an
 agentic framework. Install everything in editable mode with
 `python -m scripts.install`.
+
+## 10. What this repository no longer owns
+
+The security model, the authenticated caller, the conversation port and the
+capability contracts moved to `ygo74-agent-runtime`. They contain no business
+knowledge, and both agents had grown their own copy of the code around them - a
+copy per agent being one copy away from a weaker security path.
+
+| Concern | Now provided by |
+|---|---|
+| Permissions, user context, operation classification | `ygo74.agent_runtime.domains.security` |
+| Security floor and audit trail | `ygo74.agent_runtime.domains.security` |
+| Authenticated caller | `ygo74.agent_runtime.domains.auth.agent_principal` |
+| Conversation port, manifests, capability registry | `ygo74.agent_runtime.domains.contracts` |
+| Transport payload reading and reply rendering | `ygo74.agent_runtime.domains.endpoints` |
+
+The library is therefore a **foundation** dependency of `ai_agent_lab.core`, not
+an optional serving one. It is not a framework and not a transport: importing it
+pulls in `pydantic` and `PyJWT`, and FastAPI stays behind its own extra. The
+architecture tests pin that distinction - a domain, skill or capability may name
+the library but must not reach `ygo74.agent_runtime.domains.endpoints`.
+
+Two consequences worth knowing before an upgrade:
+
+- the audit logger is named `ygo74.agent_runtime.audit`, not `ai_agent_lab.audit`;
+- the refusal raised when a caller lacks a permission is `PermissionDeniedError`,
+  because the library already had an `AuthorizationError` meaning something else.
+
+What stays here, and why, is recorded in
+[runtime-extraction-candidates.md](./runtime-extraction-candidates.md).

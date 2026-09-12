@@ -9,6 +9,7 @@ import uuid
 from pathlib import Path
 
 from agent_framework import SupportsChatGetResponse
+from ygo74.agent_runtime.domains.security.security_errors import SecurityError
 
 from ai_agent_lab.core.config.azure_credentials import AzureIdentityCredentialProvider
 from ai_agent_lab.core.config.environment import EnvironmentFile
@@ -90,7 +91,7 @@ class MailAgentCli:
         _logger.debug("MailAgentCli._answer arguments: message_length=%d", len(message))
         try:
             answer = await self._session.ask(message)
-        except DomainError as error:
+        except (DomainError, SecurityError) as error:
             self._console.write(f"\nAgent > the request could not be completed: {error}\n")
             return
         except Exception as error:

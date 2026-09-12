@@ -231,7 +231,9 @@ class TestEachDiscussionGetsItsOwnSession:
             chat(http, "what is in scope?", conversation="conv-a")
             chat(http, "which pages are stale?", conversation="conv-b")
 
-        assert app.state.conversations.live_conversations == 2
+            # Inside the client, deliberately: leaving it releases every open
+            # conversation, which is the behaviour the service is built for.
+            assert app.state.conversations.live_conversations == 2
 
     def test_the_same_conversation_is_continued(self):
         app, _model = build_service([says("first"), says("second")])
@@ -240,7 +242,16 @@ class TestEachDiscussionGetsItsOwnSession:
             chat(http, "what is in scope?", conversation="conv-a")
             chat(http, "and after that?", conversation="conv-a")
 
-        assert app.state.conversations.live_conversations == 1
+            assert app.state.conversations.live_conversations == 1
+
+    def test_leaving_the_service_releases_every_conversation(self):
+        """Shutdown must not leave an MCP session open behind a dead process."""
+        app, _model = build_service([says("first")])
+
+        with TestClient(app) as http:
+            chat(http, "what is in scope?", conversation="conv-a")
+
+        assert app.state.conversations.live_conversations == 0
 
     def test_a_confirmation_cannot_be_answered_from_another_conversation(self):
         """A ticket belongs to one conversation, and a discussion is one."""

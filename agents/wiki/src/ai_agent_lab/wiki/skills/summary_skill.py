@@ -5,8 +5,9 @@ from __future__ import annotations
 import logging
 from collections.abc import Sequence
 
+from ygo74.agent_runtime.domains.security.user_context import UserContext
+
 from ai_agent_lab.core.reasoning.ports import ReasoningRequest, TextReasoner
-from ai_agent_lab.core.security.context import UserContext
 from ai_agent_lab.wiki.domain.models import WikiPage, WikiPageSummary
 from ai_agent_lab.wiki.domain.permissions import WikiPermission
 from ai_agent_lab.wiki.skills.analysis import PageSummaryOutput, WikiAnalysisMapper

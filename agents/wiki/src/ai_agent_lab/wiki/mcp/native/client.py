@@ -24,8 +24,8 @@ from collections.abc import Mapping
 from typing import Any
 
 from mcp.types import CallToolResult, TextContent
+from ygo74.agent_runtime.domains.security.user_context import UserContext
 
-from ai_agent_lab.core.security.context import UserContext
 from ai_agent_lab.wiki.domain.models import (
     WikiComment,
     WikiPage,

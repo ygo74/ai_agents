@@ -20,7 +20,7 @@ mcp-servers/                auxiliaries
 
 | Distribution | Depends on |
 |---|---|
-| `ai-agent-lab-core` | pydantic, pydantic-settings, pyyaml, python-dotenv |
+| `ai-agent-lab-core` | pydantic, pydantic-settings, pyyaml, python-dotenv, ygo74-agent-runtime |
 | `ai-agent-lab-maf` | core, agent-framework; extra `azure` |
 | `ai-agent-lab-langgraph` | core, langchain, langgraph, langchain-openai; extra `azure` |
 | `ai-agent-lab-mail-agent` | core, mcp; extras `maf`, `native`, `http` |
@@ -30,6 +30,16 @@ mcp-servers/                auxiliaries
 | `mail-mcp-reference` | protocol[serving], mcp |
 | `wiki-mcp-protocol` | pydantic; extra `serving` adds mcp |
 | `wiki-mcp-reference` | wiki-protocol[serving], mcp |
+
+`ygo74-agent-runtime` is the odd one out: it is not developed here. It owns the
+security model, the authenticated caller, the conversation port and the capability
+contracts that `ai-agent-lab-core` used to carry, so it is a foundation dependency
+rather than a serving extra. Because it is developed alongside this repository,
+link a working copy instead of resolving the published wheel:
+
+```powershell
+python -m scripts.install --environment dev --runtime-source <path-to-checkout>
+```
 
 ## The two agents
 

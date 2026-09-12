@@ -12,11 +12,11 @@ from datetime import UTC, datetime, timedelta
 import pytest
 from pydantic import BaseModel
 from tests.unit.wiki.conftest import make_page, make_wiki
+from ygo74.agent_runtime.domains.security.security_errors import PermissionDeniedError
+from ygo74.agent_runtime.domains.security.user_context import UserContext
 
 from ai_agent_lab.core.reasoning.envelope import PromptEnvelopeBuilder
 from ai_agent_lab.core.reasoning.ports import ReasoningOutputT, ReasoningRequest
-from ai_agent_lab.core.security.context import UserContext
-from ai_agent_lab.core.security.errors import AuthorizationError
 from ai_agent_lab.wiki.domain.enums import WikiFreshness
 from ai_agent_lab.wiki.domain.errors import EmptySearchRequestError, UngroundedAnswerError
 from ai_agent_lab.wiki.domain.models import WikiSearchRequest
@@ -93,7 +93,7 @@ class TestDocumentationSearchSkill:
     async def test_reading_requires_the_read_permission(self, sample_tools: InMemoryWikiTools, outsider: UserContext):
         skill = DocumentationSearchSkill(sample_tools)
 
-        with pytest.raises(AuthorizationError):
+        with pytest.raises(PermissionDeniedError):
             await skill.search(WikiSearchRequest(text="VAT"), outsider)
 
 

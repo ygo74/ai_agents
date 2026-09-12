@@ -1,5 +1,19 @@
 # What could move to `ygo74-agent-runtime`
 
+> **Status, 2026-09-12.** Batches 1 to 5 of the sequencing table below have been
+> delivered: the security spine, the identity projection, the conversation port
+> and payloads, and the capability registry now live in `ygo74-agent-runtime`
+> 0.0.4 and have been deleted from this repository. See
+> [architecture.md](./architecture.md#10-what-this-repository-no-longer-owns) for
+> what that changed here, and `docs/parity-status.md` in the runtime for the
+> .NET and Java debt it created. The rest of this document is unchanged and
+> describes the remaining work.
+>
+> Three corrections were forced by the delivery and are folded in below:
+> the capability registry could not move without the security spine, `py.typed`
+> turned out to be load-bearing, and the moved error base broke every boundary
+> that rendered a refusal.
+
 This is an **analysis**, not a migration. It records which parts of this repository belong to the
 hosting library rather than to the agent laboratory, and what each one would need before it could move.
 
@@ -448,21 +462,53 @@ Independent of what moves, and to be handled first.
 Each step ships on its own and leaves the repository green. Dependencies are the real ones: a batch
 listed here imports nothing that a later batch owns.
 
-| # | Batch | Parity | Depends on |
-|---|---|---|---|
-| 0 | `py.typed`, optional extras, decisions on Python 3.12 and on the settings library | - | - |
-| 1 | Immutable identity projection handed to the entrypoint | portable | 0 |
-| 2 | Conversation port, payload reading and rendering, unified header | portable | 1 |
-| 3 | Capability registry contract (`SkillDescriptor`, `SkillRegistry`, manifests) | portable | 0 |
-| 4 | Security posture primitives (operations, floor, permissions, context, audit) | portable | 0 |
-| 5 | Tokens | portable | 1, 4 |
-| 6 | Descriptor factory, after deriving security schemes and tool invocation from configuration | portable | 2, 3 |
-| 7 | Human-approval domain, including the broker, the two ports and the storage contract | portable | 3, 4 |
-| 8 | Gated operation runner | portable | 4, 7 |
-| 9 | Untrusted content, fencing and `ReasoningRequest`, after opening `UntrustedOrigin` | portable | 4 |
-| 10 | `ConversationRuntimeCache`, after the lease and lock-scope repair | Python-first | 1, 2 |
-| 11 | Generic HTTP settings, with issuer discovery instead of the Keycloak path | portable | 0 |
-| 12 | MCP transport lifecycle, binding schema and registry mechanics | Python-first | 0 |
+| # | Batch | Parity | Depends on | Status |
+|---|---|---|---|---|
+| 0 | `py.typed`, optional extras, decisions on Python 3.12 and on the settings library | - | - | **done** (extras and `py.typed` shipped; Python floor left at 3.11; settings library deferred with batch 11) |
+| 1 | Immutable identity projection handed to the entrypoint | portable | 0 | **done** as `AgentPrincipal` |
+| 2 | Conversation port, payload reading and rendering, unified header | portable | 1 | **done** |
+| 3 | Capability registry contract (`SkillDescriptor`, `SkillRegistry`, manifests) | portable | 0 | **done** |
+| 4 | Security posture primitives (operations, floor, permissions, context, audit) | portable | 0 | **done** |
+| 5 | Tokens | portable | 1, 4 | deferred: `AccessToken` and the delegated-token ports stayed, pending the MCP batch that uses them |
+| 6 | Descriptor factory, after deriving security schemes and tool invocation from configuration | portable | 2, 3 | pending |
+| 7 | Human-approval domain, including the broker, the two ports and the storage contract | portable | 3, 4 | pending |
+| 8 | Gated operation runner | portable | 4, 7 | pending |
+| 9 | Untrusted content, fencing and `ReasoningRequest`, after opening `UntrustedOrigin` | portable | 4 | pending |
+| 10 | `ConversationRuntimeCache`, after the lease and lock-scope repair | Python-first | 1, 2 | pending |
+| 11 | Generic HTTP settings, with issuer discovery instead of the Keycloak path | portable | 0 | pending |
+| 12 | MCP transport lifecycle, binding schema and registry mechanics | Python-first | 0 | pending |
+
+### What the delivered batches actually cost
+
+The sequencing above was written before any code moved, and three of its
+assumptions were wrong.
+
+- **Batch 3 could not ship alone.** `SkillManifest` carries a
+  `ToolOperationDescriptor`, which carries a `Permission`, and
+  `SkillDescriptor.invoke` takes a `UserContext`. The registry was inextricable
+  from batch 4, so the two shipped together. Batches 1 and 2 did not have this
+  problem, which is why they remain the right place to start.
+- **`py.typed` was load-bearing, not cosmetic.** With the waiver in place, every
+  type the library exposed was `Any`, and removing it turned up six real errors
+  that strict type checking had been silently unable to see - including a call to
+  a method that no longer existed.
+- **Moving the error base broke every refusal boundary.** `SecurityError` used to
+  derive from this repository's `DomainError`, so ten `except DomainError` sites
+  quietly caught permission and confirmation refusals and rendered them to the
+  model as "the operation did not happen". Once the base moved, those refusals
+  escaped as unhandled exceptions instead. The fix - catching both hierarchies
+  explicitly at each boundary - is the kind of thing a batch plan does not
+  predict, and the reason the existing test suite was the precondition for the
+  whole exercise.
+- **The library's package root pulled a web framework into every import.**
+  `ygo74/agent_runtime/__init__.py` re-exported eagerly, so importing the
+  permission model executed it, which loaded the endpoint adapters, which imported
+  FastAPI. The `http` extra was optional only in the sense that its absence did
+  not crash. Adding the security model to that package root would have spread the
+  problem to every domain layer here, so the root was made lazy upstream instead.
+  The architecture test added in this repository now asserts the property
+  end-to-end, in a subprocess, rather than by reading import statements - because
+  reading import statements is exactly what failed to notice it.
 
 Batches 1, 2, 6 and 10 empty `core/serving/` almost entirely and make `entrypoints/http.py` and
 `entrypoints/service.py` nearly identical between the two agents, which is the drift described above.

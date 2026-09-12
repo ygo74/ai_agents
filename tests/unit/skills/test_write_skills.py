@@ -4,9 +4,11 @@ from __future__ import annotations
 
 import pytest
 from tests.conftest import make_message
+from ygo74.agent_runtime.domains.security.audit import AuditOutcome, InMemoryAuditTrail
+from ygo74.agent_runtime.domains.security.operations import RiskLevel
+from ygo74.agent_runtime.domains.security.security_errors import PermissionDeniedError, SecurityError
+from ygo74.agent_runtime.domains.security.user_context import UserContext
 
-from ai_agent_lab.core.observability.audit import InMemoryAuditTrail
-from ai_agent_lab.core.security.audit import AuditOutcome
 from ai_agent_lab.core.security.confirmation import (
     ConfiguredConfirmationPolicy,
     ConfirmationDecision,
@@ -14,15 +16,11 @@ from ai_agent_lab.core.security.confirmation import (
     ConfirmationPreferences,
     InMemoryConfirmationPreferenceStore,
 )
-from ai_agent_lab.core.security.context import UserContext
 from ai_agent_lab.core.security.errors import (
-    AuthorizationError,
     ConfirmationMismatchError,
     ConfirmationRejectedError,
     ConfirmationRequiredError,
-    SecurityError,
 )
-from ai_agent_lab.core.security.operations import RiskLevel
 from ai_agent_lab.core.security.untrusted import UntrustedOrigin, untrusted
 from ai_agent_lab.mail.catalog import MailToolCatalog, MailToolName
 from ai_agent_lab.mail.config.mailbox_directory import ConfiguredMailboxOwnerDirectory
@@ -147,7 +145,7 @@ class TestMailReplySkill:
     async def test_requires_the_draft_permission(self, reply_skill):
         reader = UserContext(user_id="owner", session_id="s", permissions=frozenset({MailPermission.READ}))
 
-        with pytest.raises(AuthorizationError):
+        with pytest.raises(PermissionDeniedError):
             await reply_skill.draft_reply_to_message("m1", "Say I agree", reader)
 
 
@@ -265,7 +263,7 @@ class TestSendMailSkill:
     async def test_requires_the_send_permission(self, send_skill, mail_tools):
         limited = UserContext(user_id="owner", session_id="s", permissions=frozenset({MailPermission.READ}))
 
-        with pytest.raises(AuthorizationError):
+        with pytest.raises(PermissionDeniedError):
             await send_skill.send(draft(), limited)
 
         assert mail_tools.mailbox_of(limited).sent == ()

@@ -12,12 +12,12 @@ import asyncio
 from datetime import UTC, datetime, timedelta
 
 import pytest
+from ygo74.agent_runtime.domains.auth.agent_principal import AgentPrincipal
 
-from ai_agent_lab.core.security.principal import Principal
 from ai_agent_lab.core.serving.runtimes import ConversationRuntimeCache
 
-ADA = Principal(subject="ada-3f9a", email="ada@example.com")
-BOB = Principal(subject="bob-77c1", email="bob@example.com")
+ADA = AgentPrincipal(subject="ada-3f9a", email="ada@example.com")
+BOB = AgentPrincipal(subject="bob-77c1", email="bob@example.com")
 NOW = datetime(2026, 9, 7, 12, 0, tzinfo=UTC)
 
 
@@ -37,7 +37,7 @@ class RuntimeFactory:
         self.closed: list[FakeRuntime] = []
         self._delay = delay
 
-    async def build(self, principal: Principal, conversation_id: str) -> FakeRuntime:
+    async def build(self, principal: AgentPrincipal, conversation_id: str) -> FakeRuntime:
         """Build the runtime of one conversation."""
         self.builds.append((principal.subject, conversation_id))
         if self._delay:
@@ -232,7 +232,7 @@ class TestAFailedBuildIsNotRemembered:
     """The next request deserves a fresh attempt, not a cached exception."""
 
     async def test_the_failure_reaches_the_caller(self):
-        async def fail(principal: Principal, conversation_id: str) -> FakeRuntime:
+        async def fail(principal: AgentPrincipal, conversation_id: str) -> FakeRuntime:
             raise RuntimeError("the mail server could not be reached")
 
         cache = ConversationRuntimeCache(fail, RuntimeFactory().close, clock=MovableClock(NOW))
@@ -243,7 +243,7 @@ class TestAFailedBuildIsNotRemembered:
     async def test_a_later_request_tries_again(self):
         attempts: list[str] = []
 
-        async def fail_once(principal: Principal, conversation_id: str) -> FakeRuntime:
+        async def fail_once(principal: AgentPrincipal, conversation_id: str) -> FakeRuntime:
             attempts.append(conversation_id)
             if len(attempts) == 1:
                 raise RuntimeError("transient")

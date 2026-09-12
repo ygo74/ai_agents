@@ -7,8 +7,9 @@ import os
 from collections.abc import Mapping
 from pathlib import Path
 
+from ygo74.agent_runtime.domains.security.user_context import UserContext
+
 from ai_agent_lab.core.config.directory import ConfigurationDirectory
-from ai_agent_lab.core.security.context import UserContext
 from ai_agent_lab.wiki.catalog import WikiToolName
 from ai_agent_lab.wiki.config.settings import (
     WikiAgentMode,

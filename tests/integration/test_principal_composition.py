@@ -16,13 +16,14 @@ from pathlib import Path
 
 import pytest
 from tests.support.maf_fakes import ScriptedChatClient, says
+from ygo74.agent_runtime.domains.auth.agent_principal import AgentPrincipal
 
 from ai_agent_lab.core.security.confirmation import (
     ConfiguredConfirmationPolicy,
     ConfirmationPreferences,
     InMemoryConfirmationPreferenceStore,
 )
-from ai_agent_lab.core.security.principal import Principal
+from ai_agent_lab.core.security.user_contexts import UserContextFactory
 from ai_agent_lab.mail.application.composition import MailAgentCompositionRoot
 from ai_agent_lab.mail.config.local_principal import LocalPrincipalSource
 from ai_agent_lab.mail.config.settings import MailAgentSettings
@@ -44,7 +45,7 @@ REPLY_ANSWER = {
     "body": "Thanks. I will review the architecture document tomorrow.",
 }
 
-ADA = Principal(
+ADA = AgentPrincipal(
     subject="ada-3f9a",
     email="ada@example.com",
     display_name="Ada Lovelace",
@@ -52,7 +53,7 @@ ADA = Principal(
 )
 
 
-def build_for(principal: Principal | None, *, reasoner: ScriptedTextReasoner | None = None):
+def build_for(principal: AgentPrincipal | None, *, reasoner: ScriptedTextReasoner | None = None):
     """Assemble the agent for a caller, against the deterministic dataset."""
     return MailAgentCompositionRoot(
         MailAgentSettings(),
@@ -63,7 +64,7 @@ def build_for(principal: Principal | None, *, reasoner: ScriptedTextReasoner | N
     ).build(session_id="session-1")
 
 
-async def reply_recipients(principal: Principal) -> set[str]:
+async def reply_recipients(principal: AgentPrincipal) -> set[str]:
     """Draft a reply-all to a message of the dataset and return its addressees."""
     runtime = build_for(principal, reasoner=ScriptedTextReasoner({MailReplyOutput: REPLY_ANSWER}))
 
@@ -96,7 +97,7 @@ class TestTheAgentActsForTheSuppliedCaller:
         `m-alpha-3` is addressed to the owner and to John. Replying to all must
         write to John and never back to the owner.
         """
-        owner = Principal(subject=DATASET_OWNER, email=DATASET_OWNER_EMAIL)
+        owner = AgentPrincipal(subject=DATASET_OWNER, email=DATASET_OWNER_EMAIL)
 
         recipients = await reply_recipients(owner)
 
@@ -113,7 +114,7 @@ class TestTheAgentActsForTheSuppliedCaller:
         be excluded here, and one person's reply would be shaped by another's
         configuration.
         """
-        impersonated = Principal(subject=DATASET_OWNER, email="ada@example.com")
+        impersonated = AgentPrincipal(subject=DATASET_OWNER, email="ada@example.com")
 
         recipients = await reply_recipients(impersonated)
 
@@ -145,7 +146,7 @@ class TestCallersAreNotConfused:
     """Two callers must never share the state that belongs to one of them."""
 
     def test_two_callers_produce_two_unrelated_runtimes(self):
-        other = Principal(subject="bob-77c1", email="bob@example.com")
+        other = AgentPrincipal(subject="bob-77c1", email="bob@example.com")
 
         ada = build_for(ADA)
         bob = build_for(other)
@@ -169,9 +170,12 @@ class TestCallersAreNotConfused:
         policy = ConfiguredConfirmationPolicy(store, MailSecurityFloor().build())
         archive = build_for(ADA).registry.skill("archive_mail").operation
 
-        ada_context = ADA.to_user_context(session_id="s", permissions=MailPermission.declared())
-        bob_context = Principal(subject="bob-77c1", email="bob@example.com").to_user_context(
-            session_id="s", permissions=MailPermission.declared()
+        contexts = UserContextFactory()
+        ada_context = contexts.for_principal(ADA, session_id="s", permissions=MailPermission.declared())
+        bob_context = contexts.for_principal(
+            AgentPrincipal(subject="bob-77c1", email="bob@example.com"),
+            session_id="s",
+            permissions=MailPermission.declared(),
         )
 
         assert not policy.requires_confirmation(archive, ada_context)

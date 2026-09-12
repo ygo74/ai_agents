@@ -11,6 +11,9 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
+from ygo74.agent_runtime.domains.security.floor import SecurityFloorViolationError
+from ygo74.agent_runtime.domains.security.operations import OperationType, RiskLevel
+from ygo74.agent_runtime.domains.security.permissions import PermissionRegistry, UnknownPermissionError
 
 from ai_agent_lab.core.config.directory import (
     CONFIG_DIR_VARIABLE,
@@ -22,9 +25,6 @@ from ai_agent_lab.core.config.manifests import (
     ConfigurationError,
     SkillManifestLoader,
 )
-from ai_agent_lab.core.security.floor import SecurityFloorViolationError
-from ai_agent_lab.core.security.operations import OperationType, RiskLevel
-from ai_agent_lab.core.security.permissions import PermissionRegistry, UnknownPermissionError
 from ai_agent_lab.mail.catalog import MailToolCatalog, MailToolName
 from ai_agent_lab.mail.domain.permissions import MailPermission
 from ai_agent_lab.mail.mcp.binding import McpBindingError, McpServerBindingLoader, McpTransport

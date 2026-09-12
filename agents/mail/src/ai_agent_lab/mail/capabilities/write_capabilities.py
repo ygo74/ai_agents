@@ -10,12 +10,12 @@ from __future__ import annotations
 from collections.abc import Awaitable, Callable
 
 from pydantic import BaseModel
+from ygo74.agent_runtime.domains.contracts.capability_registry import SkillDescriptor
+from ygo74.agent_runtime.domains.contracts.manifests import AgentManifest
+from ygo74.agent_runtime.domains.security.user_context import UserContext
 
-from ai_agent_lab.core.manifests import AgentManifest
-from ai_agent_lab.core.registry import SkillDescriptor
 from ai_agent_lab.core.security.broker import ConfirmationBroker
 from ai_agent_lab.core.security.confirmation import ConfirmationDecision, ConfirmationRequest
-from ai_agent_lab.core.security.context import UserContext
 from ai_agent_lab.mail.capabilities.results import (
     DraftPreparedResult,
     DraftSavedResult,

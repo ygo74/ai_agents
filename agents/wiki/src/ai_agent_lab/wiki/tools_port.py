@@ -23,7 +23,8 @@ from __future__ import annotations
 
 from typing import Protocol, runtime_checkable
 
-from ai_agent_lab.core.security.context import UserContext
+from ygo74.agent_runtime.domains.security.user_context import UserContext
+
 from ai_agent_lab.wiki.domain.models import (
     WikiComment,
     WikiPage,

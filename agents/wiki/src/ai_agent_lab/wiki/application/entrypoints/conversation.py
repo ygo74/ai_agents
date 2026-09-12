@@ -20,8 +20,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from ygo74.agent_runtime.domains.auth.agent_principal import AgentPrincipal
+from ygo74.agent_runtime.domains.contracts.conversation import AgentReply, ConversationTurn
+
 from ai_agent_lab.core.security.commands import ConfirmationCommand, ConfirmationCommandParser
-from ai_agent_lab.core.security.principal import Principal
 from ai_agent_lab.core.security.tickets import (
     ConfirmationTicket,
     InMemoryPendingConfirmationStore,
@@ -29,7 +31,6 @@ from ai_agent_lab.core.security.tickets import (
     UnknownTicketError,
 )
 from ai_agent_lab.core.serving.confirmations import ConfirmedOperationRunner
-from ai_agent_lab.core.serving.conversation import AgentReply, ConversationTurn
 from ai_agent_lab.core.serving.pending import PendingConfirmationRenderer
 from ai_agent_lab.core.serving.runtimes import ConversationRuntimeCache
 from ai_agent_lab.langgraph.approval import LangGraphApprovalTranslator
@@ -97,7 +98,7 @@ class WikiConversationFactory:
         self._composition = composition
         self._renderer = renderer or PendingConfirmationRenderer()
 
-    async def build(self, principal: Principal, conversation_id: str) -> WikiConversation:
+    async def build(self, principal: AgentPrincipal, conversation_id: str) -> WikiConversation:
         """Assemble the conversation of one caller."""
         runtime = self._composition.for_principal(principal).build(session_id=conversation_id)
         store = InMemoryPendingConfirmationStore()

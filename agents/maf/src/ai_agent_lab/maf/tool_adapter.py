@@ -6,11 +6,12 @@ import logging
 from typing import Any, Literal
 
 from agent_framework import FunctionTool
+from ygo74.agent_runtime.domains.contracts.capability_registry import ResultRenderer, SkillDescriptor, SkillRegistry
+from ygo74.agent_runtime.domains.security.security_errors import SecurityError
+from ygo74.agent_runtime.domains.security.user_context import UserContext
 
 from ai_agent_lab.core.errors import DomainError
-from ai_agent_lab.core.registry import ResultRenderer, SkillDescriptor, SkillRegistry
 from ai_agent_lab.core.security.confirmation import ConfirmationPolicy
-from ai_agent_lab.core.security.context import UserContext
 
 ApprovalMode = Literal["always_require", "never_require"]
 
@@ -66,12 +67,12 @@ class SkillToolAdapter:
         payload = descriptor.input_model.model_validate(arguments)
         try:
             result = await descriptor.invoke(payload, user)
-        except DomainError as error:
+        except (DomainError, SecurityError) as error:
             return self._render_refusal(descriptor, error)
         return self._renderer.render(result)
 
     @staticmethod
-    def _render_refusal(descriptor: SkillDescriptor, error: DomainError) -> str:
+    def _render_refusal(descriptor: SkillDescriptor, error: DomainError | SecurityError) -> str:
         """Report a domain failure to the model without leaking internals.
 
         The model needs to know the operation did not happen and why, so it can

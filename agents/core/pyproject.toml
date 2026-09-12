@@ -10,18 +10,26 @@ requires-python = ">=3.12"
 
 # Framework free on purpose: the security model, the reasoning port and the
 # skill registry must never depend on an agentic framework.
+#
+# `ygo74-agent-runtime` is not a framework and not a transport. It now owns the
+# security model, the authenticated caller, the conversation port and the
+# capability contracts this distribution used to carry, so it is a foundation
+# dependency rather than an optional one. Importing it pulls in `pydantic` and
+# `PyJWT` and nothing else: `fastapi` is declared in its own `http` extra and
+# imported defensively, so a domain test still runs without a web stack.
 dependencies = [
     "pydantic>=2,<3",
     "pydantic-settings>=2,<3",
     "python-dotenv>=1,<2",
     "pyyaml>=6,<7",
+    "ygo74-agent-runtime>=0.0.4,<0.1",
 ]
 
 [project.optional-dependencies]
-# Serving an agent over HTTP. Only `core.serving.discovery` needs it, and only
-# to build the descriptor a runtime advertises; every other module of this
-# distribution stays free of any transport.
-http = ["ygo74-agent-runtime>=0.0.3,<0.1"]
+# Serving an agent over HTTP. Only `core.serving.discovery` needs the serving
+# extra of the runtime; every other module of this distribution stays free of any
+# transport.
+http = ["ygo74-agent-runtime[http]>=0.0.4,<0.1"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/ai_agent_lab"]

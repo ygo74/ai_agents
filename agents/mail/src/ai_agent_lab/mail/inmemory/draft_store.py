@@ -5,7 +5,8 @@ from __future__ import annotations
 import logging
 import uuid
 
-from ai_agent_lab.core.security.context import UserContext
+from ygo74.agent_runtime.domains.security.user_context import UserContext
+
 from ai_agent_lab.mail.domain.errors import DraftNotFoundError
 from ai_agent_lab.mail.domain.models import MailDraft
 

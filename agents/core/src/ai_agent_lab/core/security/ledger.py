@@ -7,12 +7,13 @@ domain enforces it. Every agent needs that carriage, so it is written once.
 
 from __future__ import annotations
 
+from ygo74.agent_runtime.domains.security.user_context import UserContext
+
 from ai_agent_lab.core.security.confirmation import (
     ConfirmationKey,
     ConfirmationLedger,
     ConfirmationOutcome,
 )
-from ai_agent_lab.core.security.context import UserContext
 
 
 class InMemoryConfirmationLedger(ConfirmationLedger):

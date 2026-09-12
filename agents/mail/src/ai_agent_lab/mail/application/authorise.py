@@ -17,9 +17,10 @@ import json
 import logging
 from pathlib import Path
 
+from ygo74.agent_runtime.domains.security.user_context import UserContext
+
 from ai_agent_lab.core.config.directory import ConfigurationDirectory
 from ai_agent_lab.core.config.environment import EnvironmentFile
-from ai_agent_lab.core.security.context import UserContext
 from ai_agent_lab.mail.application.mail_tools_provider import MailToolsProvider
 from ai_agent_lab.mail.config.settings import MailAgentMode, MailAgentSettings, MailMcpSettings
 from ai_agent_lab.mail.domain.permissions import MailPermission

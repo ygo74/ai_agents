@@ -21,8 +21,9 @@ operations that damage what already exists.
 
 from __future__ import annotations
 
-from ai_agent_lab.core.security.floor import OperationFloor, SecurityFloor
-from ai_agent_lab.core.security.operations import RiskLevel
+from ygo74.agent_runtime.domains.security.floor import OperationFloor, SecurityFloor
+from ygo74.agent_runtime.domains.security.operations import RiskLevel
+
 from ai_agent_lab.wiki.catalog import WikiToolName
 
 

@@ -11,9 +11,9 @@ from collections.abc import AsyncIterator
 from pathlib import Path
 
 import pytest
+from ygo74.agent_runtime.domains.security.user_context import UserContext
 
 from ai_agent_lab.core.config.directory import ConfigurationDirectory
-from ai_agent_lab.core.security.context import UserContext
 from ai_agent_lab.core.security.untrusted import UntrustedText
 from ai_agent_lab.wiki.catalog import WikiToolName
 from ai_agent_lab.wiki.domain.models import WikiSearchRequest

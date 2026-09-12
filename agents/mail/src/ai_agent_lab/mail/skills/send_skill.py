@@ -4,12 +4,13 @@ from __future__ import annotations
 
 import logging
 
+from ygo74.agent_runtime.domains.security.user_context import UserContext
+
 from ai_agent_lab.core.security.confirmation import (
     ConfirmationDecision,
     ConfirmationDetail,
     ConfirmationRequest,
 )
-from ai_agent_lab.core.security.context import UserContext
 from ai_agent_lab.mail.catalog import MailToolName
 from ai_agent_lab.mail.domain.models import MailDraft, MailSendRequest, MailSendResult
 from ai_agent_lab.mail.skills.gating import GatedMailOperationRunner
@@ -122,7 +123,7 @@ class SendMailSkill:
         Raises:
             ConfirmationRequiredError: the user has not been asked yet.
             ConfirmationRejectedError: the user declined the delivery.
-            AuthorizationError: the user may not send mail.
+            PermissionDeniedError: the user may not send mail.
         """
         _logger.info("Sending approved Mail draft")
         _logger.debug(

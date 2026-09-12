@@ -23,8 +23,7 @@ from ygo74.agent_runtime import (
     AgentSkill,
     Modality,
 )
-
-from ai_agent_lab.core.manifests import AgentManifest
+from ygo74.agent_runtime.domains.contracts.manifests import AgentManifest
 
 DEFAULT_VERSION = "1.0.0"
 DEFAULT_OWNER = "ai-agent-lab"

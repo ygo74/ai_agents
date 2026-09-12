@@ -13,12 +13,12 @@ user approved the text the wiki receives.
 from __future__ import annotations
 
 from pydantic import BaseModel
+from ygo74.agent_runtime.domains.contracts.capability_registry import SkillDescriptor, SkillInvocation
+from ygo74.agent_runtime.domains.contracts.manifests import AgentManifest
+from ygo74.agent_runtime.domains.security.user_context import UserContext
 
-from ai_agent_lab.core.manifests import AgentManifest
-from ai_agent_lab.core.registry import SkillDescriptor, SkillInvocation
 from ai_agent_lab.core.security.broker import ConfirmationBroker
 from ai_agent_lab.core.security.confirmation import ConfirmationDecision, ConfirmationRequest
-from ai_agent_lab.core.security.context import UserContext
 from ai_agent_lab.wiki.capabilities.results import (
     WikiCommentPostedResult,
     WikiPageDeletedResult,

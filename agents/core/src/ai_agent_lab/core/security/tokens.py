@@ -10,7 +10,7 @@ style:
    MCP specification forbids that passthrough outright and requires a server to
    check that a token was issued for *it*. :class:`DelegatedTokenSource` exists
    so the agent exchanges the token instead of relaying it.
-3. Verification produces a :class:`Principal` and nothing else. The rest of the
+3. Verification produces a :class:`AgentPrincipal` and nothing else. The rest of the
    application therefore cannot accidentally depend on a claim it has not
    modelled.
 
@@ -23,8 +23,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Protocol, runtime_checkable
 
-from ai_agent_lab.core.security.errors import SecurityError
-from ai_agent_lab.core.security.principal import Principal
+from ygo74.agent_runtime.domains.auth.agent_principal import AgentPrincipal
+from ygo74.agent_runtime.domains.security.security_errors import SecurityError
 
 
 class TokenError(SecurityError):
@@ -79,7 +79,7 @@ class AccessToken:
 class TokenVerifier(Protocol):
     """Establishes who a caller is from a presented bearer token."""
 
-    def verify(self, token: AccessToken) -> Principal:
+    def verify(self, token: AccessToken) -> AgentPrincipal:
         """Return the authenticated caller.
 
         Raises:
@@ -98,7 +98,7 @@ class DelegatedTokenSource(Protocol):
     do if the agent forwards the token LibreChat sent.
     """
 
-    async def token_for(self, principal: Principal, audience: str) -> AccessToken:
+    async def token_for(self, principal: AgentPrincipal, audience: str) -> AccessToken:
         """Return a token the given audience will accept for this principal.
 
         Raises:

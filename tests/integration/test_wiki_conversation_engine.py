@@ -18,9 +18,9 @@ from pathlib import Path
 
 import pytest
 from tests.support.langgraph_fakes import ScriptedChatModel, ToolCall, calls, says
+from ygo74.agent_runtime.domains.auth.agent_principal import AgentPrincipal
+from ygo74.agent_runtime.domains.contracts.conversation import ConversationTurn
 
-from ai_agent_lab.core.security.principal import Principal
-from ai_agent_lab.core.serving.conversation import ConversationTurn
 from ai_agent_lab.core.serving.runtimes import ConversationRuntimeCache
 from ai_agent_lab.wiki.application.composition import WikiAgentCompositionRoot
 from ai_agent_lab.wiki.application.entrypoints.conversation import (
@@ -36,8 +36,8 @@ REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 
 # `diana` may read every space of the delivered dataset; `alice` may not. The
 # pair is what makes a cross-caller test mean something.
-DIANA = Principal(subject="diana", display_name="Diana")
-ALICE = Principal(subject="alice", display_name="Alice")
+DIANA = AgentPrincipal(subject="diana", display_name="Diana")
+ALICE = AgentPrincipal(subject="alice", display_name="Alice")
 
 PAGE_ID = "apollo-architecture"
 COMMENT = "Checked against the delivery plan."
@@ -71,7 +71,7 @@ def build_engine(
     return WikiConversationEngine(cache), model, cache
 
 
-def turn(message: str, *, principal: Principal = DIANA, conversation: str = "conv-1") -> ConversationTurn:
+def turn(message: str, *, principal: AgentPrincipal = DIANA, conversation: str = "conv-1") -> ConversationTurn:
     """Build one request."""
     return ConversationTurn(principal=principal, conversation_id=conversation, message=message)
 
@@ -86,7 +86,7 @@ def commenting_script() -> list:
 
 async def comments_of(
     cache: ConversationRuntimeCache[WikiConversation],
-    principal: Principal = DIANA,
+    principal: AgentPrincipal = DIANA,
     conversation: str = "conv-1",
 ) -> tuple[str, ...]:
     """Read the page's comments back through the same conversation."""
