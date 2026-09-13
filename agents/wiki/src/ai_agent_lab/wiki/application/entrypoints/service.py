@@ -36,6 +36,7 @@ from ygo74.agent_runtime import (
     add_ai_endpoints,
 )
 from ygo74.agent_runtime.domains.auth.jwt_authenticator import JwksKeyResolver, JwtValidationConfig
+from ygo74.agent_runtime.domains.discovery.manifest_descriptor import AdvertisedSecurity
 
 from ai_agent_lab.core.config.environment import EnvironmentFile
 from ai_agent_lab.core.serving.runtimes import ConversationRuntimeCache
@@ -97,6 +98,12 @@ def build_app(
     app = FastAPI(title="Wiki Agent", lifespan=_closing(conversations))
     app.state.conversations = conversations
 
+    # Computed once and used twice: the authenticator chain is configured from
+    # these, and the descriptor is derived from them, so discovery cannot
+    # advertise a scheme this service does not accept.
+    jwt_validation = _jwt_validation(http)
+    api_key_resolver = _api_key_resolver(http, settings)
+
     add_ai_endpoints(
         app,
         WikiAgentEntrypoint(WikiConversationEngine(conversations)),
@@ -104,15 +111,17 @@ def build_app(
         enable_openai_chat_completions=True,
         enable_openai_responses=False,
         enable_anthropic_messages=False,
-        jwt_validation=_jwt_validation(http),
+        jwt_validation=jwt_validation,
         # Always on, whichever credential the deployment uses. The runtime's
         # authenticator chain accepts the API key as well as a bearer token, so
         # this is not "tokens only": it is "something, always". Without a
         # subject there is nothing to partition state by, and the model must
         # never be reached - and paid for - by an unidentified caller.
         require_bearer_token=http.requires_authentication,
-        api_key_resolver=_api_key_resolver(http, settings),
-        descriptor_registry=DescriptorRegistry([_descriptor(composition)]),
+        api_key_resolver=api_key_resolver,
+        descriptor_registry=DescriptorRegistry(
+            [_descriptor(composition, jwt_validation=jwt_validation, api_key_resolver=api_key_resolver)]
+        ),
         # Discovery carries its own authentication flag, defaulting to open.
         # Listing the agent also lists every capability description, which is a
         # map of what the wiki can be made to do: it is not public.
@@ -152,9 +161,22 @@ def _closing(
     return lifespan
 
 
-def _descriptor(composition: WikiAgentCompositionRoot) -> AgentDescriptor:
-    """Describe the agent from the configuration it was built with."""
-    return WikiAgentDescriptorFactory(composition.manifest(), agent_id=AGENT_ID).build()
+def _descriptor(
+    composition: WikiAgentCompositionRoot,
+    *,
+    jwt_validation: JwtValidationConfig | None,
+    api_key_resolver: StaticApiKeyUserResolver | None,
+) -> AgentDescriptor:
+    """Describe the agent from the configuration it was built with.
+
+    The authentication is read from the very values the endpoints are configured
+    with, so a descriptor cannot claim a scheme this service refuses.
+    """
+    return WikiAgentDescriptorFactory(
+        composition.manifest(),
+        security=AdvertisedSecurity.of(jwt_validation=jwt_validation, api_key_resolver=api_key_resolver),
+        agent_id=AGENT_ID,
+    ).build()
 
 
 def _jwt_validation(http: WikiAgentHttpSettings) -> JwtValidationConfig | None:

@@ -28,6 +28,10 @@ from ygo74.agent_runtime import AgentDescriptor
 from ygo74.agent_runtime.domains.contracts.contract_errors import EmptyRequestError
 from ygo74.agent_runtime.domains.contracts.conversation import AgentReply, ConversationTurn
 from ygo74.agent_runtime.domains.contracts.manifests import AgentManifest
+from ygo74.agent_runtime.domains.discovery.manifest_descriptor import (
+    AdvertisedSecurity,
+    AgentDescriptorFactory,
+)
 from ygo74.agent_runtime.domains.endpoints.conversation_payloads import (
     DEFAULT_CONVERSATION,
     AgentReplyRenderer,
@@ -35,7 +39,6 @@ from ygo74.agent_runtime.domains.endpoints.conversation_payloads import (
 )
 from ygo74.agent_runtime.domains.endpoints.header_forwarding import DEFAULT_CONVERSATION_HEADER
 
-from ai_agent_lab.core.serving.discovery import AgentDescriptorFactory
 from ai_agent_lab.wiki.application.entrypoints.conversation import WikiConversationEngine
 
 __all__ = [
@@ -46,6 +49,10 @@ __all__ = [
 ]
 
 PUBLISHED_AT = datetime(2026, 9, 12, tzinfo=UTC)
+
+# Who operates the agent. Stated rather than defaulted: the library's own default
+# names the library, which would publish the wrong owner for every agent here.
+OWNER = "ai-agent-lab"
 
 
 class WikiAgentEntrypoint:
@@ -86,14 +93,27 @@ class WikiAgentEntrypoint:
 
 
 class WikiAgentDescriptorFactory:
-    """Describes the Wiki Agent to discovery, from its delivered manifest."""
+    """Describes the Wiki Agent to discovery, from its delivered manifest.
 
-    def __init__(self, manifest: AgentManifest, *, agent_id: str = "wiki-agent") -> None:
+    The authentication is passed in rather than assumed: the Wiki Agent runs
+    behind a realm or behind a single demonstration key, and a caller reading the
+    descriptor has to be told which.
+    """
+
+    def __init__(
+        self,
+        manifest: AgentManifest,
+        *,
+        security: AdvertisedSecurity,
+        agent_id: str = "wiki-agent",
+    ) -> None:
         self._factory = AgentDescriptorFactory(
             manifest,
             agent_id=agent_id,
             tags=("wiki",),
             created_at=PUBLISHED_AT,
+            owner=OWNER,
+            security=security,
         )
 
     def build(self) -> AgentDescriptor:

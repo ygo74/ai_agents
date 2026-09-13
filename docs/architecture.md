@@ -182,6 +182,8 @@ copy per agent being one copy away from a weaker security path.
 | Security floor and audit trail | `ygo74.agent_runtime.domains.security` |
 | Authenticated caller | `ygo74.agent_runtime.domains.auth.agent_principal` |
 | Conversation port, manifests, capability registry | `ygo74.agent_runtime.domains.contracts` |
+| Token ports (`AccessToken`, `TokenVerifier`, `DelegatedTokenSource`) | `ygo74.agent_runtime.domains.auth.tokens` |
+| Manifest-derived discovery descriptor | `ygo74.agent_runtime.domains.discovery.manifest_descriptor` |
 | Transport payload reading and reply rendering | `ygo74.agent_runtime.domains.endpoints` |
 
 The library is therefore a **foundation** dependency of `ai_agent_lab.core`, not
@@ -195,6 +197,22 @@ Two consequences worth knowing before an upgrade:
 - the audit logger is named `ygo74.agent_runtime.audit`, not `ai_agent_lab.audit`;
 - the refusal raised when a caller lacks a permission is `PermissionDeniedError`,
   because the library already had an `AuthorizationError` meaning something else.
+
+And one behavioural change in discovery. The descriptor used to assert
+`("jwt", "oidc")` and `toolInvocation: false` regardless of the deployment, which
+was wrong on both counts for a service running on an API key and exposing fifteen
+capabilities. Both are now derived: `AdvertisedSecurity.of(...)` reads the same
+`jwt_validation`, `api_key_resolver` and `authenticators` the endpoints are
+configured with, and tool invocation follows the declared skills. A descriptor
+therefore reports what the service accepts, and a deployment that changes its
+authentication cannot forget to update what it advertises.
+
+That change had a consequence worth stating plainly: **the Mail Agent HTTP
+service now refuses to start when nothing would identify a caller.** It
+previously started and served the configured mailbox to anyone, because its JWT
+wiring is commented out and it had no equivalent of the Wiki Agent's start-up
+guard. Set `MAIL_AGENT_HTTP_API_KEY`, or re-enable `jwt_validation` in
+`build_app`.
 
 What stays here, and why, is recorded in
 [runtime-extraction-candidates.md](./runtime-extraction-candidates.md).

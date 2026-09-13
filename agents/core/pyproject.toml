@@ -26,9 +26,10 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-# Serving an agent over HTTP. Only `core.serving.discovery` needs the serving
-# extra of the runtime; every other module of this distribution stays free of any
-# transport.
+# Serving an agent over HTTP. This distribution no longer contains a serving
+# module of its own - the descriptor factory it used to carry now lives in the
+# library - so the extra exists to pull the library's own `http` dependencies
+# through for an agent that is served rather than run at a console.
 http = ["ygo74-agent-runtime[http]>=0.0.4,<0.1"]
 
 [tool.hatch.build.targets.wheel]

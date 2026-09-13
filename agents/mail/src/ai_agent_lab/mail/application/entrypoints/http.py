@@ -23,6 +23,10 @@ from ygo74.agent_runtime import AgentDescriptor
 from ygo74.agent_runtime.domains.contracts.contract_errors import EmptyRequestError
 from ygo74.agent_runtime.domains.contracts.conversation import AgentReply, ConversationTurn
 from ygo74.agent_runtime.domains.contracts.manifests import AgentManifest
+from ygo74.agent_runtime.domains.discovery.manifest_descriptor import (
+    AdvertisedSecurity,
+    AgentDescriptorFactory,
+)
 from ygo74.agent_runtime.domains.endpoints.conversation_payloads import (
     DEFAULT_CONVERSATION,
     AgentReplyRenderer,
@@ -30,7 +34,6 @@ from ygo74.agent_runtime.domains.endpoints.conversation_payloads import (
 )
 from ygo74.agent_runtime.domains.endpoints.header_forwarding import DEFAULT_CONVERSATION_HEADER
 
-from ai_agent_lab.core.serving.discovery import AgentDescriptorFactory
 from ai_agent_lab.mail.application.entrypoints.conversation import MailConversationEngine
 
 __all__ = [
@@ -41,6 +44,11 @@ __all__ = [
 ]
 
 PUBLISHED_AT = datetime(2026, 9, 7, tzinfo=UTC)
+
+# Who operates the agent. Stated rather than defaulted: the library's own default
+# names the library, which would publish the wrong owner for every agent here.
+OWNER = "ai-agent-lab"
+
 _logger = logging.getLogger(__name__)
 
 
@@ -100,21 +108,36 @@ class MailAgentEntrypoint:
 
 
 class MailAgentDescriptorFactory:
-    """Describes the Mail Agent to discovery, from its delivered manifest."""
+    """Describes the Mail Agent to discovery, from its delivered manifest.
 
-    def __init__(self, manifest: AgentManifest, *, agent_id: str = "mail-agent") -> None:
+    The authentication is passed in rather than assumed. The Mail Agent runs
+    behind a realm in a real deployment and behind a single API key in a
+    demonstration, and discovery has to say which - advertising a bearer scheme a
+    service does not accept sends a caller to a door that is not there.
+    """
+
+    def __init__(
+        self,
+        manifest: AgentManifest,
+        *,
+        security: AdvertisedSecurity,
+        agent_id: str = "mail-agent",
+    ) -> None:
         _logger.info("Initializing Mail Agent descriptor factory")
         _logger.debug(
-            "MailAgentDescriptorFactory.__init__ arguments: agent_name=%s, agent_id=%s, skill_count=%d",
+            "MailAgentDescriptorFactory.__init__ arguments: agent_name=%s, agent_id=%s, skill_count=%d, schemes=%s",
             manifest.name,
             agent_id,
             len(manifest.skills),
+            security.names(),
         )
         self._factory = AgentDescriptorFactory(
             manifest,
             agent_id=agent_id,
             tags=("mail",),
             created_at=PUBLISHED_AT,
+            owner=OWNER,
+            security=security,
         )
 
     def build(self) -> AgentDescriptor:

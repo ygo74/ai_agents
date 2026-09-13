@@ -26,16 +26,20 @@ do not reimplement them.
 | JWT / API-key authentication | What happens to a gated operation |
 | Discovery and access policy | Isolation and eviction of conversation state |
 
-What the repository owns is written once, in `ai_agent_lab.core.serving`, and
-composed by both agents:
+Most of what this used to require is now written once in `ygo74-agent-runtime`
+and composed by both agents. What is left in `ai_agent_lab.core.serving` is the
+part that has not moved yet:
 
 | Module | Responsibility |
 |---|---|
-| `serving/payloads.py` | Reads the loosely-typed request into a typed `ConversationTurn` |
 | `serving/confirmations.py` | Runs the operation a claimed ticket describes |
 | `serving/pending.py` | Renders what is waiting, so it can be answered by name |
-| `serving/discovery.py` | Builds the descriptor from the delivered manifest |
 | `serving/runtimes.py` | Keeps one runtime per caller and conversation, bounded and expiring |
+
+| Provided by the library | Responsibility |
+|---|---|
+| `domains.endpoints.conversation_payloads` | Reads the loosely-typed request into a typed `ConversationTurn` |
+| `domains.discovery.manifest_descriptor` | Builds the descriptor from the manifest and the authentication in force |
 
 What is specific to this agent is small, and deliberately so:
 `application/entrypoints/` and `application/approval/tickets.py`.

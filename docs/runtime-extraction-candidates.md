@@ -1,18 +1,20 @@
 # What could move to `ygo74-agent-runtime`
 
-> **Status, 2026-09-12.** Batches 1 to 5 of the sequencing table below have been
+> **Status, 2026-09-13.** Batches 1 to 6 of the sequencing table below have been
 > delivered: the security spine, the identity projection, the conversation port
-> and payloads, and the capability registry now live in `ygo74-agent-runtime`
-> 0.0.4 and have been deleted from this repository. See
+> and payloads, the capability registry, the token ports and the descriptor
+> factory now live in `ygo74-agent-runtime` 0.0.4 and have been deleted from this
+> repository. See
 > [architecture.md](./architecture.md#10-what-this-repository-no-longer-owns) for
 > what that changed here, and `docs/parity-status.md` in the runtime for the
 > .NET and Java debt it created. The rest of this document is unchanged and
 > describes the remaining work.
 >
-> Three corrections were forced by the delivery and are folded in below:
-> the capability registry could not move without the security spine, `py.typed`
-> turned out to be load-bearing, and the moved error base broke every boundary
-> that rendered a refusal.
+> Four corrections were forced by the delivery and are folded in below: the
+> capability registry could not move without the security spine, `py.typed`
+> turned out to be load-bearing, the moved error base broke every boundary that
+> rendered a refusal, and the library's package root pulled a web framework into
+> every import.
 
 This is an **analysis**, not a migration. It records which parts of this repository belong to the
 hosting library rather than to the agent laboratory, and what each one would need before it could move.
@@ -469,8 +471,8 @@ listed here imports nothing that a later batch owns.
 | 2 | Conversation port, payload reading and rendering, unified header | portable | 1 | **done** |
 | 3 | Capability registry contract (`SkillDescriptor`, `SkillRegistry`, manifests) | portable | 0 | **done** |
 | 4 | Security posture primitives (operations, floor, permissions, context, audit) | portable | 0 | **done** |
-| 5 | Tokens | portable | 1, 4 | deferred: `AccessToken` and the delegated-token ports stayed, pending the MCP batch that uses them |
-| 6 | Descriptor factory, after deriving security schemes and tool invocation from configuration | portable | 2, 3 | pending |
+| 5 | Tokens | portable | 1, 4 | **done** as `domains.auth.tokens` |
+| 6 | Descriptor factory, after deriving security schemes and tool invocation from configuration | portable | 2, 3 | **done** as `domains.discovery.manifest_descriptor`, defect fixed |
 | 7 | Human-approval domain, including the broker, the two ports and the storage contract | portable | 3, 4 | pending |
 | 8 | Gated operation runner | portable | 4, 7 | pending |
 | 9 | Untrusted content, fencing and `ReasoningRequest`, after opening `UntrustedOrigin` | portable | 4 | pending |
@@ -509,6 +511,15 @@ assumptions were wrong.
   The architecture test added in this repository now asserts the property
   end-to-end, in a subprocess, rather than by reading import statements - because
   reading import statements is exactly what failed to notice it.
+- **Deriving the descriptor exposed a service that was running open.** The Mail
+  Agent had no start-up guard, its JWT wiring was commented out, and
+  `require_bearer_token` was `False`. Setting `MAIL_AGENT_HTTP_OIDC_ISSUER` looked
+  like configuring authentication while authenticating nobody, and the old
+  descriptor asserted `("jwt", "oidc")` regardless, so nothing contradicted the
+  appearance. Making the descriptor read the real configuration turned that silent
+  posture into a refusal to start. The guard and its tests were added here, not
+  upstream: which configurations a deployment considers acceptable is the
+  application's decision.
 
 Batches 1, 2, 6 and 10 empty `core/serving/` almost entirely and make `entrypoints/http.py` and
 `entrypoints/service.py` nearly identical between the two agents, which is the drift described above.
