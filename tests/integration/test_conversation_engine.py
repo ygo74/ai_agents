@@ -17,10 +17,10 @@ from pathlib import Path
 
 import pytest
 from tests.support.maf_fakes import ScriptedChatClient, ToolCall, calls, says
+from ygo74.agent_runtime.domains.auth.agent_principal import AgentPrincipal
+from ygo74.agent_runtime.domains.contracts.conversation import ConversationTurn
+from ygo74.agent_runtime.domains.sessions.conversation_cache import ConversationRuntimeCache
 
-from ai_agent_lab.core.security.principal import Principal
-from ai_agent_lab.core.serving.conversation import ConversationTurn
-from ai_agent_lab.core.serving.runtimes import ConversationRuntimeCache
 from ai_agent_lab.mail.application.composition import MailAgentCompositionRoot
 from ai_agent_lab.mail.application.entrypoints.conversation import (
     MailConversation,
@@ -33,8 +33,8 @@ from ai_agent_lab.mail.inmemory.reasoner import ScriptedTextReasoner
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 
-ADA = Principal(subject="local-user", email="local-user@example.com", display_name="Ada")
-BOB = Principal(subject="other-user", email="other-user@example.com", display_name="Bob")
+ADA = AgentPrincipal(subject="local-user", email="local-user@example.com", display_name="Ada")
+BOB = AgentPrincipal(subject="other-user", email="other-user@example.com", display_name="Bob")
 
 MESSAGE_ID = "m-alpha-1"
 LABEL_ID = "FINANCE"
@@ -62,7 +62,7 @@ def build_engine(script) -> tuple[MailConversationEngine, ScriptedChatClient, Co
     return MailConversationEngine(cache), client, cache
 
 
-def turn(message: str, *, principal: Principal = ADA, conversation: str = "conv-1") -> ConversationTurn:
+def turn(message: str, *, principal: AgentPrincipal = ADA, conversation: str = "conv-1") -> ConversationTurn:
     """Build one request."""
     return ConversationTurn(principal=principal, conversation_id=conversation, message=message)
 
@@ -75,11 +75,11 @@ def labelling_script():
     ]
 
 
-async def labels_of(cache, message_id: str, principal: Principal = ADA) -> tuple[str, ...]:
+async def labels_of(cache, message_id: str, principal: AgentPrincipal = ADA) -> tuple[str, ...]:
     """Read the mailbox back through the same conversation."""
-    conversation = await cache.acquire(principal, "conv-1")
-    message = await conversation.runtime.mail_tools.get_message(message_id, conversation.runtime.user)
-    return message.label_ids
+    async with cache.lease(principal, "conv-1") as conversation:
+        message = await conversation.runtime.mail_tools.get_message(message_id, conversation.runtime.user)
+        return message.label_ids
 
 
 class TestAnOrdinaryTurn:

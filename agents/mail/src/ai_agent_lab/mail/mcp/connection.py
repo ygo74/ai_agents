@@ -19,6 +19,7 @@ could not be reached.
 from __future__ import annotations
 
 import asyncio
+import logging
 import sys
 from contextlib import AsyncExitStack
 from datetime import timedelta
@@ -32,6 +33,7 @@ from ai_agent_lab.mail.mail_errors import MailToolUnavailableError
 from ai_agent_lab.mail.mcp.binding import McpServerBinding, McpTransport
 
 _PYTHON = "python"
+_logger = logging.getLogger(__name__)
 
 
 class McpConnection:
@@ -44,6 +46,15 @@ class McpConnection:
         timeout_seconds: int = 30,
         auth: httpx.Auth | None = None,
     ) -> None:
+        _logger.info("Initializing Mail MCP connection")
+        _logger.debug(
+            "McpConnection.__init__ arguments: server=%s, transport=%s, "
+            "timeout_seconds=%d, authentication_configured=%s",
+            binding.server,
+            binding.transport.value,
+            timeout_seconds,
+            auth is not None,
+        )
         self._binding = binding
         self._timeout = timeout_seconds
         self._auth = auth
@@ -57,6 +68,12 @@ class McpConnection:
         The check is repeated inside the lock: several callers can pass the
         first one together, and only the first through the door may connect.
         """
+        _logger.debug(
+            "McpConnection.session arguments: server=%s, transport=%s, already_open=%s",
+            self._binding.server,
+            self._binding.transport.value,
+            self._session is not None,
+        )
         if self._session is not None:
             return self._session
         async with self._opening:
@@ -66,23 +83,47 @@ class McpConnection:
 
     async def aclose(self) -> None:
         """Close the session and release the transport."""
+        _logger.info("Closing Mail MCP connection")
+        _logger.debug(
+            "McpConnection.aclose arguments: server=%s, transport=%s, has_stack=%s",
+            self._binding.server,
+            self._binding.transport.value,
+            self._stack is not None,
+        )
         stack, self._stack, self._session = self._stack, None, None
         if stack is None:
             return
         try:
             await stack.aclose()
-        except (OSError, RuntimeError, httpx.HTTPError):
+        except (OSError, RuntimeError, httpx.HTTPError) as error:
+            _logger.debug(
+                "Mail MCP connection was already unavailable while closing: error_type=%s",
+                type(error).__name__,
+            )
             # The conversation is over; a server that already went away must not
             # turn a clean exit into a crash.
             return
 
     async def _connect(self) -> ClientSession:
         """Open the transport and initialise the protocol session."""
+        _logger.info("Connecting to Mail MCP server")
+        _logger.debug(
+            "McpConnection._connect arguments: server=%s, transport=%s, timeout_seconds=%d",
+            self._binding.server,
+            self._binding.transport.value,
+            self._timeout,
+        )
         stack = AsyncExitStack()
         try:
             session = await self._open(stack)
             await session.initialize()
         except Exception as error:
+            _logger.exception(
+                "Mail MCP connection failed: server=%s, transport=%s, error_type=%s",
+                self._binding.server,
+                self._binding.transport.value,
+                type(error).__name__,
+            )
             await stack.aclose()
             raise MailToolUnavailableError(
                 f"mail MCP server {self._binding.server!r} could not be reached: {type(error).__name__}"
@@ -92,6 +133,16 @@ class McpConnection:
 
     async def _open(self, stack: AsyncExitStack) -> ClientSession:
         """Open the transport the binding asks for."""
+        _logger.info("Opening Mail MCP transport")
+        _logger.debug(
+            "McpConnection._open arguments: server=%s, transport=%s, "
+            "stack_type=%s, timeout_seconds=%d, authentication_configured=%s",
+            self._binding.server,
+            self._binding.transport.value,
+            type(stack).__name__,
+            self._timeout,
+            self._auth is not None,
+        )
         if self._binding.transport is McpTransport.HTTP:
             read, write, _ = await stack.enter_async_context(
                 streamablehttp_client(self._binding.url, timeout=self._timeout, auth=self._auth)
@@ -109,6 +160,13 @@ class McpConnection:
         declared in configuration starts in this virtual environment rather than
         in whatever happens to be first on the PATH.
         """
+        _logger.info("Building Mail MCP stdio server parameters")
+        _logger.debug(
+            "McpConnection._stdio_parameters arguments: server=%s, command=%s, argument_count=%d",
+            self._binding.server,
+            self._binding.command,
+            len(self._binding.args),
+        )
         command = self._binding.command
         return StdioServerParameters(
             command=sys.executable if command == _PYTHON else command,

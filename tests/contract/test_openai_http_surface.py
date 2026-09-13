@@ -25,14 +25,16 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from tests.support.maf_fakes import ScriptedChatClient, ToolCall, calls, says
 from ygo74.agent_runtime import (
+    AdvertisedSecurity,
+    AgentDescriptor,
     DescriptorRegistry,
     DiscoveryConfiguration,
     ResolvedUser,
     StaticApiKeyUserResolver,
     add_ai_endpoints,
 )
+from ygo74.agent_runtime.domains.sessions.conversation_cache import ConversationRuntimeCache
 
-from ai_agent_lab.core.serving.runtimes import ConversationRuntimeCache
 from ai_agent_lab.mail.application.composition import MailAgentCompositionRoot
 from ai_agent_lab.mail.application.entrypoints.conversation import (
     MailConversation,
@@ -120,6 +122,23 @@ def build_service(script) -> tuple[FastAPI, ScriptedChatClient]:
     # Mirrors the real service, so a test can observe how many conversations the
     # requests it made actually created.
     app.state.conversations = conversations
+    api_key_resolver = StaticApiKeyUserResolver(
+        {
+            API_KEY: ResolvedUser(
+                user_id="local-user",
+                email="local-user@example.com",
+                name="Local User",
+            )
+        }
+    )
+    descriptor = MailAgentDescriptorFactory(
+        composition.manifest(),
+        # The same resolver the endpoints authenticate with, so the descriptor
+        # this harness publishes describes this harness.
+        security=AdvertisedSecurity.of(jwt_validation=None, api_key_resolver=api_key_resolver),
+        agent_id=AGENT_ID,
+    ).build()
+    app.state.descriptor = descriptor
     add_ai_endpoints(
         app,
         MailAgentEntrypoint(MailConversationEngine(conversations)),
@@ -127,21 +146,23 @@ def build_service(script) -> tuple[FastAPI, ScriptedChatClient]:
         enable_openai_chat_completions=True,
         enable_openai_responses=False,
         require_bearer_token=True,
-        api_key_resolver=StaticApiKeyUserResolver(
-            {
-                API_KEY: ResolvedUser(
-                    user_id="local-user",
-                    email="local-user@example.com",
-                    name="Local User",
-                )
-            }
-        ),
-        descriptor_registry=DescriptorRegistry(
-            [MailAgentDescriptorFactory(composition.manifest(), agent_id=AGENT_ID).build()]
-        ),
+        api_key_resolver=api_key_resolver,
+        descriptor_registry=DescriptorRegistry([descriptor]),
         discovery=DiscoveryConfiguration(enable_openai_models=True, require_authentication=True),
     )
     return app, client
+
+
+def _only_descriptor(app: FastAPI) -> AgentDescriptor:
+    """Return the descriptor this harness registered.
+
+    Read from the object the harness built rather than from the discovery
+    payload: the projection onto the OpenAI model shape drops the security
+    schemes, and those are exactly what these tests are about.
+    """
+    descriptor = app.state.descriptor
+    assert isinstance(descriptor, AgentDescriptor)
+    return descriptor
 
 
 def chat(http: TestClient, message: str, *, key: str | None = API_KEY, conversation: str | None = None):
@@ -206,6 +227,29 @@ class TestTheEndpointAnswers:
             body = http.get("/v1/models", headers={"x-api-key": API_KEY}).json()
 
         assert any(entry["id"] == AGENT_ID for entry in body["data"])
+
+    def test_the_descriptor_advertises_what_this_service_accepts(self):
+        """Discovery must describe the deployment, not an assumption about it.
+
+        This harness authenticates with an API key and no token, so a descriptor
+        naming a bearer scheme would send a caller to a door that is not there.
+        The schemes are derived from the resolver the endpoints were configured
+        with, which is why the two cannot disagree.
+        """
+        app, _client = build_service([says("hello")])
+
+        descriptor = _only_descriptor(app)
+
+        assert descriptor.security_schemes == ("apiKey",)
+
+    def test_the_descriptor_admits_the_agent_invokes_tools(self):
+        """It lists fifteen capabilities; claiming it invokes none contradicts that."""
+        app, _client = build_service([says("hello")])
+
+        descriptor = _only_descriptor(app)
+
+        assert descriptor.skills
+        assert descriptor.capabilities.tool_invocation
 
     def test_only_the_latest_turn_reaches_the_agent(self):
         """LibreChat re-sends the whole conversation; replaying it would duplicate."""

@@ -1,0 +1,359 @@
+{
+  // Debug configurations for the AI Agent Lab.
+  //
+  // Each agent has its own virtual environment, on purpose: the Mail Agent runs
+  // on Microsoft Agent Framework and the Wiki Agent on LangChain, and installing
+  // both in one place has already been observed to move a shared dependency
+  // under the other's feet. `python` below therefore names the environment of
+  // the agent being launched, never a shared one.
+  //
+  // Create them with:
+  //   py -3.12 -m scripts.install --env wiki-agent --into .venvs\wiki-agent
+  //   py -3.12 -m scripts.install --env mail-agent --into .venvs\mail-agent-maf
+  //   py -3.12 -m scripts.install --env dev        --into .venvs\dev
+  "version": "0.2.0",
+  "configurations": [
+    // =========================================================================
+    // Mail Agent (Microsoft Agent Framework)
+    // =========================================================================
+    {
+      "name": "Mail Agent — Console (mock)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "ai_agent_lab.mail.application.cli_entrypoint",
+      "python": "${workspaceFolder}/.venvs/mail-agent-maf/Scripts/python.exe",
+      "console": "integratedTerminal",
+      "justMyCode": false,
+      "cwd": "${workspaceFolder}",
+      "envFile": "${workspaceFolder}/.env",
+      "env": {
+        "MAIL_AGENT_MODE": "mock",
+        "MAIL_AGENT_LOG_LEVEL": "DEBUG",
+        "PYTHONUTF8": "1"
+      }
+    },
+    {
+      "name": "Mail Agent — Console (Gmail API)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "ai_agent_lab.mail.application.cli_entrypoint",
+      "python": "${workspaceFolder}/.venvs/mail-agent-maf/Scripts/python.exe",
+      "console": "integratedTerminal",
+      "justMyCode": false,
+      "cwd": "${workspaceFolder}",
+      "envFile": "${workspaceFolder}/.env",
+      "env": {
+        "MAIL_AGENT_MODE": "mcp",
+        "MAIL_MCP_SERVER": "gmail-api",
+        "MAIL_AGENT_LOG_LEVEL": "DEBUG",
+        "PYTHONUTF8": "1"
+      }
+    },
+    {
+      "name": "Mail Agent — HTTP (mock)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "uvicorn",
+      "python": "${workspaceFolder}/.venvs/mail-agent-maf/Scripts/python.exe",
+      "console": "integratedTerminal",
+      "justMyCode": false,
+      "cwd": "${workspaceFolder}",
+      "envFile": "${workspaceFolder}/.env",
+      "args": [
+        "ai_agent_lab.mail.application.entrypoints.service:build_app",
+        "--factory",
+        "--port",
+        "8123",
+        "--reload"
+      ],
+      "env": {
+        "MAIL_AGENT_MODE": "mock",
+        "MAIL_AGENT_HTTP_API_KEY": "demo-key",
+        "MAIL_AGENT_LOG_LEVEL": "DEBUG",
+        "PYTHONUTF8": "1"
+      }
+    },
+    {
+      "name": "Mail Agent — HTTP (Gmail API)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "uvicorn",
+      "python": "${workspaceFolder}/.venvs/mail-agent-maf/Scripts/python.exe",
+      "console": "integratedTerminal",
+      "justMyCode": false,
+      "cwd": "${workspaceFolder}",
+      "envFile": "${workspaceFolder}/.env",
+      "args": [
+        "ai_agent_lab.mail.application.entrypoints.service:build_app",
+        "--factory",
+        "--port",
+        "8002",
+        "--reload"
+      ],
+      "env": {
+        "MAIL_AGENT_MODE": "mcp",
+        "MAIL_MCP_SERVER": "gmail-api",
+        "MAIL_AGENT_LOG_LEVEL": "DEBUG",
+        "PYTHONUTF8": "1"
+      }
+    },
+
+    // =========================================================================
+    // Wiki Agent (LangChain / LangGraph)
+    // =========================================================================
+    {
+      "name": "Wiki Agent — Console (mock)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "ai_agent_lab.wiki.application.cli_entrypoint",
+      "python": "${workspaceFolder}/.venvs/wiki-agent/Scripts/python.exe",
+      "console": "integratedTerminal",
+      "justMyCode": false,
+      "cwd": "${workspaceFolder}",
+      "envFile": "${workspaceFolder}/.env",
+      "env": {
+        "WIKI_AGENT_MODE": "mock",
+        "WIKI_AGENT_LOG_LEVEL": "DEBUG",
+        "PYTHONUTF8": "1"
+      }
+    },
+    {
+      "name": "Wiki Agent — Console (mcp-atlassian)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "ai_agent_lab.wiki.application.cli_entrypoint",
+      "python": "${workspaceFolder}/.venvs/wiki-agent/Scripts/python.exe",
+      "console": "integratedTerminal",
+      "justMyCode": false,
+      "cwd": "${workspaceFolder}",
+      "envFile": "${workspaceFolder}/.env",
+      "env": {
+        "WIKI_AGENT_MODE": "mcp",
+        "WIKI_MCP_SERVER": "mcp-atlassian",
+        "WIKI_MCP_READ_ONLY": "false",
+        "WIKI_MCP_TOOLSETS": "confluence_pages,confluence_comments",
+        "WIKI_AGENT_LOG_LEVEL": "DEBUG",
+        "PYTHONUTF8": "1"
+      },
+      "args": [
+        "--log-level",
+        "DEBUG"
+      ]
+    },
+    {
+      "name": "Wiki Agent — Console (mcp-atlassian HTTP)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "ai_agent_lab.wiki.application.cli_entrypoint",
+      "python": "${workspaceFolder}/.venvs/wiki-agent/Scripts/python.exe",
+      "console": "integratedTerminal",
+      "justMyCode": false,
+      "cwd": "${workspaceFolder}",
+      "envFile": "${workspaceFolder}/.env",
+      "env": {
+        "WIKI_AGENT_MODE": "mcp",
+        "WIKI_MCP_SERVER": "mcp-atlassian-http",
+        "WIKI_MCP_AUTH_SCHEME": "basic",
+        "WIKI_AGENT_LOG_LEVEL": "DEBUG",
+        "PYTHONUTF8": "1"
+      }
+    },
+    {
+      "name": "Wiki Agent — Console (reference MCP stdio)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "ai_agent_lab.wiki.application.cli_entrypoint",
+      "python": "${workspaceFolder}/.venvs/wiki-agent/Scripts/python.exe",
+      "console": "integratedTerminal",
+      "justMyCode": false,
+      "cwd": "${workspaceFolder}",
+      "envFile": "${workspaceFolder}/.env",
+      "env": {
+        "WIKI_AGENT_MODE": "mcp",
+        "WIKI_MCP_SERVER": "wiki-local",
+        "WIKI_AGENT_LOG_LEVEL": "DEBUG",
+        "PYTHONUTF8": "1"
+      }
+    },
+    {
+      // Served on an OpenAI-compatible API, for LibreChat. Port 8124 so it can
+      // run alongside the Mail Agent on 8123. See docs/wiki-agent-http.md.
+      //
+      // The service refuses to start without a way to identify its caller: a
+      // wiki restricts pages per person, so an anonymous request would be
+      // served somebody's view of it without anybody having decided whose.
+      "name": "Wiki Agent — HTTP (mock)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "uvicorn",
+      "python": "${workspaceFolder}/.venvs/wiki-agent/Scripts/python.exe",
+      "console": "integratedTerminal",
+      "justMyCode": false,
+      "cwd": "${workspaceFolder}",
+      "envFile": "${workspaceFolder}/.env",
+      "args": [
+        "ai_agent_lab.wiki.application.entrypoints.service:build_app",
+        "--factory",
+        "--port",
+        "8124",
+        "--reload"
+      ],
+      "env": {
+        "WIKI_AGENT_MODE": "mock",
+        "WIKI_AGENT_HTTP_API_KEY": "demo-key",
+        "WIKI_AGENT_LOG_LEVEL": "DEBUG",
+        "PYTHONUTF8": "1"
+      }
+    },
+    {
+      // The same service, against a real Confluence over streamable HTTP.
+      // Start the mcp-atlassian container first: see docs/wiki-mcp-servers.md.
+      "name": "Wiki Agent — HTTP (mcp-atlassian HTTP)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "uvicorn",
+      "python": "${workspaceFolder}/.venvs/wiki-agent/Scripts/python.exe",
+      "console": "integratedTerminal",
+      "justMyCode": false,
+      "cwd": "${workspaceFolder}",
+      "envFile": "${workspaceFolder}/.env",
+      "args": [
+        "ai_agent_lab.wiki.application.entrypoints.service:build_app",
+        "--factory",
+        "--port",
+        "8124",
+        "--reload"
+      ],
+      "env": {
+        "WIKI_AGENT_MODE": "mcp",
+        "WIKI_MCP_SERVER": "mcp-atlassian-http",
+        "WIKI_MCP_AUTH_SCHEME": "basic",
+        "WIKI_AGENT_HTTP_API_KEY": "demo-key",
+        "WIKI_AGENT_LOG_LEVEL": "DEBUG",
+        "PYTHONUTF8": "1"
+      }
+    },
+
+    // =========================================================================
+    // MCP Reference Servers & Utilities
+    // =========================================================================
+    {
+      "name": "Wiki MCP reference server (stdio)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "wiki_mcp.reference.server",
+      "python": "${workspaceFolder}/.venvs/wiki-agent/Scripts/python.exe",
+      "console": "integratedTerminal",
+      "justMyCode": false,
+      "cwd": "${workspaceFolder}",
+      "args": ["--dataset", "data/wiki/sample_wiki.json"],
+      "env": {
+        "PYTHONUTF8": "1"
+      }
+    },
+    {
+      "name": "Mail MCP reference server (stdio)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "mail_mcp.reference.server",
+      "python": "${workspaceFolder}/.venvs/mail-agent-maf/Scripts/python.exe",
+      "console": "integratedTerminal",
+      "justMyCode": false,
+      "cwd": "${workspaceFolder}",
+      "args": ["--dataset", "data/mail/sample_mailbox.json"],
+      "env": {
+        "PYTHONUTF8": "1"
+      }
+    },
+    {
+      "name": "Gmail MCP — authorise (OAuth 2.0)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "mail_mcp.gmail.authorise",
+      "python": "${workspaceFolder}/.venvs/mail-agent-maf/Scripts/python.exe",
+      "console": "integratedTerminal",
+      "justMyCode": false,
+      "cwd": "${workspaceFolder}",
+      "envFile": "${workspaceFolder}/.env",
+      "env": {
+        "PYTHONUTF8": "1"
+      }
+    },
+
+    // =========================================================================
+    // Tests (Development Environment)
+    // =========================================================================
+    {
+      "name": "Tests — all",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "pytest",
+      "python": "${workspaceFolder}/.venvs/dev/Scripts/python.exe",
+      "console": "integratedTerminal",
+      "justMyCode": false,
+      "cwd": "${workspaceFolder}",
+      "args": ["tests", "-v"]
+    },
+    {
+      "name": "Tests — mail agent",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "pytest",
+      "python": "${workspaceFolder}/.venvs/dev/Scripts/python.exe",
+      "console": "integratedTerminal",
+      "justMyCode": false,
+      "cwd": "${workspaceFolder}",
+      "args": [
+        "tests/unit/domain",
+        "tests/unit/skills",
+        "tests/contract/test_mail_tools_contract.py",
+        "tests/contract/test_mcp_mail_tools_contract.py",
+        "tests/integration/test_capability_exposure.py",
+        "tests/security/test_mail_security.py",
+        "tests/agent/test_mail_scenarios.py",
+        "-v"
+      ]
+    },
+    {
+      "name": "Tests — wiki agent",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "pytest",
+      "python": "${workspaceFolder}/.venvs/dev/Scripts/python.exe",
+      "console": "integratedTerminal",
+      "justMyCode": false,
+      "cwd": "${workspaceFolder}",
+      "args": [
+        "tests/unit/wiki",
+        "tests/unit/langgraph",
+        "tests/integration/test_wiki_agent_langgraph.py",
+        "tests/integration/test_wiki_conversation_engine.py",
+        "tests/contract/test_wiki_openai_http_surface.py",
+        "tests/security/test_wiki_security.py",
+        "-v"
+      ]
+    },
+    {
+      "name": "Tests — security only",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "pytest",
+      "python": "${workspaceFolder}/.venvs/dev/Scripts/python.exe",
+      "console": "integratedTerminal",
+      "justMyCode": false,
+      "cwd": "${workspaceFolder}",
+      "args": ["tests", "-m", "security", "-v"]
+    },
+    {
+      "name": "Tests — current file",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "pytest",
+      "python": "${workspaceFolder}/.venvs/dev/Scripts/python.exe",
+      "console": "integratedTerminal",
+      "justMyCode": false,
+      "cwd": "${workspaceFolder}",
+      "args": ["${file}", "-v"]
+    }
+  ]
+}

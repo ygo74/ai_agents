@@ -1,0 +1,39 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "ai-agent-lab-wiki-agent"
+version = "0.1.0"
+description = "The Wiki Agent: online project documentation domain, skills and orchestration"
+requires-python = ">=3.12"
+
+# `mcp` is the client library used to reach a wiki MCP server. The protocol
+# package is only needed by the native dialect, so it is an extra: an agent
+# talking to a third-party server such as mcp-atlassian through its own dialect
+# does not need it.
+dependencies = [
+    "ai-agent-lab-core",
+    "mcp>=1.24,<2",
+]
+
+[project.optional-dependencies]
+# The agentic framework this agent is orchestrated with. The Mail Agent uses the
+# Microsoft Agent Framework instead; running both in one environment is possible
+# but never required, and the per-agent virtual environments keep them apart.
+langgraph = ["ai-agent-lab-langgraph"]
+native = ["wiki-mcp-protocol"]
+
+# Serving the agent over HTTP. See the Mail Agent's pyproject for why the
+# runtime library is a range rather than an exact pin.
+http = [
+    "ygo74-agent-runtime>=0.0.4,<0.1",
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.30",
+]
+
+[project.scripts]
+wiki-agent = "ai_agent_lab.wiki.application.cli_entrypoint:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/ai_agent_lab"]

@@ -31,7 +31,14 @@ coverage.xml
 htmlcov/
 
 # Editors / OS
-.vscode/
+#
+# The contents of `.vscode/` rather than the directory itself: git cannot
+# re-include a file whose parent directory is excluded, and the debug
+# configurations below are project tooling rather than personal preference.
+# Every agent has its own virtual environment, and a colleague guessing which
+# interpreter to point at is a colleague debugging the wrong one.
+.vscode/*
+!.vscode/launch.json
 .idea/
 Thumbs.db
 .DS_Store

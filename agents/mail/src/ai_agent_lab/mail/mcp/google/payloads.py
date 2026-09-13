@@ -12,11 +12,12 @@ Reading state and archiving are not fields: Gmail expresses them as labels, and
 
 from __future__ import annotations
 
+import logging
 from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field
+from ygo74.agent_runtime.domains.security.untrusted import untrusted
 
-from ai_agent_lab.core.security.untrusted import UntrustedOrigin, untrusted
 from ai_agent_lab.mail.domain.models import (
     EmailAddress,
     MailAttachment,
@@ -25,11 +26,13 @@ from ai_agent_lab.mail.domain.models import (
     MailMessage,
     MailParticipant,
 )
+from ai_agent_lab.mail.domain.origins import MailOrigin
 from ai_agent_lab.mail.mail_errors import MailToolProtocolError
 
 UNREAD_LABEL = "UNREAD"
 INBOX_LABEL = "INBOX"
 _SYSTEM_LABEL = "SYSTEM"
+_logger = logging.getLogger(__name__)
 
 
 class GmailPayload(BaseModel):
@@ -51,9 +54,15 @@ class GmailAttachment(GmailPayload):
         Gmail reports no size at this level, and the agent never needs one, so
         it is left at zero rather than guessed.
         """
+        _logger.debug(
+            "GmailAttachment.to_domain arguments: attachment_id=%s, filename_length=%d, mime_type=%s",
+            self.attachment_id,
+            len(self.filename),
+            self.mime_type,
+        )
         return MailAttachment(
             attachment_id=self.attachment_id,
-            file_name=untrusted(self.filename, UntrustedOrigin.MAIL_ATTACHMENT_NAME),
+            file_name=untrusted(self.filename, MailOrigin.ATTACHMENT_NAME),
             media_type=self.mime_type or "application/octet-stream",
             size_bytes=0,
         )
@@ -103,11 +112,24 @@ class GmailMessage(GmailPayload):
 
     def to_domain(self, fallback_thread_id: str = "") -> MailMessage:
         """Rebuild the domain message, fencing subject and body."""
+        _logger.debug(
+            "GmailMessage.to_domain arguments: message_id=%s, thread_id=%s, "
+            "fallback_thread_id=%s, subject_length=%d, body_length=%d, "
+            "to_count=%d, cc_count=%d, attachments=%d",
+            self.message_id,
+            self.thread_id,
+            fallback_thread_id,
+            len(self.subject),
+            len(self.plaintext_body or self.snippet),
+            len(self.to_recipients),
+            len(self.cc_recipients),
+            len(self.attachments),
+        )
         return MailMessage(
             message_id=self.message_id,
             thread_id=self.thread_id or fallback_thread_id,
-            subject=untrusted(self.subject, UntrustedOrigin.MAIL_SUBJECT),
-            body=untrusted(self.plaintext_body or self.snippet, UntrustedOrigin.MAIL_BODY),
+            subject=untrusted(self.subject, MailOrigin.SUBJECT),
+            body=untrusted(self.plaintext_body or self.snippet, MailOrigin.BODY),
             sender=parse_participant(self.sender),
             to=tuple(parse_participant(item) for item in self.to_recipients),
             cc=tuple(parse_participant(item) for item in self.cc_recipients),
@@ -120,10 +142,19 @@ class GmailMessage(GmailPayload):
 
     def to_header(self, fallback_thread_id: str = "") -> MailHeader:
         """Project the message onto a search preview, without its body."""
+        _logger.debug(
+            "GmailMessage.to_header arguments: message_id=%s, thread_id=%s, "
+            "fallback_thread_id=%s, subject_length=%d, recipient_count=%d",
+            self.message_id,
+            self.thread_id,
+            fallback_thread_id,
+            len(self.subject),
+            len(self.to_recipients) + len(self.cc_recipients),
+        )
         return MailHeader(
             message_id=self.message_id,
             thread_id=self.thread_id or fallback_thread_id,
-            subject=untrusted(self.subject, UntrustedOrigin.MAIL_SUBJECT),
+            subject=untrusted(self.subject, MailOrigin.SUBJECT),
             sender=parse_participant(self.sender),
             recipient_count=len(self.to_recipients) + len(self.cc_recipients),
             sent_at=self.sent_at,
@@ -166,9 +197,15 @@ class GmailLabel(GmailPayload):
 
     def to_domain(self) -> MailLabel:
         """Rebuild the domain label, fencing its name."""
+        _logger.debug(
+            "GmailLabel.to_domain arguments: label_id=%s, name_length=%d, label_type=%s",
+            self.label_id,
+            len(self.name),
+            self.label_type,
+        )
         return MailLabel(
             label_id=self.label_id,
-            name=untrusted(self.name, UntrustedOrigin.MAIL_LABEL),
+            name=untrusted(self.name, MailOrigin.LABEL),
             is_system=self.label_type == _SYSTEM_LABEL,
         )
 
@@ -197,7 +234,7 @@ def parse_participant(value: str) -> MailParticipant:
     name, address = _split_address(text)
     return MailParticipant(
         address=EmailAddress(value=address),
-        display_name=untrusted(name, UntrustedOrigin.MAIL_SENDER_NAME) if name else None,
+        display_name=untrusted(name, MailOrigin.SENDER_NAME) if name else None,
     )
 
 

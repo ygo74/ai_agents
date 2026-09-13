@@ -5,7 +5,7 @@ adapters. They carry no infrastructure knowledge: nothing here is aware of
 Gmail, IMAP, SMTP, OAuth or of any agent framework.
 
 Text produced by third parties (subjects, bodies, display names, label names)
-is wrapped in :class:`~ai_agent_lab.core.security.untrusted.UntrustedText`
+is wrapped in :class:`~ygo74.agent_runtime.domains.security.untrusted.UntrustedText`
 so that it can never be silently treated as an instruction.
 """
 
@@ -15,8 +15,8 @@ import re
 from datetime import UTC, datetime
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from ygo74.agent_runtime.domains.security.untrusted import UntrustedText
 
-from ai_agent_lab.core.security.untrusted import UntrustedText
 from ai_agent_lab.mail.domain.enums import (
     ActionOrigin,
     ConfidenceLevel,

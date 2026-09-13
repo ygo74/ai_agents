@@ -8,13 +8,16 @@ the skills under test are exactly the ones that run in production.
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Mapping, Sequence
 
 from pydantic import BaseModel, ValidationError
+from ygo74.agent_runtime.domains.security.prompt_envelope import PromptEnvelopeBuilder
 
-from ai_agent_lab.core.reasoning.envelope import PromptEnvelopeBuilder
 from ai_agent_lab.core.reasoning.errors import ReasoningOutputError
 from ai_agent_lab.core.reasoning.ports import ReasoningOutputT, ReasoningRequest
+
+_logger = logging.getLogger(__name__)
 
 
 class RecordedReasoning(BaseModel):
@@ -42,6 +45,12 @@ class ScriptedTextReasoner:
         *,
         envelope_builder: PromptEnvelopeBuilder | None = None,
     ) -> None:
+        _logger.info("Initializing scripted Mail reasoner")
+        _logger.debug(
+            "ScriptedTextReasoner.__init__ arguments: response_models=%s, envelope_builder_type=%s",
+            tuple(sorted(model.__name__ for model in answers)),
+            None if envelope_builder is None else type(envelope_builder).__name__,
+        )
         self._answers = dict(answers)
         self._envelope_builder = envelope_builder
         self._calls: list[RecordedReasoning] = []
@@ -57,6 +66,15 @@ class ScriptedTextReasoner:
         response_model: type[ReasoningOutputT],
     ) -> ReasoningOutputT:
         """Return the answer registered for ``response_model``."""
+        _logger.info("Running scripted Mail reasoning")
+        _logger.debug(
+            "ScriptedTextReasoner.reason arguments: response_model=%s, "
+            "instructions_length=%d, task_length=%d, context_sections=%d",
+            response_model.__name__,
+            len(request.instructions),
+            len(request.task),
+            len(request.context),
+        )
         self._record(request)
         payload = self._answers.get(response_model)
         if payload is None:
@@ -68,6 +86,15 @@ class ScriptedTextReasoner:
 
     def _record(self, request: ReasoningRequest) -> None:
         """Capture a call, rendering the prompt when a builder was supplied."""
+        _logger.info("Recording scripted Mail reasoning call")
+        _logger.debug(
+            "ScriptedTextReasoner._record arguments: instructions_length=%d, "
+            "task_length=%d, context_sections=%d, render_prompt=%s",
+            len(request.instructions),
+            len(request.task),
+            len(request.context),
+            self._envelope_builder is not None,
+        )
         rendered = "" if self._envelope_builder is None else self._envelope_builder.build(request)
         self._calls.append(
             RecordedReasoning(

@@ -15,6 +15,7 @@ file plus a dialect class, and no change to a skill or to the agent.
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Iterable, Mapping
 from enum import StrEnum
 from pathlib import Path
@@ -27,6 +28,7 @@ from ai_agent_lab.mail.catalog import MailToolName
 from ai_agent_lab.mail.mail_errors import MailToolProtocolError
 
 MCP_DIRECTORY = "mcp"
+_logger = logging.getLogger(__name__)
 
 
 class McpTransport(StrEnum):
@@ -55,14 +57,30 @@ class McpServerBinding:
         command: str = "",
         args: Iterable[str] = (),
     ) -> None:
+        capability_set = frozenset(capabilities)
+        argument_tuple = tuple(args)
+        _logger.info("Initializing Mail MCP server binding")
+        _logger.debug(
+            "McpServerBinding.__init__ arguments: server=%s, transport=%s, "
+            "capabilities=%s, tool_aliases=%s, dialect=%s, url_configured=%s, "
+            "command=%s, argument_count=%d",
+            server,
+            transport.value,
+            tuple(sorted(capability.value for capability in capability_set)),
+            tuple(sorted(tools)),
+            dialect,
+            bool(url),
+            command,
+            len(argument_tuple),
+        )
         self._server = server
         self._transport = transport
-        self._capabilities = frozenset(capabilities)
+        self._capabilities = capability_set
         self._tools = dict(tools)
         self._dialect = dialect
         self._url = url
         self._command = command
-        self._args = tuple(args)
+        self._args = argument_tuple
 
     @property
     def server(self) -> str:
@@ -105,10 +123,20 @@ class McpServerBinding:
 
     def supports(self, capability: MailToolName) -> bool:
         """Whether the server declares it can serve a capability."""
+        _logger.debug(
+            "McpServerBinding.supports arguments: server=%s, capability=%s",
+            self._server,
+            capability.value,
+        )
         return capability in self._capabilities
 
     def remote(self, alias: str) -> str:
         """Return the name this server gives to a tool the dialect needs."""
+        _logger.debug(
+            "McpServerBinding.remote arguments: server=%s, alias=%s",
+            self._server,
+            alias,
+        )
         remote = self._tools.get(alias)
         if remote is None:
             raise McpBindingError(f"server {self._server!r} declares no tool named {alias!r}")
@@ -116,7 +144,14 @@ class McpServerBinding:
 
     def require_aliases(self, aliases: Iterable[str]) -> None:
         """Fail now when the dialect needs a tool the binding never named."""
-        missing = sorted(alias for alias in aliases if alias not in self._tools)
+        required = tuple(aliases)
+        _logger.info("Validating Mail MCP binding alias loop")
+        _logger.debug(
+            "McpServerBinding.require_aliases arguments: server=%s, aliases=%s",
+            self._server,
+            required,
+        )
+        missing = sorted(alias for alias in required if alias not in self._tools)
         if missing:
             raise McpBindingError(f"server {self._server!r} is missing tool names {missing}")
 
@@ -125,10 +160,17 @@ class McpServerBindingLoader:
     """Reads and validates the binding delivered for a mail MCP server."""
 
     def __init__(self, directory: ConfigurationDirectory) -> None:
+        _logger.info("Initializing Mail MCP server binding loader")
+        _logger.debug(
+            "McpServerBindingLoader.__init__ arguments: directory_type=%s",
+            type(directory).__name__,
+        )
         self._directory = directory
 
     def load(self, name: str) -> McpServerBinding:
         """Read the binding of one server."""
+        _logger.info("Loading Mail MCP server binding")
+        _logger.debug("McpServerBindingLoader.load arguments: name=%s", name)
         path = self._directory.require(MCP_DIRECTORY, f"{name}.yaml")
         document = self._document(path)
         transport = self._transport(document, path)
@@ -148,6 +190,11 @@ class McpServerBindingLoader:
     @staticmethod
     def _document(path: Path) -> dict[str, Any]:
         """Parse the binding file, refusing anything but a mapping."""
+        _logger.info("Reading Mail MCP binding document")
+        _logger.debug(
+            "McpServerBindingLoader._document arguments: file_name=%s",
+            path.name,
+        )
         try:
             document = yaml.safe_load(path.read_text(encoding="utf-8"))
         except (OSError, yaml.YAMLError) as error:
@@ -159,6 +206,12 @@ class McpServerBindingLoader:
     @staticmethod
     def _transport(document: dict[str, Any], path: Path) -> McpTransport:
         """Return the declared transport."""
+        _logger.info("Parsing Mail MCP binding transport")
+        _logger.debug(
+            "McpServerBindingLoader._transport arguments: document_keys=%s, file_name=%s",
+            tuple(sorted(document)),
+            path.name,
+        )
         declared = str(document.get("transport", "")).strip().lower()
         try:
             return McpTransport(declared)
@@ -169,6 +222,12 @@ class McpServerBindingLoader:
     @staticmethod
     def _list(document: dict[str, Any], key: str, path: Path) -> list[Any]:
         """Return an optional list field."""
+        _logger.info("Reading Mail MCP binding list field")
+        _logger.debug(
+            "McpServerBindingLoader._list arguments: key=%s, file_name=%s",
+            key,
+            path.name,
+        )
         value = document.get(key, [])
         if not isinstance(value, list):
             raise McpBindingError(f"{path}: field {key!r} must be a list")
@@ -176,6 +235,12 @@ class McpServerBindingLoader:
 
     def _capabilities(self, document: dict[str, Any], path: Path) -> frozenset[MailToolName]:
         """Return the catalogued capabilities the server declares."""
+        _logger.info("Parsing Mail MCP capability loop")
+        _logger.debug(
+            "McpServerBindingLoader._capabilities arguments: document_keys=%s, file_name=%s",
+            tuple(sorted(document)),
+            path.name,
+        )
         declared = self._list(document, "capabilities", path)
         if not declared:
             raise McpBindingError(f"{path}: 'capabilities' must list at least one capability")
@@ -188,6 +253,12 @@ class McpServerBindingLoader:
     @staticmethod
     def _tools(document: dict[str, Any], path: Path) -> dict[str, str]:
         """Return the alias to remote-name correspondence."""
+        _logger.info("Parsing Mail MCP tool alias loop")
+        _logger.debug(
+            "McpServerBindingLoader._tools arguments: document_keys=%s, file_name=%s",
+            tuple(sorted(document)),
+            path.name,
+        )
         declared = document.get("tools")
         if not isinstance(declared, dict) or not declared:
             raise McpBindingError(f"{path}: field 'tools' must be a non-empty mapping")
@@ -199,6 +270,13 @@ class McpServerBindingLoader:
     @staticmethod
     def _require_endpoint(binding: McpServerBinding, path: Path) -> None:
         """Refuse a binding that does not say where the server lives."""
+        _logger.info("Validating Mail MCP binding endpoint")
+        _logger.debug(
+            "McpServerBindingLoader._require_endpoint arguments: server=%s, transport=%s, file_name=%s",
+            binding.server,
+            binding.transport.value,
+            path.name,
+        )
         if binding.transport is McpTransport.HTTP and not binding.url:
             raise McpBindingError(f"{path}: an http server requires 'url'")
         if binding.transport is McpTransport.STDIO and not binding.command:

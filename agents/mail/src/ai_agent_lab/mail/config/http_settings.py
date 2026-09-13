@@ -2,57 +2,32 @@
 
 Only routing and posture live here. No credential is read, held or logged: the
 API key of the demonstration mode is compared, never stored anywhere it could be
-printed, and OIDC tokens are validated against a public key set.
+printed, and OIDC tokens are validated against a published key set.
+
+The shape is the library's. It was 78 % identical to the Wiki Agent's, which is
+how the two had already drifted apart on which one refuses to start. What is left
+is this deployment's two facts: the prefix its variables carry, and the audience
+its tokens must name.
 """
 
 from __future__ import annotations
 
-from datetime import timedelta
+from ygo74.agent_runtime.domains.configuration.agent_http_settings import AgentHttpSettings
 
-from pydantic import Field
-from pydantic_settings import BaseSettings, SettingsConfigDict
-
-from ai_agent_lab.core.config.environment import ENV_FILE
+ENV_PREFIX = "MAIL_AGENT_HTTP_"
+AUDIENCE = "mail-agent"
 
 
-class MailAgentHttpSettings(BaseSettings):
+class MailAgentHttpSettings(AgentHttpSettings):
     """How the Mail Agent is served over HTTP."""
 
-    model_config = SettingsConfigDict(
-        env_prefix="MAIL_AGENT_HTTP_",
-        env_file=ENV_FILE,
-        env_file_encoding="utf-8",
-        extra="ignore",
-    )
+    @classmethod
+    def load(cls) -> MailAgentHttpSettings:
+        """Read the settings from the environment.
 
-    # Demonstration mode: one key, one caller. Ignored once an issuer is set.
-    api_key: str = ""
-
-    oidc_issuer: str = ""
-    oidc_audience: str = "mail-agent"
-    jwks_url_override: str = Field(default="", validation_alias="MAIL_AGENT_HTTP_JWKS_URL")
-    roles_claim_path: str = "realm_access.roles"
-
-    max_conversations: int = 200
-    idle_minutes: int = 30
-
-    @property
-    def requires_authentication(self) -> bool:
-        """Whether a caller must present something.
-
-        An unauthenticated service would have no subject to partition state by,
-        so refusing to run open is the only safe default. Serving without either
-        an issuer or a key is therefore a configuration error rather than an
-        anonymous mode.
+        Explicit rather than implicit in the constructor: the environment file
+        has to have been loaded first, and a call that silently returned defaults
+        would describe a service identifying nobody. That service refuses to
+        start - the guard sees to it - but it would blame the wrong thing.
         """
-        return True
-
-    def jwks_url(self) -> str:
-        """Where the signing keys of the issuer are published."""
-        if self.jwks_url_override:
-            return self.jwks_url_override
-        return f"{self.oidc_issuer.rstrip('/')}/protocol/openid-connect/certs"
-
-    def idle_lifetime(self) -> timedelta:
-        """How long an untouched conversation is kept."""
-        return timedelta(minutes=self.idle_minutes)
+        return cls.from_env(ENV_PREFIX, default_audience=AUDIENCE)

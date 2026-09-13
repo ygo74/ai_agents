@@ -18,13 +18,14 @@ other label.
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Iterable, Sequence
 from typing import Any
 
 from mcp.types import CallToolResult, TextContent
+from ygo74.agent_runtime.domains.security.untrusted import untrusted
+from ygo74.agent_runtime.domains.security.user_context import UserContext
 
-from ai_agent_lab.core.security.context import UserContext
-from ai_agent_lab.core.security.untrusted import UntrustedOrigin, untrusted
 from ai_agent_lab.mail.domain.enums import MailSortOrder
 from ai_agent_lab.mail.domain.models import (
     MailDraft,
@@ -38,6 +39,7 @@ from ai_agent_lab.mail.domain.models import (
     MailSendResult,
     MailThread,
 )
+from ai_agent_lab.mail.domain.origins import MailOrigin
 from ai_agent_lab.mail.mail_errors import (
     MailAccessDeniedError,
     MailToolProtocolError,
@@ -71,6 +73,7 @@ REQUIRED_ALIASES = (
 
 _METADATA_VIEW = "THREAD_VIEW_METADATA_ONLY"
 _PLAIN_TEXT = "PLAIN_TEXT"
+_logger = logging.getLogger(__name__)
 
 
 class GmailMailTools:
@@ -84,6 +87,16 @@ class GmailMailTools:
         owner_id: str,
         query_builder: GmailQueryBuilder | None = None,
     ) -> None:
+        _logger.info("Initializing Gmail MCP tools")
+        _logger.debug(
+            "GmailMailTools.__init__ arguments: server=%s, transport=%s, owner_id=%s, "
+            "connection_type=%s, query_builder_type=%s",
+            binding.server,
+            binding.transport.value,
+            owner_id,
+            type(connection).__name__,
+            None if query_builder is None else type(query_builder).__name__,
+        )
         binding.require_aliases(REQUIRED_ALIASES)
         self._connection = connection
         self._binding = binding
@@ -97,6 +110,15 @@ class GmailMailTools:
         operator matches names. The identifiers the request carries are
         therefore resolved to names first.
         """
+        _logger.info("Calling Gmail MCP search")
+        _logger.debug(
+            "GmailMailTools.search arguments: request_type=%s, limit=%d, unread_only=%s, label_count=%d, user_id=%s",
+            type(request).__name__,
+            request.limit,
+            request.unread_only,
+            len(request.label_ids),
+            user.user_id,
+        )
         payload = await self._call(
             "search_threads",
             user,
@@ -115,13 +137,25 @@ class GmailMailTools:
 
     async def _label_names(self, request: MailSearchRequest, user: UserContext) -> dict[str, str]:
         """Return the name of each label the request filters on."""
+        _logger.info("Resolving Gmail MCP search label names")
+        _logger.debug(
+            "GmailMailTools._label_names arguments: label_ids=%s, user_id=%s",
+            request.label_ids,
+            user.user_id,
+        )
         if not request.label_ids:
             return {}
         labels = await self.list_labels(user)
+        _logger.info("Matching Gmail MCP search label loop")
         return {label.label_id: label.name.expose() for label in labels if label.label_id in request.label_ids}
 
     async def get_message(self, message_id: str, user: UserContext) -> MailMessage:
         """Return one complete message."""
+        _logger.debug(
+            "GmailMailTools.get_message arguments: message_id=%s, user_id=%s",
+            message_id,
+            user.user_id,
+        )
         payload = await self._call(
             "get_message",
             user,
@@ -133,6 +167,12 @@ class GmailMailTools:
 
     async def get_thread(self, thread_id: str, user: UserContext) -> MailThread:
         """Return a full conversation, oldest message first."""
+        _logger.info("Calling Gmail MCP thread retrieval")
+        _logger.debug(
+            "GmailMailTools.get_thread arguments: thread_id=%s, user_id=%s",
+            thread_id,
+            user.user_id,
+        )
         payload = await self._call(
             "get_thread",
             user,
@@ -142,23 +182,38 @@ class GmailMailTools:
         )
         if not payload.messages:
             raise MailToolProtocolError(f"thread {thread_id!r} was returned without a message")
+        _logger.info("Mapping Gmail MCP thread message loop")
         messages = tuple(
             message.to_domain(fallback_thread_id=payload.thread_id or thread_id) for message in payload.messages
         )
         ordered = tuple(sorted(messages, key=lambda message: message.sent_at))
         return MailThread(
             thread_id=payload.thread_id or thread_id,
-            subject=untrusted(payload.messages[0].subject, UntrustedOrigin.MAIL_SUBJECT),
+            subject=untrusted(payload.messages[0].subject, MailOrigin.SUBJECT),
             messages=ordered,
         )
 
     async def list_labels(self, user: UserContext) -> tuple[MailLabel, ...]:
         """Return the labels available in the mailbox."""
+        _logger.info("Calling Gmail MCP label listing")
+        _logger.debug("GmailMailTools.list_labels arguments: user_id=%s", user.user_id)
         payload = await self._call("list_labels", user, GmailLabelList)
+        _logger.info("Mapping Gmail MCP label loop")
         return tuple(label.to_domain() for label in payload.labels)
 
     async def create_draft(self, draft: MailDraft, user: UserContext) -> MailDraft:
         """Persist a draft without delivering anything."""
+        _logger.info("Calling Gmail MCP draft creation")
+        _logger.debug(
+            "GmailMailTools.create_draft arguments: user_id=%s, to_count=%d, "
+            "cc_count=%d, subject_length=%d, body_length=%d, in_reply_to=%s",
+            user.user_id,
+            len(draft.to),
+            len(draft.cc),
+            len(draft.subject.expose()),
+            len(draft.body.expose()),
+            draft.in_reply_to_message_id,
+        )
         payload = await self._call(
             "create_draft",
             user,
@@ -178,6 +233,15 @@ class GmailMailTools:
 
     async def send(self, request: MailSendRequest, user: UserContext) -> MailSendResult:
         """Refuse to send: the official Gmail server exposes no send tool."""
+        _logger.info("Rejecting unavailable Gmail MCP send")
+        _logger.debug(
+            "GmailMailTools.send arguments: user_id=%s, to_count=%d, cc_count=%d, subject_length=%d, body_length=%d",
+            user.user_id,
+            len(request.draft.to),
+            len(request.draft.cc),
+            len(request.draft.subject.expose()),
+            len(request.draft.body.expose()),
+        )
         del request, user
         raise MailToolUnavailableError(
             "the official Gmail MCP server has no send tool. Prepare a draft and send it from Gmail."
@@ -185,6 +249,13 @@ class GmailMailTools:
 
     async def set_read_state(self, message_id: str, is_read: bool, user: UserContext) -> None:
         """Mark a message as read or unread, which Gmail expresses as a label."""
+        _logger.info("Calling Gmail MCP read-state update")
+        _logger.debug(
+            "GmailMailTools.set_read_state arguments: message_id=%s, is_read=%s, user_id=%s",
+            message_id,
+            is_read,
+            user.user_id,
+        )
         await self._update_labels(
             message_id,
             user,
@@ -194,14 +265,34 @@ class GmailMailTools:
 
     async def archive(self, message_id: str, user: UserContext) -> None:
         """Remove a message from the inbox without deleting it."""
+        _logger.info("Calling Gmail MCP archive")
+        _logger.debug(
+            "GmailMailTools.archive arguments: message_id=%s, user_id=%s",
+            message_id,
+            user.user_id,
+        )
         await self._update_labels(message_id, user, remove=(INBOX_LABEL,))
 
     async def apply_label(self, message_id: str, label_id: str, user: UserContext) -> None:
         """Attach a label to a message."""
+        _logger.info("Calling Gmail MCP label application")
+        _logger.debug(
+            "GmailMailTools.apply_label arguments: message_id=%s, label_id=%s, user_id=%s",
+            message_id,
+            label_id,
+            user.user_id,
+        )
         await self._update_labels(message_id, user, add=(label_id,))
 
     async def remove_label(self, message_id: str, label_id: str, user: UserContext) -> None:
         """Detach a label from a message."""
+        _logger.info("Calling Gmail MCP label removal")
+        _logger.debug(
+            "GmailMailTools.remove_label arguments: message_id=%s, label_id=%s, user_id=%s",
+            message_id,
+            label_id,
+            user.user_id,
+        )
         await self._update_labels(message_id, user, remove=(label_id,))
 
     async def create_label(self, name: str, user: UserContext) -> MailLabelOutcome:
@@ -211,6 +302,12 @@ class GmailMailTools:
         also gives back the identifier of the existing label, which is what a
         caller wanting to file a message actually needs.
         """
+        _logger.info("Calling Gmail MCP label creation")
+        _logger.debug(
+            "GmailMailTools.create_label arguments: name_length=%d, user_id=%s",
+            len(name),
+            user.user_id,
+        )
         existing = await self._label_named(name, user)
         if existing is not None:
             return MailLabelOutcome(label=existing, created=False)
@@ -225,6 +322,12 @@ class GmailMailTools:
         type holds, and so a misconfigured binding fails with an explanation
         rather than an attribute error.
         """
+        _logger.info("Rejecting unavailable Gmail MCP label deletion")
+        _logger.debug(
+            "GmailMailTools.delete_label arguments: label_id=%s, user_id=%s",
+            label_id,
+            user.user_id,
+        )
         del label_id, user
         raise MailToolUnavailableError(
             "the official Gmail MCP server has no label deletion tool. Delete the label from Gmail."
@@ -232,6 +335,12 @@ class GmailMailTools:
 
     async def _label_named(self, name: str, user: UserContext) -> MailLabel | None:
         """Return the label carrying a name, if the mailbox has one."""
+        _logger.info("Searching Gmail label loop by name")
+        _logger.debug(
+            "GmailMailTools._label_named arguments: name_length=%d, user_id=%s",
+            len(name),
+            user.user_id,
+        )
         folded = name.casefold()
         labels = await self.list_labels(user)
         return next((label for label in labels if label.name.expose().casefold() == folded), None)
@@ -245,6 +354,14 @@ class GmailMailTools:
         remove: Sequence[str] = (),
     ) -> None:
         """Apply one atomic label change."""
+        _logger.info("Calling Gmail MCP atomic label update")
+        _logger.debug(
+            "GmailMailTools._update_labels arguments: message_id=%s, user_id=%s, add=%s, remove=%s",
+            message_id,
+            user.user_id,
+            tuple(add),
+            tuple(remove),
+        )
         await self._invoke(
             "update_message_labels",
             user,
@@ -263,6 +380,13 @@ class GmailMailTools:
         are left to Gmail: judging them here would need the body, which a
         metadata view does not carry.
         """
+        _logger.info("Flattening Gmail MCP search result loop")
+        _logger.debug(
+            "GmailMailTools._headers_of arguments: threads_type=%s, limit=%d, sort_order=%s",
+            type(threads).__name__,
+            request.limit,
+            request.sort_order.value,
+        )
         headers = [
             message.to_header(fallback_thread_id=thread.thread_id)
             for thread in threads
@@ -278,6 +402,15 @@ class GmailMailTools:
     @staticmethod
     def _matches(message: GmailMessage, request: MailSearchRequest) -> bool:
         """Whether a message of a matching thread satisfies the metadata criteria."""
+        _logger.debug(
+            "GmailMailTools._matches arguments: message_id=%s, unread_only=%s, "
+            "sender_filter_present=%s, attachment_filter=%s, label_count=%d",
+            message.message_id,
+            request.unread_only,
+            request.sender is not None,
+            request.has_attachments,
+            len(request.label_ids),
+        )
         if request.unread_only and message.is_read:
             return False
         if request.sender is not None and request.sender.value not in message.sender.casefold():
@@ -296,6 +429,13 @@ class GmailMailTools:
         **arguments: Any,
     ) -> PayloadT:
         """Invoke a tool and validate the payload it returned."""
+        _logger.debug(
+            "GmailMailTools._call arguments: alias=%s, user_id=%s, expected_type=%s, argument_names=%s",
+            alias,
+            user.user_id,
+            expected.__name__,
+            tuple(sorted(arguments)),
+        )
         result = await self._invoke(alias, user, arguments)
         structured = result.structuredContent
         if structured is None:
@@ -307,6 +447,12 @@ class GmailMailTools:
 
     async def _invoke(self, alias: str, user: UserContext, arguments: dict[str, Any]) -> CallToolResult:
         """Send one tool call, refusing another mailbox and decoding failures."""
+        _logger.debug(
+            "GmailMailTools._invoke arguments: alias=%s, user_id=%s, argument_names=%s",
+            alias,
+            user.user_id,
+            tuple(sorted(arguments)),
+        )
         self._require_owner(user)
         session = await self._connection.session()
         payload = {key: value for key, value in arguments.items() if value is not None}
@@ -326,6 +472,11 @@ class GmailMailTools:
         The Gmail server always acts for the account that consented, so asking
         on behalf of anybody else would silently read the wrong mailbox.
         """
+        _logger.debug(
+            "GmailMailTools._require_owner arguments: user_id=%s, owner_match=%s",
+            user.user_id,
+            user.user_id == self._owner_id,
+        )
         if user.user_id == self._owner_id:
             return
         raise MailAccessDeniedError(f"mailbox of {user.user_id}")
@@ -333,6 +484,10 @@ class GmailMailTools:
     @staticmethod
     def _text_of(result: CallToolResult) -> str:
         """Return the text a failing tool reported."""
+        _logger.debug(
+            "GmailMailTools._text_of arguments: content_items=%d",
+            len(result.content),
+        )
         return " ".join(item.text for item in result.content if isinstance(item, TextContent)).strip()
 
 

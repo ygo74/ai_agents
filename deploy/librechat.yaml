@@ -1,8 +1,13 @@
 # LibreChat configuration for the AI Agent Lab.
 #
-# The Mail Agent is declared as a custom OpenAI-compatible endpoint. LibreChat
-# talks to it exactly as it would to any OpenAI gateway:
+# The Mail Agent and the Wiki Agent are declared as custom OpenAI-compatible
+# endpoints. LibreChat talks to them exactly as it would to any OpenAI gateway:
 # `POST {baseURL}/chat/completions`.
+#
+# They are two entries rather than two models behind one, because they are two
+# processes on two ports, each in its own virtual environment: the Mail Agent
+# runs on Microsoft Agent Framework and the Wiki Agent on LangChain, and keeping
+# them apart is what makes the comparison between the frameworks mean anything.
 #
 # Copy this next to your LibreChat deployment as `librechat.yaml`.
 #
@@ -45,6 +50,31 @@ endpoints:
       # The agent answers in one piece: a turn either completes or leaves a
       # confirmation waiting, and there is no partial state worth streaming.
       # `dropParams` keeps LibreChat from sending options the agent ignores.
+      dropParams: ['user', 'stop', 'temperature', 'top_p', 'presence_penalty', 'frequency_penalty']
+
+    # ---------------------------------------------------------------------
+    # The Wiki Agent, on LangChain, on its own port.
+    #
+    # Same contract, same headers, same confirmation flow. The only differences
+    # are the port and the credential, which is the point: a second agent on a
+    # second framework costs one entry here and nothing in the client.
+    # ---------------------------------------------------------------------
+    - name: 'Wiki Agent'
+      apiKey: '${WIKI_AGENT_HTTP_API_KEY}'
+      baseURL: 'http://wiki-agent:8124/v1'
+
+      models:
+        default: ['wiki-agent']
+        fetch: false
+
+      headers:
+        x-api-key: '${WIKI_AGENT_HTTP_API_KEY}'
+        X-Conversation-Id: '{{LIBRECHAT_BODY_CONVERSATIONID}}'
+
+      titleConvo: true
+      titleModel: 'wiki-agent'
+      modelDisplayLabel: 'Wiki Agent'
+
       dropParams: ['user', 'stop', 'temperature', 'top_p', 'presence_penalty', 'frequency_penalty']
 
     # ---------------------------------------------------------------------

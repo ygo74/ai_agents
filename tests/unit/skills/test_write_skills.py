@@ -4,30 +4,29 @@ from __future__ import annotations
 
 import pytest
 from tests.conftest import make_message
-
-from ai_agent_lab.core.observability.audit import InMemoryAuditTrail
-from ai_agent_lab.core.security.audit import AuditOutcome
-from ai_agent_lab.core.security.confirmation import (
+from ygo74.agent_runtime.domains.humanapproval.approval_errors import (
+    ConfirmationMismatchError,
+    ConfirmationRejectedError,
+    ConfirmationRequiredError,
+)
+from ygo74.agent_runtime.domains.humanapproval.confirmation import (
     ConfiguredConfirmationPolicy,
     ConfirmationDecision,
     ConfirmationGate,
     ConfirmationPreferences,
     InMemoryConfirmationPreferenceStore,
 )
-from ai_agent_lab.core.security.context import UserContext
-from ai_agent_lab.core.security.errors import (
-    AuthorizationError,
-    ConfirmationMismatchError,
-    ConfirmationRejectedError,
-    ConfirmationRequiredError,
-    SecurityError,
-)
-from ai_agent_lab.core.security.operations import RiskLevel
-from ai_agent_lab.core.security.untrusted import UntrustedOrigin, untrusted
+from ygo74.agent_runtime.domains.security.audit import AuditOutcome, InMemoryAuditTrail
+from ygo74.agent_runtime.domains.security.operations import RiskLevel
+from ygo74.agent_runtime.domains.security.security_errors import PermissionDeniedError, SecurityError
+from ygo74.agent_runtime.domains.security.untrusted import untrusted
+from ygo74.agent_runtime.domains.security.user_context import UserContext
+
 from ai_agent_lab.mail.catalog import MailToolCatalog, MailToolName
 from ai_agent_lab.mail.config.mailbox_directory import ConfiguredMailboxOwnerDirectory
 from ai_agent_lab.mail.domain.errors import NoReplyRecipientError
 from ai_agent_lab.mail.domain.models import EmailAddress, MailDraft
+from ai_agent_lab.mail.domain.origins import MailOrigin
 from ai_agent_lab.mail.domain.permissions import MailPermission
 from ai_agent_lab.mail.inmemory.reasoner import ScriptedTextReasoner
 from ai_agent_lab.mail.security_floor import MailSecurityFloor
@@ -92,8 +91,8 @@ def draft(to: str = "john@example.com", in_reply_to: str | None = "m1") -> MailD
     """Build a minimal draft."""
     return MailDraft(
         to=(EmailAddress(value=to),),
-        subject=untrusted("Re: Project Alpha", UntrustedOrigin.MAIL_SUBJECT),
-        body=untrusted("Agreed.", UntrustedOrigin.MAIL_BODY),
+        subject=untrusted("Re: Project Alpha", MailOrigin.SUBJECT),
+        body=untrusted("Agreed.", MailOrigin.BODY),
         in_reply_to_message_id=in_reply_to,
     )
 
@@ -129,16 +128,14 @@ class TestMailReplySkill:
 
         assert mail_tools.mailbox_of(owner).drafts == ()
 
-    async def test_derives_a_subject_when_the_reasoner_returns_none(
-        self, mail_tools, context_builder, owner
-    ):
+    async def test_derives_a_subject_when_the_reasoner_returns_none(self, mail_tools, context_builder, owner):
         skill = MailReplySkill(
             mail_tools,
             ScriptedTextReasoner({MailReplyOutput: {"subject": "  ", "body": "ok"}}),
             context_builder,
             ConfiguredMailboxOwnerDirectory({"owner": "owner@example.com"}),
             ReplyRecipientPlanner(),
-        REPLY_PROMPT,
+            REPLY_PROMPT,
         )
 
         result = await skill.draft_reply_to_message("m1", "Say I agree", owner)
@@ -149,7 +146,7 @@ class TestMailReplySkill:
     async def test_requires_the_draft_permission(self, reply_skill):
         reader = UserContext(user_id="owner", session_id="s", permissions=frozenset({MailPermission.READ}))
 
-        with pytest.raises(AuthorizationError):
+        with pytest.raises(PermissionDeniedError):
             await reply_skill.draft_reply_to_message("m1", "Say I agree", reader)
 
 
@@ -252,9 +249,7 @@ class TestSendMailSkill:
         assert len(mail_tools.mailbox_of(owner).sent) == 1
 
     @pytest.mark.security
-    async def test_sending_cannot_be_auto_approved_by_preferences(
-        self, mail_tools, audit, preference_store, owner
-    ):
+    async def test_sending_cannot_be_auto_approved_by_preferences(self, mail_tools, audit, preference_store, owner):
         preference_store.set_preferences(
             "owner", ConfirmationPreferences(auto_approved_tools=frozenset({MailToolName.SEND_MAIL.value}))
         )
@@ -269,7 +264,7 @@ class TestSendMailSkill:
     async def test_requires_the_send_permission(self, send_skill, mail_tools):
         limited = UserContext(user_id="owner", session_id="s", permissions=frozenset({MailPermission.READ}))
 
-        with pytest.raises(AuthorizationError):
+        with pytest.raises(PermissionDeniedError):
             await send_skill.send(draft(), limited)
 
         assert mail_tools.mailbox_of(limited).sent == ()
@@ -319,9 +314,7 @@ class TestMailManagementSkill:
         ],
     )
     @pytest.mark.security
-    async def test_every_operation_refuses_to_run_unconfirmed(
-        self, management_skill, mail_tools, owner, tool, call
-    ):
+    async def test_every_operation_refuses_to_run_unconfirmed(self, management_skill, mail_tools, owner, tool, call):
         with pytest.raises(ConfirmationRequiredError):
             await call(management_skill, owner)
 
@@ -370,9 +363,7 @@ class TestMailManagementSkill:
 
         assert "PROJECT" not in (await mail_tools.get_message("m1", owner)).label_ids
 
-    async def test_mark_read_can_be_auto_approved_by_preferences(
-        self, mail_tools, audit, preference_store, owner
-    ):
+    async def test_mark_read_can_be_auto_approved_by_preferences(self, mail_tools, audit, preference_store, owner):
         preference_store.set_preferences(
             "owner", ConfirmationPreferences(auto_approved_tools=frozenset({MailToolName.MARK_READ.value}))
         )
@@ -426,9 +417,7 @@ class TestLabelLifecycle:
         assert outcome.created
         assert outcome.label.name.expose() == "Invoices"
 
-    async def test_creating_a_label_can_be_gated_by_preferences(
-        self, mail_tools, audit, preference_store, owner
-    ):
+    async def test_creating_a_label_can_be_gated_by_preferences(self, mail_tools, audit, preference_store, owner):
         """A deployment that wants the model to ask can say so, in configuration."""
         preference_store.set_preferences(
             "owner", ConfirmationPreferences(always_confirm_tools=frozenset({MailToolName.CREATE_LABEL.value}))
@@ -469,9 +458,7 @@ class TestLabelLifecycle:
         assert request.operation.risk_level is RiskLevel.HIGH
 
     @pytest.mark.security
-    async def test_a_deletion_approval_cannot_be_replayed_on_another_label(
-        self, management_skill, mail_tools, owner
-    ):
+    async def test_a_deletion_approval_cannot_be_replayed_on_another_label(self, management_skill, mail_tools, owner):
         approved = management_skill.build_label_confirmation_request(MailToolName.DELETE_LABEL, "PROJECT", owner)
         decision = ConfirmationDecision(request_id=approved.request_id, approved=True, decided_by="owner")
         other = management_skill.build_label_confirmation_request(MailToolName.DELETE_LABEL, "INBOX", owner)

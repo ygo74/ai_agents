@@ -14,7 +14,7 @@ from __future__ import annotations
 import pytest
 from openai import AsyncAzureOpenAI, AsyncOpenAI
 
-from ai_agent_lab.maf.azure_credentials import (
+from ai_agent_lab.core.config.azure_credentials import (
     AzureCredentialUnavailableError,
     AzureIdentityCredentialProvider,
 )

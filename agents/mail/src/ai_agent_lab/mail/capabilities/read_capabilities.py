@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 from pydantic import BaseModel
+from ygo74.agent_runtime.domains.contracts.capability_registry import SkillDescriptor, SkillInvocation
+from ygo74.agent_runtime.domains.contracts.manifests import AgentManifest
+from ygo74.agent_runtime.domains.security.user_context import UserContext
 
-from ai_agent_lab.core.manifests import AgentManifest
-from ai_agent_lab.core.registry import SkillDescriptor, SkillInvocation
-from ai_agent_lab.core.security.context import UserContext
 from ai_agent_lab.mail.capabilities.converters import MailSearchRequestFactory
 from ai_agent_lab.mail.capabilities.results import (
     MailActionsResult,

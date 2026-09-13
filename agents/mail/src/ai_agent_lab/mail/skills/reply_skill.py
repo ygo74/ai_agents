@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+import logging
+
+from ygo74.agent_runtime.domains.security.untrusted import untrusted
+from ygo74.agent_runtime.domains.security.user_context import UserContext
+
 from ai_agent_lab.core.reasoning.ports import ReasoningRequest, TextReasoner
-from ai_agent_lab.core.security.context import UserContext
-from ai_agent_lab.core.security.untrusted import UntrustedOrigin, untrusted
 from ai_agent_lab.mail.domain.errors import NoReplyRecipientError
 from ai_agent_lab.mail.domain.models import (
     EmailAddress,
@@ -12,6 +15,7 @@ from ai_agent_lab.mail.domain.models import (
     MailMessage,
     MailParticipant,
 )
+from ai_agent_lab.mail.domain.origins import MailOrigin
 from ai_agent_lab.mail.domain.permissions import MailPermission
 from ai_agent_lab.mail.domain.ports import MailboxOwnerDirectory
 from ai_agent_lab.mail.skills.analysis import MailReplyOutput
@@ -19,6 +23,7 @@ from ai_agent_lab.mail.skills.context import MailContextBuilder
 from ai_agent_lab.mail.tools_port import MailReadTools
 
 _REPLY_PREFIX = "Re: "
+_logger = logging.getLogger(__name__)
 
 
 class ReplyRecipientPlanner:
@@ -37,6 +42,14 @@ class ReplyRecipientPlanner:
         reply_all: bool,
     ) -> tuple[tuple[EmailAddress, ...], tuple[EmailAddress, ...]]:
         """Return the ``to`` and ``cc`` lists of a reply."""
+        _logger.info("Planning Mail reply recipients")
+        _logger.debug(
+            "ReplyRecipientPlanner.plan arguments: message_id=%s, to_count=%d, cc_count=%d, reply_all=%s",
+            message.message_id,
+            len(message.to),
+            len(message.cc),
+            reply_all,
+        )
         primary = self._unique((message.sender,), exclude={owner})
         if not reply_all:
             return self._require_recipients(primary, message), ()
@@ -53,6 +66,12 @@ class ReplyRecipientPlanner:
         exclude: set[EmailAddress],
     ) -> tuple[EmailAddress, ...]:
         """Collect distinct addresses, dropping the excluded ones."""
+        _logger.info("Collecting unique Mail reply recipient loop")
+        _logger.debug(
+            "ReplyRecipientPlanner._unique arguments: participants=%d, excluded=%d",
+            len(participants),
+            len(exclude),
+        )
         seen: dict[str, EmailAddress] = {}
         for participant in participants:
             address = participant.address
@@ -67,6 +86,12 @@ class ReplyRecipientPlanner:
         message: MailMessage,
     ) -> tuple[EmailAddress, ...]:
         """Fail rather than produce a reply nobody would receive."""
+        _logger.info("Validating Mail reply recipients")
+        _logger.debug(
+            "ReplyRecipientPlanner._require_recipients arguments: recipients=%d, message_id=%s",
+            len(recipients),
+            message.message_id,
+        )
         if not recipients:
             raise NoReplyRecipientError(message.message_id)
         return recipients
@@ -88,6 +113,18 @@ class MailReplySkill:
         recipient_planner: ReplyRecipientPlanner,
         instructions: str,
     ) -> None:
+        _logger.info("Initializing Mail reply skill")
+        _logger.debug(
+            "MailReplySkill.__init__ arguments: mail_tools_type=%s, reasoner_type=%s, "
+            "context_builder_type=%s, owner_directory_type=%s, "
+            "recipient_planner_type=%s, instructions_length=%d",
+            type(mail_tools).__name__,
+            type(reasoner).__name__,
+            type(context_builder).__name__,
+            type(owner_directory).__name__,
+            type(recipient_planner).__name__,
+            len(instructions),
+        )
         self._mail_tools = mail_tools
         self._reasoner = reasoner
         self._context_builder = context_builder
@@ -104,6 +141,15 @@ class MailReplySkill:
         reply_all: bool = False,
     ) -> MailDraft:
         """Draft a reply to a single message."""
+        _logger.info("Drafting Mail reply to message")
+        _logger.debug(
+            "MailReplySkill.draft_reply_to_message arguments: message_id=%s, "
+            "intent_length=%d, user_id=%s, reply_all=%s",
+            message_id,
+            len(intent),
+            user.user_id,
+            reply_all,
+        )
         user.require_permission(MailPermission.DRAFT)
         message = await self._mail_tools.get_message(message_id, user)
         return await self._draft(message, (message,), intent, user, reply_all=reply_all)
@@ -117,6 +163,14 @@ class MailReplySkill:
         reply_all: bool = False,
     ) -> MailDraft:
         """Draft a reply to the most recent message of a conversation."""
+        _logger.info("Drafting Mail reply to thread")
+        _logger.debug(
+            "MailReplySkill.draft_reply_to_thread arguments: thread_id=%s, intent_length=%d, user_id=%s, reply_all=%s",
+            thread_id,
+            len(intent),
+            user.user_id,
+            reply_all,
+        )
         user.require_permission(MailPermission.DRAFT)
         thread = await self._mail_tools.get_thread(thread_id, user)
         return await self._draft(
@@ -137,6 +191,16 @@ class MailReplySkill:
         reply_all: bool,
     ) -> MailDraft:
         """Compose the draft: deterministic recipients, generated wording."""
+        _logger.info("Composing Mail reply draft")
+        _logger.debug(
+            "MailReplySkill._draft arguments: message_id=%s, context_count=%d, "
+            "intent_length=%d, user_id=%s, reply_all=%s",
+            replied_to.message_id,
+            len(context),
+            len(intent),
+            user.user_id,
+            reply_all,
+        )
         owner = self._owner_directory.address_of(user)
         to, cc = self._recipient_planner.plan(replied_to, owner, reply_all=reply_all)
 
@@ -150,8 +214,8 @@ class MailReplySkill:
         return MailDraft(
             to=to,
             cc=cc,
-            subject=untrusted(self._subject_for(output, replied_to), UntrustedOrigin.MAIL_SUBJECT),
-            body=untrusted(output.body.strip(), UntrustedOrigin.MAIL_BODY),
+            subject=untrusted(self._subject_for(output, replied_to), MailOrigin.SUBJECT),
+            body=untrusted(output.body.strip(), MailOrigin.BODY),
             in_reply_to_message_id=replied_to.message_id,
             thread_id=replied_to.thread_id,
         )
@@ -159,6 +223,14 @@ class MailReplySkill:
     @staticmethod
     def _subject_for(output: MailReplyOutput, replied_to: MailMessage) -> str:
         """Use the generated subject, or derive one from the original message."""
+        _logger.info("Selecting Mail reply subject")
+        _logger.debug(
+            "MailReplySkill._subject_for arguments: generated_subject_length=%d, "
+            "message_id=%s, original_subject_length=%d",
+            len(output.subject),
+            replied_to.message_id,
+            len(replied_to.subject.expose()),
+        )
         proposed = output.subject.strip()
         if proposed:
             return proposed

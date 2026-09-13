@@ -1,0 +1,23 @@
+# Capability delivered to the Wiki Agent.
+#
+# No SKILL.md: this capability drives no language model. Whether a page has been
+# untouched for two hundred days is a subtraction of two dates, with exactly one
+# right answer, and asking a model would cost a call to get a plausible one.
+tool_name: assess_page_freshness
+implementation: wiki.assess_freshness
+
+description: >-
+  Report how current a set of pages is, from the date each was last changed. Accepts either
+  explicit page identifiers or a search, and returns each page with its age in days and a
+  verdict of fresh, ageing or stale, most stale first. Computed arithmetically, not judged:
+  the verdict is the same on every run. Has no side effect.
+
+operation:
+  type: READ
+  risk: LOW
+  permission: wiki:read
+  confirmation_required: false
+
+mcp_tools:
+  - search_wiki
+  - get_page

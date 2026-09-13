@@ -1,0 +1,22 @@
+# Capability delivered to the Wiki Agent.
+#
+# The mildest write of the four: a comment is additive, attributed and easy to
+# remove. It is still confirmed by default, because it is visible to a whole team
+# the moment it is posted - but it is the one write the security floor leaves
+# configurable, so a deployment may choose otherwise.
+tool_name: add_comment
+implementation: wiki.add_comment
+
+description: >-
+  Post a comment on a page, attributed to the user and visible to everyone who can read the
+  page. Changes nothing in the page body. Use it to add a remark, a question or a
+  correction to a page rather than rewriting it.
+
+operation:
+  type: WRITE
+  risk: LOW
+  permission: wiki:comment
+  confirmation_required: true
+
+mcp_tools:
+  - add_comment

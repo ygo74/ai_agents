@@ -17,17 +17,17 @@ from pathlib import Path
 from typing import Any
 
 import yaml
-
-from ai_agent_lab.core.config.directory import ConfigurationDirectory
-from ai_agent_lab.core.errors import DomainError
-from ai_agent_lab.core.manifests import AgentManifest, SkillManifest
-from ai_agent_lab.core.security.floor import SecurityFloor
-from ai_agent_lab.core.security.operations import (
+from ygo74.agent_runtime.domains.contracts.manifests import AgentManifest, SkillManifest
+from ygo74.agent_runtime.domains.security.floor import SecurityFloor
+from ygo74.agent_runtime.domains.security.operations import (
     OperationType,
     RiskLevel,
     ToolOperationDescriptor,
 )
-from ai_agent_lab.core.security.permissions import PermissionRegistry
+from ygo74.agent_runtime.domains.security.permissions import PermissionRegistry
+
+from ai_agent_lab.core.config.directory import ConfigurationDirectory
+from ai_agent_lab.core.errors import DomainError
 
 SKILL_MANIFEST = "skill.yaml"
 SKILL_PROMPT = "SKILL.md"

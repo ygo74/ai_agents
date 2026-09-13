@@ -12,10 +12,10 @@ from pathlib import Path
 
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from ygo74.agent_runtime.domains.humanapproval.confirmation import ConfirmationPreferences
 
 from ai_agent_lab.core.config.chat import AzureCredentialMode, ChatProvider
 from ai_agent_lab.core.config.environment import ENV_FILE
-from ai_agent_lab.core.security.confirmation import ConfirmationPreferences
 
 __all__ = [
     "ENV_FILE",

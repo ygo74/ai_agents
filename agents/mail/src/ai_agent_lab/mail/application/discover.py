@@ -17,6 +17,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+import logging
 from pathlib import Path
 from typing import Any
 
@@ -29,16 +30,29 @@ from ai_agent_lab.mail.mcp.connection import McpConnection
 from ai_agent_lab.mail.mcp.oauth import MailOAuthProvider
 
 DEFAULT_OUTPUT = Path("docs/mcp-discovery")
+_logger = logging.getLogger(__name__)
 
 
 class ToolDiscovery:
     """Lists the tools a server exposes and records their schemas."""
 
     def __init__(self, binding: McpServerBinding) -> None:
+        _logger.info("Initializing Mail MCP tool discovery")
+        _logger.debug(
+            "ToolDiscovery.__init__ arguments: server=%s, transport=%s",
+            binding.server,
+            binding.transport.value,
+        )
         self._binding = binding
 
     async def run(self) -> dict[str, Any]:
         """Connect, list the tools, and return what the server declared."""
+        _logger.info("Running Mail MCP tool discovery")
+        _logger.debug(
+            "ToolDiscovery.run arguments: server=%s, transport=%s",
+            self._binding.server,
+            self._binding.transport.value,
+        )
         connection = McpConnection(self._binding, auth=self._auth())
         try:
             session = await connection.session()
@@ -48,13 +62,27 @@ class ToolDiscovery:
 
     def _auth(self) -> Any:
         """Build the authentication a remote server requires."""
+        _logger.info("Building Mail MCP discovery authentication")
+        _logger.debug(
+            "ToolDiscovery._auth arguments: server=%s, transport=%s",
+            self._binding.server,
+            self._binding.transport.value,
+        )
         if self._binding.transport is not McpTransport.HTTP:
             return None
         return MailOAuthProvider().build(self._binding.url)
 
     async def _describe(self, session: ClientSession) -> dict[str, Any]:
         """Collect the declared tools of an open session."""
+        _logger.info("Describing Mail MCP tools")
+        _logger.debug(
+            "ToolDiscovery._describe arguments: server=%s, transport=%s, session_type=%s",
+            self._binding.server,
+            self._binding.transport.value,
+            type(session).__name__,
+        )
         listing = await session.list_tools()
+        _logger.info("Serializing discovered Mail MCP tool loop")
         return {
             "server": self._binding.server,
             "transport": self._binding.transport.value,
@@ -73,6 +101,8 @@ class ToolDiscovery:
 
 def main() -> None:
     """Entry point of ``python -m ai_agent_lab.mail.application.discover``."""
+    _logger.info("Starting Mail MCP discovery command")
+    _logger.debug("main arguments: none")
     parser = argparse.ArgumentParser(description="Record what a mail MCP server exposes.")
     parser.add_argument("--server", default="gmail", help="binding name under config/mcp/")
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
@@ -87,6 +117,7 @@ def main() -> None:
     destination.write_text(json.dumps(discovered, indent=2, sort_keys=True), encoding="utf-8")
 
     print(f"\n{len(discovered['tools'])} tools recorded in {destination}")
+    _logger.info("Reporting discovered Mail MCP tool loop")
     for tool in discovered["tools"]:
         structured = "structured" if tool["output_schema"] else "unstructured"
         print(f"  - {tool['name']} ({structured})")
@@ -94,6 +125,8 @@ def main() -> None:
 
 def _load_environment() -> None:
     """Make the delivered configuration visible before anything reads it."""
+    _logger.info("Loading Mail MCP discovery environment")
+    _logger.debug("_load_environment arguments: env_file=%s", ENV_FILE)
     from ai_agent_lab.core.config.environment import EnvironmentFile
 
     EnvironmentFile(Path(ENV_FILE)).load()

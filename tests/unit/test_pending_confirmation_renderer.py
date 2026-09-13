@@ -12,14 +12,15 @@ ticket they belong to.
 
 from __future__ import annotations
 
-from ai_agent_lab.core.security.confirmation import ConfirmationDetail, ConfirmationRequest
-from ai_agent_lab.core.security.operations import (
+from ygo74.agent_runtime.domains.humanapproval.confirmation import ConfirmationDetail, ConfirmationRequest
+from ygo74.agent_runtime.domains.humanapproval.pending_renderer import PendingConfirmationRenderer
+from ygo74.agent_runtime.domains.humanapproval.tickets import ConfirmationTicket
+from ygo74.agent_runtime.domains.security.operations import (
     OperationType,
     RiskLevel,
     ToolOperationDescriptor,
 )
-from ai_agent_lab.core.security.tickets import ConfirmationTicket
-from ai_agent_lab.mail.application.approval.pending import PendingConfirmationRenderer
+
 from ai_agent_lab.mail.domain.permissions import MailPermission
 
 SUBJECT = "Continuez a explorer avec Visorando Premium"
@@ -94,8 +95,7 @@ class TestSeveralOperationsAreWaiting:
     def test_every_ticket_is_answerable_on_its_own(self):
         """Six labelled messages means six decisions, each identifiable."""
         tickets = tuple(
-            _ticket(_request(("Message", f"id-{index}"), ("Subject", f"subject {index}")))
-            for index in range(6)
+            _ticket(_request(("Message", f"id-{index}"), ("Subject", f"subject {index}"))) for index in range(6)
         )
 
         rendered = PendingConfirmationRenderer().render(tickets)

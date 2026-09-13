@@ -3,8 +3,12 @@
 from __future__ import annotations
 
 import pytest
-
-from ai_agent_lab.core.security.confirmation import (
+from ygo74.agent_runtime.domains.humanapproval.approval_errors import (
+    ConfirmationMismatchError,
+    ConfirmationRejectedError,
+    ConfirmationRequiredError,
+)
+from ygo74.agent_runtime.domains.humanapproval.confirmation import (
     ConfiguredConfirmationPolicy,
     ConfirmationDecision,
     ConfirmationGate,
@@ -12,19 +16,15 @@ from ai_agent_lab.core.security.confirmation import (
     ConfirmationRequest,
     InMemoryConfirmationPreferenceStore,
 )
-from ai_agent_lab.core.security.errors import (
-    AuthorizationError,
-    ConfirmationMismatchError,
-    ConfirmationRejectedError,
-    ConfirmationRequiredError,
-)
-from ai_agent_lab.core.security.floor import OperationFloor, SecurityFloor
-from ai_agent_lab.core.security.operations import (
+from ygo74.agent_runtime.domains.security.floor import OperationFloor, SecurityFloor
+from ygo74.agent_runtime.domains.security.operations import (
     OperationType,
     RiskLevel,
     ToolOperationDescriptor,
 )
-from ai_agent_lab.core.security.permissions import Permission
+from ygo74.agent_runtime.domains.security.permissions import Permission
+from ygo74.agent_runtime.domains.security.security_errors import PermissionDeniedError
+
 from ai_agent_lab.mail.domain.permissions import MailPermission
 from ai_agent_lab.mail.security_floor import MailSecurityFloor
 
@@ -213,10 +213,10 @@ class TestConfirmationGate:
         request = request_for(SEND_OP, requested_for="reader")
         decision = ConfirmationDecision(request_id="req-1", approved=True, decided_by="reader")
 
-        with pytest.raises(AuthorizationError):
+        with pytest.raises(PermissionDeniedError):
             ConfirmationGate(policy_with()).ensure_approved(SEND_OP, reader, request, decision)
 
     @pytest.mark.security
     def test_permission_is_checked_before_the_confirmation_policy(self, reader):
-        with pytest.raises(AuthorizationError):
+        with pytest.raises(PermissionDeniedError):
             ConfirmationGate(policy_with()).ensure_approved(ARCHIVE_OP, reader, None, None)

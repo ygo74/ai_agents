@@ -30,7 +30,7 @@ native = ["mail-mcp-protocol"]
 # with the published wheel the next time anything is installed. The upper bound
 # still holds, since a pre-1.0 minor is free to move the API.
 http = [
-    "ygo74-agent-runtime>=0.0.3,<0.1",
+    "ygo74-agent-runtime>=0.0.4,<0.1",
     "fastapi>=0.115",
     "uvicorn[standard]>=0.30",
 ]

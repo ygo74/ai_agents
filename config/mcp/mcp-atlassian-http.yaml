@@ -1,0 +1,79 @@
+# sooperset/mcp-atlassian, over streamable HTTP.
+#
+# The same server as config/mcp/mcp-atlassian.yaml, reached differently — and
+# the difference is the one that matters for an enterprise deployment.
+#
+# Over stdio the server is a local process holding one set of credentials, so it
+# acts as exactly one person. Over HTTP it reads an `Authorization` header on
+# every request and builds a client for whoever that header names, so the agent
+# genuinely acts **on behalf of** the person asking. On a wiki, where pages and
+# spaces are restricted per person, that is the difference between an agent that
+# respects those restrictions and one that quietly reads around them.
+#
+# Start the server yourself, once, and point this at it:
+#
+#   docker run --rm -p 9000:9000 \
+#     -e CONFLUENCE_URL=https://your-site.atlassian.net/wiki \
+#     -e CONFLUENCE_PERSONAL_TOKEN=unused \
+#     -e READ_ONLY_MODE=true \
+#     -e TOOLSETS=confluence_pages,confluence_comments \
+#     ghcr.io/sooperset/mcp-atlassian:0.23.1 \
+#     --transport streamable-http --host 0.0.0.0 --port 9000
+#
+# `CONFLUENCE_PERSONAL_TOKEN=unused` is a genuine placeholder, not a credential.
+# The server needs *a* configuration to pass its startup check — it makes no
+# network call with it — and replaces it wholesale for every per-user request.
+# `ATLASSIAN_EXTERNAL_AUTH_ENABLE=true` avoids the placeholder entirely and is
+# the cleaner choice once the deployment is real.
+#
+# Two things the server does by default, both worth keeping:
+#   - an unauthenticated request is answered with HTTP 401, not with the
+#     operator's credentials. `ALLOW_GLOBAL_CRED_FALLBACK` turns that off; do
+#     not set it.
+#   - `/healthz` is unauthenticated and returns {"status": "ok"}.
+server: mcp-atlassian-http
+transport: http
+url: http://localhost:9000/mcp
+
+# Same names, same payloads, same dialect as over stdio. Only the transport and
+# the identity model differ, which is the point.
+dialect: atlassian
+
+# Which scheme the agent sends is WIKI_MCP_AUTH_SCHEME, not a property of the
+# server, so it is not declared here:
+#   basic   Confluence Cloud, `Basic <base64(email:api_token)>`
+#   token   Confluence Data Center, `Token <personal access token>`
+#   bearer  either, with OAuth — but the server silently downgrades it to a Data
+#           Center PAT when it has no OAuth configuration, so say `token` when a
+#           PAT is what you mean.
+#
+# No `env:` block: the credentials belong to the server process, which is
+# started separately, and the per-user credential travels in a header.
+
+# The server is started separately for this binding, so the agent cannot read its
+# configuration. `read_only_variable` still applies: set WIKI_MCP_READ_ONLY to
+# match how you started the container, and the agent withdraws the four write
+# capabilities rather than proposing edits the server will refuse.
+read_only_variable: WIKI_MCP_READ_ONLY
+
+capabilities:
+  - search_wiki
+  - get_page
+  - get_page_children
+  - list_spaces
+  - get_comments
+  - create_page
+  - update_page
+  - add_comment
+  - delete_page
+
+tools:
+  search_wiki: confluence_search
+  get_page: confluence_get_page
+  get_page_children: confluence_get_page_children
+  get_comments: confluence_get_comments
+  list_spaces: confluence_search
+  create_page: confluence_create_page
+  update_page: confluence_update_page
+  delete_page: confluence_delete_page
+  add_comment: confluence_add_comment

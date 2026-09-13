@@ -10,6 +10,7 @@ accepting connections once consent is over.
 
 from __future__ import annotations
 
+import logging
 import webbrowser
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from urllib.parse import parse_qs, urlparse
@@ -25,6 +26,7 @@ _DONE = (
     "<html><body><h3>Authorisation received.</h3>"
     "<p>You can close this tab and return to the terminal.</p></body></html>"
 )
+_logger = logging.getLogger(__name__)
 
 
 class AuthorisationFailedError(DomainError):
@@ -35,6 +37,8 @@ class LoopbackConsent:
     """Sends a person to an authorisation page and catches the redirect."""
 
     def __init__(self, port: int) -> None:
+        _logger.info("Initializing Mail OAuth loopback consent")
+        _logger.debug("LoopbackConsent.__init__ arguments: port=%d", port)
         self._port = port
 
     @property
@@ -44,15 +48,24 @@ class LoopbackConsent:
 
     async def open_consent(self, authorization_url: str) -> None:
         """Send the person to the authorisation page."""
+        _logger.info("Opening Mail OAuth consent page")
+        _logger.debug(
+            "LoopbackConsent.open_consent arguments: authorization_url_length=%d",
+            len(authorization_url),
+        )
         print(f"\nApprove the access in your browser:\n  {authorization_url}\n")
         webbrowser.open(authorization_url)
 
     async def await_code(self) -> tuple[str, str | None]:
         """Wait for the redirect and return the code and state it carried."""
+        _logger.info("Waiting for Mail OAuth loopback callback")
+        _logger.debug("LoopbackConsent.await_code arguments: port=%d", self._port)
         return await anyio.to_thread.run_sync(self._serve_once)
 
     def _serve_once(self) -> tuple[str, str | None]:
         """Serve exactly one redirect, then stop listening."""
+        _logger.info("Serving one Mail OAuth loopback callback")
+        _logger.debug("LoopbackConsent._serve_once arguments: port=%d", self._port)
         captured: dict[str, str] = {}
 
         class Handler(BaseHTTPRequestHandler):
@@ -71,7 +84,5 @@ class LoopbackConsent:
             server.handle_request()
 
         if "code" not in captured:
-            raise AuthorisationFailedError(
-                f"authorisation failed: {captured.get('error', 'no code was returned')}"
-            )
+            raise AuthorisationFailedError(f"authorisation failed: {captured.get('error', 'no code was returned')}")
         return captured["code"], captured.get("state")

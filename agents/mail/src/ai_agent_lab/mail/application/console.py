@@ -2,15 +2,17 @@
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Callable
 from enum import StrEnum
 
-from ai_agent_lab.core.security.confirmation import ConfirmationRequest
+from ygo74.agent_runtime.domains.humanapproval.confirmation import ConfirmationRequest
 
 _AFFIRMATIVE = frozenset({"y", "yes", "o", "oui"})
 _NEGATIVE = frozenset({"n", "no", "non"})
 _ALL = frozenset({"a", "all", "t", "tout", "toujours"})
 _EXIT = frozenset({"exit", "quit", ":q"})
+_logger = logging.getLogger(__name__)
 
 
 class ConfirmationAnswer(StrEnum):
@@ -45,11 +47,18 @@ class Console:
         reader: Callable[[str], str] = input,
         writer: Callable[[str], None] = print,
     ) -> None:
+        _logger.info("Initializing Mail Agent console")
+        _logger.debug(
+            "Console.__init__ arguments: reader_type=%s, writer_type=%s",
+            type(reader).__name__,
+            type(writer).__name__,
+        )
         self._reader = reader
         self._writer = writer
 
     def write(self, text: str = "") -> None:
         """Write one line, degrading characters the terminal cannot encode."""
+        _logger.debug("Console.write arguments: text_length=%d", len(text))
         try:
             self._writer(text)
         except UnicodeEncodeError:
@@ -57,6 +66,7 @@ class Console:
 
     def prompt(self, label: str) -> str:
         """Read one line from the user."""
+        _logger.debug("Console.prompt arguments: label_length=%d", len(label))
         try:
             return self._reader(label)
         except UnicodeEncodeError:
@@ -65,6 +75,7 @@ class Console:
     @staticmethod
     def is_exit(text: str) -> bool:
         """Whether the user asked to leave."""
+        _logger.debug("Console.is_exit arguments: text_length=%d", len(text))
         return text.strip().casefold() in _EXIT
 
 
@@ -86,6 +97,11 @@ class ConsoleConfirmationPrompt:
     """
 
     def __init__(self, console: Console) -> None:
+        _logger.info("Initializing Mail Agent console confirmation prompt")
+        _logger.debug(
+            "ConsoleConfirmationPrompt.__init__ arguments: console_type=%s",
+            type(console).__name__,
+        )
         self._console = console
 
     def ask(self, request: ConfirmationRequest, *, offer_all: bool = False) -> ConfirmationAnswer:
@@ -97,10 +113,21 @@ class ConsoleConfirmationPrompt:
                 is refused for operations no configuration may weaken, so the
                 interface never proposes a choice the policy would ignore.
         """
+        _logger.info("Asking for Mail operation confirmation")
+        _logger.debug(
+            "ConsoleConfirmationPrompt.ask arguments: request_id=%s, tool_name=%s, "
+            "risk_level=%s, details=%d, offer_all=%s",
+            request.request_id,
+            request.operation.tool_name,
+            request.operation.risk_level.value,
+            len(request.details),
+            offer_all,
+        )
         self._console.write()
         self._console.write(f"[confirmation] {request.title}")
         self._console.write(f"  operation: {request.operation.tool_name} ({request.operation.risk_level.value} risk)")
         self._console.write(f"  reference: {request.request_id}")
+        _logger.info("Rendering Mail confirmation detail loop")
         for detail in request.details:
             self._console.write(f"  {detail.label}: {self._indent(detail.value)}")
         answer = self._read(offer_all=offer_all)
@@ -109,6 +136,8 @@ class ConsoleConfirmationPrompt:
 
     def _read(self, *, offer_all: bool) -> ConfirmationAnswer:
         """Read one answer, defaulting to a refusal."""
+        _logger.info("Reading Mail confirmation answer")
+        _logger.debug("ConsoleConfirmationPrompt._read arguments: offer_all=%s", offer_all)
         hint = "  approve? [y/N/a=all of this kind] " if offer_all else "  approve? [y/N] "
         answer = self._console.prompt(hint).strip().casefold()
         if offer_all and answer in _ALL:
@@ -120,6 +149,7 @@ class ConsoleConfirmationPrompt:
     @staticmethod
     def _indent(value: str) -> str:
         """Keep multi-line details readable."""
+        _logger.debug("ConsoleConfirmationPrompt._indent arguments: value_length=%d", len(value))
         return value.replace("\n", "\n    ")
 
 

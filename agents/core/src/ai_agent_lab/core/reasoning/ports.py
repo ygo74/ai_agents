@@ -1,49 +1,30 @@
-"""Port through which skills obtain language-model reasoning.
+"""Port through which capabilities obtain language-model reasoning.
 
-Skills must stay usable with Microsoft Agent Framework, LangChain or CrewAI, so
-they never depend on a chat client. They depend on :class:`TextReasoner`, whose
+Capabilities must stay usable with Microsoft Agent Framework, LangChain or CrewAI,
+so they never depend on a chat client. They depend on :class:`TextReasoner`, whose
 implementations live in the framework layer at runtime and are replaced by a
 scripted double in tests.
 
-A reasoning request separates trusted instructions from untrusted material by
-construction: the task comes from the application, the context comes from an
-MCP server and is carried as :class:`UntrustedText`.
+The *request* they carry - instructions, task, and untrusted context separated by
+construction - now lives in ``ygo74-agent-runtime``: keeping trusted instructions
+apart from third-party material is the same problem for every agent. It is
+re-exported here so a capability has one import rather than two.
+
+What stays is the port itself. Which model answers, and through which framework,
+is this laboratory's question - it is the whole subject of the comparison - and
+not the library's business.
 """
 
 from __future__ import annotations
 
 from typing import Protocol, TypeVar, runtime_checkable
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel
+from ygo74.agent_runtime.domains.security.prompt_envelope import ReasoningRequest, UntrustedSection
 
-from ai_agent_lab.core.security.untrusted import UntrustedText
+__all__ = ["ReasoningOutputT", "ReasoningRequest", "TextReasoner", "UntrustedSection"]
 
 ReasoningOutputT = TypeVar("ReasoningOutputT", bound=BaseModel)
-
-
-class UntrustedSection(BaseModel):
-    """A labelled block of third-party content offered to the model as data."""
-
-    model_config = ConfigDict(frozen=True, extra="forbid")
-
-    label: str = Field(min_length=1)
-    content: UntrustedText
-
-
-class ReasoningRequest(BaseModel):
-    """A reasoning task with its untrusted context.
-
-    Attributes:
-        instructions: Trusted role and rules given to the model.
-        task: Trusted description of what must be produced.
-        context: Untrusted material the answer must be grounded in.
-    """
-
-    model_config = ConfigDict(frozen=True, extra="forbid")
-
-    instructions: str = Field(min_length=1)
-    task: str = Field(min_length=1)
-    context: tuple[UntrustedSection, ...] = ()
 
 
 @runtime_checkable

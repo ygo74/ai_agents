@@ -1,24 +1,29 @@
 """Executable enforcement of the boundaries between distributions.
 
-The repository ships six distributions across two namespaces. Nothing in the
+The repository ships ten distributions across three namespaces. Nothing in the
 import statements stops one from reaching into another, so these tests do: they
 fail the build when a distribution imports something it must not know about.
 
-Three rules matter most:
+Four rules matter most:
 
-- no mail MCP server ever imports the agent. A server we write and a server
-  written by Google must both be reachable the same way, and the day one of our
-  servers depends on our domain models, that stops being true;
-- the mail agent only meets Microsoft Agent Framework in its composition root,
-  so the same domain and the same skills can be assembled with LangChain or
-  CrewAI later;
-- neither namespace grows an ``__init__.py`` at its top level, which would turn
-  a namespace package into a regular one and break the split.
+- no MCP server ever imports an agent. A server we write and a server written by
+  Google or by `sooperset` must all be reachable the same way, and the day one of
+  ours depends on our domain models, that stops being true;
+- an agent only meets its agentic framework in its composition root, so the same
+  domain and the same skills can be assembled with another one later;
+- **no agent depends on two frameworks**. The Mail Agent runs on Microsoft Agent
+  Framework and the Wiki Agent on LangChain, and that separation is what makes
+  the comparison between them mean anything;
+- no namespace grows an ``__init__.py`` at its top level, which would turn a
+  namespace package into a regular one and break the split.
 """
 
 from __future__ import annotations
 
 import ast
+import subprocess
+import sys
+import textwrap
 from collections.abc import Iterator
 from pathlib import Path
 
@@ -26,36 +31,62 @@ import pytest
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 
+AGENTS = REPOSITORY_ROOT / "agents"
+SERVERS = REPOSITORY_ROOT / "mcp-servers"
+
 # Every distribution, with the directory its source tree starts at.
 DISTRIBUTIONS: dict[str, Path] = {
-    "ai_agent_lab.core": REPOSITORY_ROOT / "agents" / "core" / "src",
-    "ai_agent_lab.maf": REPOSITORY_ROOT / "agents" / "maf" / "src",
-    "ai_agent_lab.mail": REPOSITORY_ROOT / "agents" / "mail" / "src",
-    "mail_mcp.protocol": REPOSITORY_ROOT / "mcp-servers" / "protocol" / "src",
-    "mail_mcp.gmail": REPOSITORY_ROOT / "mcp-servers" / "gmail" / "src",
-    "mail_mcp.reference": REPOSITORY_ROOT / "mcp-servers" / "reference" / "src",
+    "ai_agent_lab.core": AGENTS / "core" / "src",
+    "ai_agent_lab.maf": AGENTS / "maf" / "src",
+    "ai_agent_lab.langgraph": AGENTS / "langgraph" / "src",
+    "ai_agent_lab.mail": AGENTS / "mail" / "src",
+    "ai_agent_lab.wiki": AGENTS / "wiki" / "src",
+    "mail_mcp.protocol": SERVERS / "protocol" / "src",
+    "mail_mcp.gmail": SERVERS / "gmail" / "src",
+    "mail_mcp.reference": SERVERS / "reference" / "src",
+    "wiki_mcp.protocol": SERVERS / "wiki-protocol" / "src",
+    "wiki_mcp.reference": SERVERS / "wiki-reference" / "src",
 }
 
 # Which distribution may import which, itself excluded.
 #
-# The mail agent depends on the protocol only for its native dialect. The Google
+# An agent depends on the protocol only for its native dialect. A third-party
 # dialect needs none of it, which is the proof that the protocol is one dialect
 # among others rather than "the contract of the agent".
+#
+# Each agent names exactly one framework adapter.
 ALLOWED_DISTRIBUTION_IMPORTS: dict[str, frozenset[str]] = {
     "ai_agent_lab.core": frozenset(),
     "ai_agent_lab.maf": frozenset({"ai_agent_lab.core"}),
+    "ai_agent_lab.langgraph": frozenset({"ai_agent_lab.core"}),
     "ai_agent_lab.mail": frozenset({"ai_agent_lab.core", "ai_agent_lab.maf", "mail_mcp.protocol"}),
+    "ai_agent_lab.wiki": frozenset({"ai_agent_lab.core", "ai_agent_lab.langgraph", "wiki_mcp.protocol"}),
     "mail_mcp.protocol": frozenset(),
     "mail_mcp.gmail": frozenset({"mail_mcp.protocol"}),
     "mail_mcp.reference": frozenset({"mail_mcp.protocol"}),
+    "wiki_mcp.protocol": frozenset(),
+    "wiki_mcp.reference": frozenset({"wiki_mcp.protocol"}),
 }
 
-# Sub-layers of the mail agent, and what each may import from the others.
+# The distributions that are agents, and the framework adapter each is allowed to
+# use. An agent naming the other one would make a framework comparison worthless.
+AGENT_DISTRIBUTIONS: dict[str, str] = {
+    "ai_agent_lab.mail": "ai_agent_lab.maf",
+    "ai_agent_lab.wiki": "ai_agent_lab.langgraph",
+}
+
+# The framework adapters, and the third-party root each is allowed to import.
+FRAMEWORK_ADAPTERS: dict[str, frozenset[str]] = {
+    "ai_agent_lab.maf": frozenset({"agent_framework"}),
+    "ai_agent_lab.langgraph": frozenset({"langchain", "langchain_core", "langchain_openai", "langgraph"}),
+}
+
+# Sub-layers of an agent, and what each may import from the others.
 #
 # `config` reads settings and delivered files; it depends on nothing but the
 # domain. `application` is the composition root, and the only place allowed to
 # name an agentic framework.
-MAIL_LAYERS: dict[str, frozenset[str]] = {
+AGENT_LAYERS: dict[str, frozenset[str]] = {
     "domain": frozenset(),
     "config": frozenset({"domain"}),
     "mcp": frozenset({"domain"}),
@@ -65,12 +96,14 @@ MAIL_LAYERS: dict[str, frozenset[str]] = {
     "application": frozenset({"domain", "config", "mcp", "skills", "capabilities", "inmemory"}),
 }
 
-# Modules sitting directly in the mail package rather than in a sub-layer. They
+# Modules sitting directly in an agent package rather than in a sub-layer. They
 # are the ports and the policies the layers agree on, so they import nothing but
 # the domain.
-MAIL_ROOT_MODULES = frozenset({"catalog", "mail_errors", "security_floor", "tools_port"})
+AGENT_ROOT_MODULES = frozenset({"catalog", "mail_errors", "wiki_errors", "security_floor", "tools_port"})
 
-AGENT_FRAMEWORK_ROOTS = frozenset({"agent_framework", "langchain", "langgraph", "crewai"})
+AGENT_FRAMEWORK_ROOTS = frozenset(
+    {"agent_framework", "langchain", "langchain_core", "langchain_openai", "langgraph", "crewai"}
+)
 
 # Transports and vendor SDKs. A layer above the adapters must not name one.
 ENTERPRISE_SDK_ROOTS = frozenset(
@@ -82,6 +115,7 @@ ENTERPRISE_SDK_ROOTS = frozenset(
         "smtplib",
         "poplib",
         "email",
+        "atlassian",
         "mcp",
         "openai",
         "httpx",
@@ -90,12 +124,28 @@ ENTERPRISE_SDK_ROOTS = frozenset(
     }
 )
 
-# Mail layers that must stay free of any agentic framework.
-MAIL_LAYERS_WITHOUT_FRAMEWORKS = frozenset({"domain", "mcp", "skills", "capabilities", "inmemory", "config"})
+# Agent layers that must stay free of any agentic framework.
+LAYERS_WITHOUT_FRAMEWORKS = frozenset({"domain", "mcp", "skills", "capabilities", "inmemory", "config"})
 
-# Mail layers that must not name a transport or a vendor SDK. `mcp` is excluded:
+# Agent layers that must not name a transport or a vendor SDK. `mcp` is excluded:
 # the dialects are the adapters, and speaking MCP is their job.
-MAIL_LAYERS_WITHOUT_SDKS = frozenset({"domain", "skills", "capabilities", "inmemory"})
+LAYERS_WITHOUT_SDKS = frozenset({"domain", "skills", "capabilities", "inmemory"})
+
+# `ygo74-agent-runtime` is a foundation dependency now that it owns the security
+# model and the agent contracts, so naming it is not in itself a layer violation.
+# One of its domains is a transport all the same: `domains.endpoints` is where
+# FastAPI lives. A module that must stay free of a transport must stay free of
+# that domain, which is what this prefix pins. Without it, the property the layers
+# used to have by construction - `core` knew no web stack - would be gone with no
+# test to notice.
+RUNTIME_TRANSPORT_MODULE = "ygo74.agent_runtime.domains.endpoints"
+
+# The one part of `core` allowed to know a transport. Everything else in that
+# distribution - the security model, the reasoning port, the configuration
+# loaders - must import without one.
+CORE_SERVING_PREFIX = "ai_agent_lab.core.serving"
+
+NAMESPACES = ("ai_agent_lab", "mail_mcp", "wiki_mcp")
 
 
 class ModuleUnderTest:
@@ -114,33 +164,38 @@ class ModuleUnderTest:
         return ".".join(part for part in relative.parts if part != "__init__")
 
     @property
-    def mail_layer(self) -> str | None:
-        """Sub-layer of the mail agent this module belongs to, if any."""
-        if self.distribution != "ai_agent_lab.mail":
+    def agent_layer(self) -> str | None:
+        """Sub-layer of the agent this module belongs to, if any."""
+        if self.distribution not in AGENT_DISTRIBUTIONS:
             return None
-        remainder = self.dotted_name.removeprefix("ai_agent_lab.mail").lstrip(".")
+        remainder = self.dotted_name.removeprefix(self.distribution).lstrip(".")
         if not remainder:
             return None
         head = remainder.split(".")[0]
-        return None if head in MAIL_ROOT_MODULES else head
+        return None if head in AGENT_ROOT_MODULES else head
 
     def imported_roots(self) -> Iterator[str]:
         """Top-level package name of every import in the module."""
         for name in self._imported_names():
             yield name.split(".", 1)[0]
 
+    def imported_modules(self) -> Iterator[str]:
+        """Full dotted name of every import in the module."""
+        yield from self._imported_names()
+
     def imported_distributions(self) -> Iterator[str]:
         """Distribution of every intra-repository import in the module."""
         for name in self._imported_names():
             parts = name.split(".")
-            if len(parts) >= 2 and parts[0] in {"ai_agent_lab", "mail_mcp"}:
+            if len(parts) >= 2 and parts[0] in {"ai_agent_lab", "mail_mcp", "wiki_mcp"}:
                 yield f"{parts[0]}.{parts[1]}"
 
-    def imported_mail_layers(self) -> Iterator[str]:
-        """Mail sub-layer of every import into the mail agent."""
+    def imported_agent_layers(self) -> Iterator[str]:
+        """Sub-layer of every import into this module's own agent."""
+        namespace, agent = self.distribution.split(".")
         for name in self._imported_names():
             parts = name.split(".")
-            if len(parts) >= 3 and parts[0] == "ai_agent_lab" and parts[1] == "mail":
+            if len(parts) >= 3 and parts[0] == namespace and parts[1] == agent:
                 yield parts[2]
 
     def _imported_names(self) -> Iterator[str]:
@@ -165,6 +220,17 @@ ALL_MODULES = _modules()
 MODULE_IDS = [module.dotted_name for module in ALL_MODULES]
 
 
+def _must_avoid_the_transport(module: ModuleUnderTest) -> bool:
+    """Whether this module has to import without a web stack.
+
+    Two families qualify: the business layers of an agent, and every part of
+    `core` outside `core.serving`.
+    """
+    if module.distribution == "ai_agent_lab.core":
+        return not module.dotted_name.startswith(CORE_SERVING_PREFIX)
+    return module.agent_layer in LAYERS_WITHOUT_SDKS
+
+
 def test_every_distribution_has_sources():
     """The table of distributions stays in sync with what is on disk."""
     empty = [distribution for distribution in DISTRIBUTIONS if not _of(distribution)]
@@ -183,15 +249,15 @@ def test_distributions_only_import_what_they_declare(module: ModuleUnderTest):
 
 @pytest.mark.security
 @pytest.mark.parametrize("module", ALL_MODULES, ids=MODULE_IDS)
-def test_no_mail_server_knows_the_agent(module: ModuleUnderTest):
-    """A mail MCP server never imports the agent.
+def test_no_server_knows_an_agent(module: ModuleUnderTest):
+    """An MCP server never imports an agent.
 
     A server we write and a server written by somebody else must be reachable
     the same way. The moment one of ours depends on our domain models, the
     dialect stops being the only thing that adapts, and a third-party server
     becomes a second-class citizen.
     """
-    if not module.distribution.startswith("mail_mcp."):
+    if module.distribution.startswith("ai_agent_lab."):
         pytest.skip("agent distribution")
 
     violations = {imported for imported in module.imported_distributions() if imported.startswith("ai_agent_lab.")}
@@ -200,28 +266,28 @@ def test_no_mail_server_knows_the_agent(module: ModuleUnderTest):
 
 
 @pytest.mark.parametrize("module", ALL_MODULES, ids=MODULE_IDS)
-def test_mail_layers_point_inwards(module: ModuleUnderTest):
-    """A sub-layer of the mail agent only imports the sub-layers it may."""
-    layer = module.mail_layer
+def test_agent_layers_point_inwards(module: ModuleUnderTest):
+    """A sub-layer of an agent only imports the sub-layers it may."""
+    layer = module.agent_layer
     if layer is None:
-        pytest.skip("not a mail sub-layer")
+        pytest.skip("not an agent sub-layer")
 
-    allowed = MAIL_LAYERS[layer] | {layer} | MAIL_ROOT_MODULES
-    violations = {imported for imported in module.imported_mail_layers() if imported not in allowed}
+    allowed = AGENT_LAYERS[layer] | {layer} | AGENT_ROOT_MODULES
+    violations = {imported for imported in module.imported_agent_layers() if imported not in allowed}
 
-    assert not violations, f"{module.dotted_name} must not import mail layer(s) {sorted(violations)}"
+    assert not violations, f"{module.dotted_name} must not import layer(s) {sorted(violations)}"
 
 
 @pytest.mark.parametrize("module", ALL_MODULES, ids=MODULE_IDS)
-def test_mail_modules_sit_in_a_declared_layer(module: ModuleUnderTest):
-    """Every mail source file is either a declared layer or a declared port."""
-    if module.distribution != "ai_agent_lab.mail":
-        pytest.skip("not the mail agent")
-    layer = module.mail_layer
+def test_agent_modules_sit_in_a_declared_layer(module: ModuleUnderTest):
+    """Every agent source file is either a declared layer or a declared port."""
+    if module.distribution not in AGENT_DISTRIBUTIONS:
+        pytest.skip("not an agent")
+    layer = module.agent_layer
     if layer is None:
         pytest.skip("port or package initialiser")
 
-    assert layer in MAIL_LAYERS, f"{module.dotted_name} sits outside the declared mail layers"
+    assert layer in AGENT_LAYERS, f"{module.dotted_name} sits outside the declared layers"
 
 
 @pytest.mark.security
@@ -231,11 +297,11 @@ def test_business_code_ignores_agent_frameworks(module: ModuleUnderTest):
 
     This is what makes a fair comparison between Microsoft Agent Framework,
     LangChain and CrewAI possible: the business logic is shared, never ported.
-    Only ``ai_agent_lab.maf`` and the composition root may name one.
+    Only a framework adapter and a composition root may name one.
     """
-    if module.distribution == "ai_agent_lab.maf":
-        pytest.skip("the framework adapter")
-    if module.mail_layer is not None and module.mail_layer not in MAIL_LAYERS_WITHOUT_FRAMEWORKS:
+    if module.distribution in FRAMEWORK_ADAPTERS:
+        pytest.skip("a framework adapter")
+    if module.agent_layer is not None and module.agent_layer not in LAYERS_WITHOUT_FRAMEWORKS:
         pytest.skip("composition root")
 
     violations = AGENT_FRAMEWORK_ROOTS.intersection(module.imported_roots())
@@ -244,14 +310,50 @@ def test_business_code_ignores_agent_frameworks(module: ModuleUnderTest):
 
 
 @pytest.mark.security
-@pytest.mark.parametrize("module", ALL_MODULES, ids=MODULE_IDS)
-def test_the_agent_never_sees_a_mail_system(module: ModuleUnderTest):
-    """No mail domain, skill or capability names a transport or a mail SDK.
+@pytest.mark.parametrize("distribution", sorted(AGENT_DISTRIBUTIONS), ids=sorted(AGENT_DISTRIBUTIONS))
+def test_an_agent_depends_on_one_framework_only(distribution: str):
+    """No agent names two framework adapters.
 
-    In particular the Mail Agent must never see Gmail, OAuth, IMAP or SMTP: it
-    reaches a mailbox through an MCP tool and nothing else.
+    Depending on both would let a deployment carry Microsoft Agent Framework and
+    LangChain at once. The environments in ``scripts/install.py`` exist precisely
+    so that never happens, and this is the check that keeps the code honest about
+    it: measuring two frameworks in one process measures neither.
     """
-    if module.mail_layer not in MAIL_LAYERS_WITHOUT_SDKS:
+    forbidden = set(FRAMEWORK_ADAPTERS) - {AGENT_DISTRIBUTIONS[distribution]}
+    offenders = {
+        module.dotted_name: sorted(forbidden.intersection(module.imported_distributions()))
+        for module in _of(distribution)
+        if forbidden.intersection(module.imported_distributions())
+    }
+
+    assert not offenders, f"{distribution} must use {AGENT_DISTRIBUTIONS[distribution]} alone: {offenders}"
+
+
+@pytest.mark.parametrize("distribution", sorted(FRAMEWORK_ADAPTERS), ids=sorted(FRAMEWORK_ADAPTERS))
+def test_a_framework_adapter_imports_its_own_framework(distribution: str):
+    """An adapter reaches the third-party framework, not something like it.
+
+    ``ai_agent_lab.langgraph`` and the real ``langgraph`` share a final name.
+    Python 3 resolves imports absolutely, so this works - but getting it wrong
+    would be silent, and the adapter would quietly adapt itself.
+    """
+    imported = {root for module in _of(distribution) for root in module.imported_roots()}
+
+    assert FRAMEWORK_ADAPTERS[distribution].intersection(imported), (
+        f"{distribution} imports none of {sorted(FRAMEWORK_ADAPTERS[distribution])}"
+    )
+
+
+@pytest.mark.security
+@pytest.mark.parametrize("module", ALL_MODULES, ids=MODULE_IDS)
+def test_an_agent_never_sees_an_enterprise_system(module: ModuleUnderTest):
+    """No domain, skill or capability names a transport or a vendor SDK.
+
+    The Mail Agent must never see Gmail, OAuth, IMAP or SMTP, and the Wiki Agent
+    must never see Confluence: each reaches its system through an MCP tool and
+    nothing else.
+    """
+    if module.agent_layer not in LAYERS_WITHOUT_SDKS:
         pytest.skip("adapter, composition root or server")
 
     violations = ENTERPRISE_SDK_ROOTS.intersection(module.imported_roots())
@@ -259,7 +361,76 @@ def test_the_agent_never_sees_a_mail_system(module: ModuleUnderTest):
     assert not violations, f"{module.dotted_name} must not import external system SDK(s) {sorted(violations)}"
 
 
-@pytest.mark.parametrize("namespace", ["ai_agent_lab", "mail_mcp"])
+@pytest.mark.security
+@pytest.mark.parametrize("module", ALL_MODULES, ids=MODULE_IDS)
+def test_business_code_ignores_the_runtime_transport(module: ModuleUnderTest):
+    """No transport-free module names the serving side of the runtime.
+
+    ``ygo74-agent-runtime`` is a foundation dependency: it owns the security
+    model, the authenticated caller and the agent contracts, and naming it is
+    expected. Its ``domains.endpoints`` package is a different matter - that is
+    where FastAPI is imported - and a module that must run in a domain test with
+    no web stack must not reach it.
+
+    Before the security model moved into the library, this property held by
+    construction because ``core`` imported no serving code at all. It now needs a
+    test, and ``core`` is most of what that test exists for: ``core.serving`` is
+    the one part allowed to know a transport, and every other part of ``core`` is
+    not.
+    """
+    if not _must_avoid_the_transport(module):
+        pytest.skip("adapter, composition root, serving module or server")
+
+    violations = sorted(
+        imported for imported in module.imported_modules() if imported.startswith(RUNTIME_TRANSPORT_MODULE)
+    )
+
+    assert not violations, f"{module.dotted_name} must not import the runtime transport: {violations}"
+
+
+@pytest.mark.security
+def test_a_domain_layer_runs_without_a_web_stack():
+    """Importing the business layers must not drag a web framework in.
+
+    The check above reads import statements, which is not the whole story: a
+    package can pull a transport in through its own ``__init__``. That is exactly
+    what the runtime used to do, so importing the permission model loaded FastAPI
+    into a process that had no use for one.
+
+    This test is the end-to-end version, and it is deliberately a subprocess: the
+    test session itself exercises the HTTP surfaces, so ``fastapi`` is long since
+    imported by the time this runs and an in-process assertion would be vacuous.
+    """
+    probe = textwrap.dedent(
+        """
+        import sys
+
+        import ygo74.agent_runtime.domains.humanapproval.confirmation
+        import ygo74.agent_runtime.domains.humanapproval.tickets
+        import ai_agent_lab.mail.capabilities.write_capabilities
+        import ai_agent_lab.mail.domain.models
+        import ai_agent_lab.mail.skills.send_skill
+        import ai_agent_lab.wiki.capabilities.write_capabilities
+        import ai_agent_lab.wiki.domain.models
+        import ai_agent_lab.wiki.skills.answer_skill
+
+        loaded = sorted(name for name in sys.modules if name in {"fastapi", "starlette", "uvicorn"})
+        print(",".join(loaded))
+        """
+    )
+
+    finished = subprocess.run(  # noqa: S603 - fixed argument list, no shell
+        [sys.executable, "-c", probe],
+        capture_output=True,
+        text=True,
+        check=True,
+        cwd=REPOSITORY_ROOT,
+    )
+
+    assert finished.stdout.strip() == "", f"a business layer pulled in a web stack: {finished.stdout.strip()}"
+
+
+@pytest.mark.parametrize("namespace", NAMESPACES)
 def test_namespaces_stay_implicit(namespace: str):
     """No distribution declares the top level of a shared namespace.
 

@@ -1,0 +1,23 @@
+# Capability delivered to the Wiki Agent.
+#
+# Creating adds to the wiki without touching anything that was already there, and
+# it is undone by deleting the page. It is confirmed all the same: the page
+# appears under the user's name, in a space their colleagues watch.
+tool_name: create_page
+implementation: wiki.create_page
+
+description: >-
+  Create a new page from a draft prepared by draft_page_content, identified by its draft
+  reference. The content published is exactly the content of that draft. The page becomes
+  visible to everyone who can read the space and is attributed to the user, who is asked to
+  approve it first. To change a page that already exists, use update_page.
+
+# Security posture. The risk floor enforced in code cannot be lowered here.
+operation:
+  type: WRITE
+  risk: MEDIUM
+  permission: wiki:author
+  confirmation_required: true
+
+mcp_tools:
+  - create_page

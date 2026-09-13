@@ -19,13 +19,14 @@ from collections.abc import Mapping
 from enum import StrEnum
 from typing import Protocol, runtime_checkable
 
-from ai_agent_lab.core.manifests import AgentManifest
-from ai_agent_lab.core.security.operations import (
+from ygo74.agent_runtime.domains.contracts.manifests import AgentManifest
+from ygo74.agent_runtime.domains.security.operations import (
     OperationType,
     RiskLevel,
     ToolOperationDescriptor,
 )
-from ai_agent_lab.core.security.permissions import Permission
+from ygo74.agent_runtime.domains.security.permissions import Permission
+
 from ai_agent_lab.mail.domain.permissions import MailPermission
 
 

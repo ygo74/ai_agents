@@ -1,6 +1,6 @@
 # Configuration of the repository tooling. Deliberately not a distribution.
 #
-# The code lives in six distributions under `agents/` and `mcp-servers/`, each
+# The code lives in ten distributions under `agents/` and `mcp-servers/`, each
 # with its own pyproject. This file only carries the settings that must be the
 # same everywhere: the linter, the type checker and the test runner.
 #
@@ -22,13 +22,24 @@ line-length = 120
 target-version = "py312"
 src = [
     "agents/core/src",
+    "agents/langgraph/src",
     "agents/maf/src",
     "agents/mail/src",
+    "agents/wiki/src",
     "mcp-servers/protocol/src",
     "mcp-servers/gmail/src",
     "mcp-servers/reference/src",
+    "mcp-servers/wiki-protocol/src",
+    "mcp-servers/wiki-reference/src",
     "tests",
 ]
+
+# `agents/langgraph/src` makes isort read the top-level name `langgraph` as
+# first-party, and it would then sort the real framework in with our own
+# packages. The adapter distribution is `ai_agent_lab.langgraph`; the bare name
+# always means the third-party library.
+[tool.ruff.lint.isort]
+known-third-party = ["langgraph"]
 
 [tool.ruff.lint]
 select = [
@@ -66,6 +77,7 @@ max-complexity = 8
 # A tool surface is a long declarative list of registrations, not branching
 # logic, and its arguments are named by the protocol rather than used directly.
 "mcp-servers/protocol/src/mail_mcp/protocol/serving.py" = ["ARG001"]
+"mcp-servers/wiki-protocol/src/wiki_mcp/protocol/serving.py" = ["ARG001"]
 
 [tool.mypy]
 python_version = "3.12"
@@ -76,29 +88,35 @@ namespace_packages = true
 explicit_package_bases = true
 mypy_path = [
     "agents/core/src",
+    "agents/langgraph/src",
     "agents/maf/src",
     "agents/mail/src",
+    "agents/wiki/src",
     "mcp-servers/protocol/src",
     "mcp-servers/gmail/src",
     "mcp-servers/reference/src",
+    "mcp-servers/wiki-protocol/src",
+    "mcp-servers/wiki-reference/src",
 ]
 packages = [
     "ai_agent_lab.core",
+    "ai_agent_lab.langgraph",
     "ai_agent_lab.maf",
     "ai_agent_lab.mail",
+    "ai_agent_lab.wiki",
     "mail_mcp.protocol",
     "mail_mcp.gmail",
     "mail_mcp.reference",
+    "wiki_mcp.protocol",
+    "wiki_mcp.reference",
 ]
 
 [[tool.mypy.overrides]]
 module = "tests.*"
 disallow_untyped_defs = false
 
-# `ygo74-agent-runtime` ships no `py.typed` marker yet, so mypy cannot read its
-# annotations even though the source is fully typed. Adding the marker upstream
-# is tracked; until then this is the narrowest possible waiver, and it applies to
-# the serving library alone rather than relaxing the strict settings above.
-[[tool.mypy.overrides]]
-module = "ygo74.*"
-ignore_missing_imports = true
+# `ygo74-agent-runtime` ships `py.typed` since 0.0.4, so mypy reads its
+# annotations directly. The waiver that used to sit here - `ignore_missing_imports`
+# for the whole `ygo74.*` namespace - turned every type it exposes into `Any`,
+# which silently weakened this repository's strict settings at exactly the
+# boundary that now carries the security model.

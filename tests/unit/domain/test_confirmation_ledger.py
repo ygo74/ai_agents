@@ -9,21 +9,21 @@ are pinned here.
 from __future__ import annotations
 
 import pytest
-
-from ai_agent_lab.core.security.confirmation import (
+from ygo74.agent_runtime.domains.humanapproval.confirmation import (
     ConfirmationDecision,
     ConfirmationKey,
     ConfirmationOutcome,
     ConfirmationRequest,
 )
-from ai_agent_lab.core.security.context import UserContext
-from ai_agent_lab.core.security.operations import (
+from ygo74.agent_runtime.domains.humanapproval.ledger import InMemoryConfirmationLedger
+from ygo74.agent_runtime.domains.security.operations import (
     OperationType,
     RiskLevel,
     ToolOperationDescriptor,
 )
+from ygo74.agent_runtime.domains.security.user_context import UserContext
+
 from ai_agent_lab.mail.domain.permissions import MailPermission
-from ai_agent_lab.mail.inmemory.confirmation_ledger import InMemoryConfirmationLedger
 
 OWNER = UserContext(user_id="owner", session_id="s1", permissions=MailPermission.declared())
 INTRUDER = UserContext(user_id="intruder", session_id="s2", permissions=MailPermission.declared())

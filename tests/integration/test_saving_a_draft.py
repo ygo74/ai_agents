@@ -16,8 +16,8 @@ from pathlib import Path
 
 import pytest
 from tests.support.maf_fakes import ScriptedChatClient, says
+from ygo74.agent_runtime.domains.security.user_context import UserContext
 
-from ai_agent_lab.core.security.context import UserContext
 from ai_agent_lab.mail.application.composition import MailAgentCompositionRoot
 from ai_agent_lab.mail.capabilities.results import DraftPreparedResult, DraftSavedResult
 from ai_agent_lab.mail.capabilities.tool_inputs import DraftReferenceInput, DraftReplyInput

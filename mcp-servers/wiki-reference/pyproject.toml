@@ -1,0 +1,24 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "wiki-mcp-reference"
+version = "0.1.0"
+description = "Reference wiki MCP server, backed by a JSON dataset"
+requires-python = ">=3.12"
+
+# It depends on the protocol and on nothing of ours besides. In particular it
+# never imports `ai_agent_lab`: a server does not know what an agent is, and that
+# is what makes a server we wrote and a server somebody else wrote
+# interchangeable.
+dependencies = [
+    "wiki-mcp-protocol[serving]",
+    "mcp>=1.24,<2",
+]
+
+[project.scripts]
+wiki-mcp-reference = "wiki_mcp.reference.server:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/wiki_mcp"]
