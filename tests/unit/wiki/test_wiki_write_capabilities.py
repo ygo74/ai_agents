@@ -19,22 +19,22 @@ from __future__ import annotations
 import pytest
 from tests.unit.wiki.conftest import make_page, make_wiki
 from ygo74.agent_runtime.domains.contracts.manifests import AgentManifest
-from ygo74.agent_runtime.domains.security.audit import InMemoryAuditTrail
-from ygo74.agent_runtime.domains.security.permissions import PermissionRegistry
-
-from ai_agent_lab.core.config.directory import ConfigurationDirectory
-from ai_agent_lab.core.config.manifests import AgentManifestLoader, SkillManifestLoader
-from ai_agent_lab.core.security.broker import ConfirmationBroker
-from ai_agent_lab.core.security.confirmation import (
+from ygo74.agent_runtime.domains.humanapproval.approval_errors import ConfirmationRequiredError
+from ygo74.agent_runtime.domains.humanapproval.broker import ConfirmationBroker
+from ygo74.agent_runtime.domains.humanapproval.confirmation import (
     ConfiguredConfirmationPolicy,
     ConfirmationDecision,
     ConfirmationGate,
     ConfirmationOutcome,
     InMemoryConfirmationPreferenceStore,
 )
-from ai_agent_lab.core.security.errors import ConfirmationRequiredError
-from ai_agent_lab.core.security.ledger import InMemoryConfirmationLedger
-from ai_agent_lab.core.security.unattended import UnattendedApprovalAuthority
+from ygo74.agent_runtime.domains.humanapproval.ledger import InMemoryConfirmationLedger
+from ygo74.agent_runtime.domains.humanapproval.unattended import UnattendedApprovalAuthority
+from ygo74.agent_runtime.domains.security.audit import InMemoryAuditTrail
+from ygo74.agent_runtime.domains.security.permissions import PermissionRegistry
+
+from ai_agent_lab.core.config.directory import ConfigurationDirectory
+from ai_agent_lab.core.config.manifests import AgentManifestLoader, SkillManifestLoader
 from ai_agent_lab.wiki.application.confirmation_presenter import (
     UnknownGatedWikiToolError,
     WikiConfirmationPresenter,

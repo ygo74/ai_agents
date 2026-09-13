@@ -17,12 +17,12 @@ from pathlib import Path
 import pytest
 from tests.support.maf_fakes import ScriptedChatClient, says
 from ygo74.agent_runtime.domains.auth.agent_principal import AgentPrincipal
-
-from ai_agent_lab.core.security.confirmation import (
+from ygo74.agent_runtime.domains.humanapproval.confirmation import (
     ConfiguredConfirmationPolicy,
     ConfirmationPreferences,
     InMemoryConfirmationPreferenceStore,
 )
+
 from ai_agent_lab.core.security.user_contexts import UserContextFactory
 from ai_agent_lab.mail.application.composition import MailAgentCompositionRoot
 from ai_agent_lab.mail.config.local_principal import LocalPrincipalSource

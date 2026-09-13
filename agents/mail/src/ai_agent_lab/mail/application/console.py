@@ -6,7 +6,7 @@ import logging
 from collections.abc import Callable
 from enum import StrEnum
 
-from ai_agent_lab.core.security.confirmation import ConfirmationRequest
+from ygo74.agent_runtime.domains.humanapproval.confirmation import ConfirmationRequest
 
 _AFFIRMATIVE = frozenset({"y", "yes", "o", "oui"})
 _NEGATIVE = frozenset({"n", "no", "non"})

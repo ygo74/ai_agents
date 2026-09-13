@@ -24,13 +24,12 @@ from langchain.agents.middleware import InterruptOnConfig
 from langchain.agents.middleware.human_in_the_loop import DecisionType
 from langgraph.types import Command
 from ygo74.agent_runtime.domains.contracts.capability_registry import SkillRegistry
-from ygo74.agent_runtime.domains.security.user_context import UserContext
-
-from ai_agent_lab.core.security.confirmation import (
+from ygo74.agent_runtime.domains.humanapproval.confirmation import (
     ConfirmationDecision,
     ConfirmationPolicy,
     ConfirmationRequest,
 )
+from ygo74.agent_runtime.domains.security.user_context import UserContext
 
 _logger = logging.getLogger(__name__)
 

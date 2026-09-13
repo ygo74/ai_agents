@@ -7,7 +7,7 @@ Answering has two halves, and only one of them is the question. The framework
 needs an ``approve`` or ``reject`` to resume the graph. The domain needs the very
 request the user read, together with their answer, recorded in the confirmation
 ledger - otherwise the gated skill reaches
-:class:`~ai_agent_lab.core.security.unattended.UnattendedApprovalAuthority`, which
+:class:`~ygo74.agent_runtime.domains.humanapproval.unattended.UnattendedApprovalAuthority`, which
 refuses, and an approved write fails as though nobody had approved it.
 
 Recording both halves in one place is what keeps them from drifting apart.
@@ -17,16 +17,16 @@ from __future__ import annotations
 
 from typing import Any
 
-from ygo74.agent_runtime.domains.security.security_errors import SecurityError
-from ygo74.agent_runtime.domains.security.user_context import UserContext
-
-from ai_agent_lab.core.errors import DomainError
-from ai_agent_lab.core.security.confirmation import (
+from ygo74.agent_runtime.domains.humanapproval.confirmation import (
     ConfirmationDecision,
     ConfirmationLedger,
     ConfirmationOutcome,
     ConfirmationRequest,
 )
+from ygo74.agent_runtime.domains.security.security_errors import SecurityError
+from ygo74.agent_runtime.domains.security.user_context import UserContext
+
+from ai_agent_lab.core.errors import DomainError
 from ai_agent_lab.langgraph.approval import PendingToolApproval
 from ai_agent_lab.wiki.application.confirmation_presenter import WikiConfirmationPresenter
 

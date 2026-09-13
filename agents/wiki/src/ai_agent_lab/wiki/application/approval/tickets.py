@@ -6,7 +6,7 @@ call is declined *to LangGraph* and kept as a ticket, and the reply says what is
 waiting.
 
 What happens once the person answers is not specific to this agent or to
-LangGraph, and lives in :mod:`ai_agent_lab.core.serving.confirmations`. What is
+LangGraph, and lives in :mod:`ygo74.agent_runtime.domains.humanapproval.confirmed_operations`. What is
 specific - and all that remains here - is reading the calls the middleware
 suspended and answering them in the shape it expects: a list of decisions,
 matched to the actions by position.
@@ -21,15 +21,15 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import Any
 
+from ygo74.agent_runtime.domains.humanapproval.confirmed_operations import ConfirmationPresenter
+from ygo74.agent_runtime.domains.humanapproval.tickets import (
+    ConfirmationTicket,
+    PendingConfirmationStore,
+)
 from ygo74.agent_runtime.domains.security.security_errors import SecurityError
 from ygo74.agent_runtime.domains.security.user_context import UserContext
 
 from ai_agent_lab.core.errors import DomainError
-from ai_agent_lab.core.security.tickets import (
-    ConfirmationTicket,
-    PendingConfirmationStore,
-)
-from ai_agent_lab.core.serving.confirmations import ConfirmationPresenter
 from ai_agent_lab.langgraph.approval import PendingToolApproval
 
 

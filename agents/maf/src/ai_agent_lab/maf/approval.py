@@ -17,12 +17,11 @@ from collections.abc import Mapping, Sequence
 from typing import Any
 
 from agent_framework import AgentResponse, Content, Message
-from ygo74.agent_runtime.domains.security.user_context import UserContext
-
-from ai_agent_lab.core.security.confirmation import (
+from ygo74.agent_runtime.domains.humanapproval.confirmation import (
     ConfirmationDecision,
     ConfirmationRequest,
 )
+from ygo74.agent_runtime.domains.security.user_context import UserContext
 
 APPROVAL_REQUEST_TYPE = "function_approval_request"
 

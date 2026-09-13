@@ -16,10 +16,10 @@ import logging
 from collections.abc import Mapping
 from typing import Any
 
+from ygo74.agent_runtime.domains.humanapproval.confirmation import ConfirmationRequest
 from ygo74.agent_runtime.domains.security.user_context import UserContext
 
 from ai_agent_lab.core.errors import DomainError
-from ai_agent_lab.core.security.confirmation import ConfirmationRequest
 from ai_agent_lab.mail.application.confirmation_subjects import ConfirmationSubjectResolver
 from ai_agent_lab.mail.application.skills_factory import MailSkills
 from ai_agent_lab.mail.capabilities.write_capabilities import housekeeping_target

@@ -3,6 +3,19 @@
 from __future__ import annotations
 
 import pytest
+from ygo74.agent_runtime.domains.humanapproval.approval_errors import (
+    ConfirmationMismatchError,
+    ConfirmationRejectedError,
+    ConfirmationRequiredError,
+)
+from ygo74.agent_runtime.domains.humanapproval.confirmation import (
+    ConfiguredConfirmationPolicy,
+    ConfirmationDecision,
+    ConfirmationGate,
+    ConfirmationPreferences,
+    ConfirmationRequest,
+    InMemoryConfirmationPreferenceStore,
+)
 from ygo74.agent_runtime.domains.security.floor import OperationFloor, SecurityFloor
 from ygo74.agent_runtime.domains.security.operations import (
     OperationType,
@@ -12,19 +25,6 @@ from ygo74.agent_runtime.domains.security.operations import (
 from ygo74.agent_runtime.domains.security.permissions import Permission
 from ygo74.agent_runtime.domains.security.security_errors import PermissionDeniedError
 
-from ai_agent_lab.core.security.confirmation import (
-    ConfiguredConfirmationPolicy,
-    ConfirmationDecision,
-    ConfirmationGate,
-    ConfirmationPreferences,
-    ConfirmationRequest,
-    InMemoryConfirmationPreferenceStore,
-)
-from ai_agent_lab.core.security.errors import (
-    ConfirmationMismatchError,
-    ConfirmationRejectedError,
-    ConfirmationRequiredError,
-)
 from ai_agent_lab.mail.domain.permissions import MailPermission
 from ai_agent_lab.mail.security_floor import MailSecurityFloor
 

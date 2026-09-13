@@ -15,10 +15,10 @@ import logging
 from dataclasses import dataclass
 
 from ygo74.agent_runtime.domains.contracts.manifests import AgentManifest
+from ygo74.agent_runtime.domains.humanapproval.confirmation import ConfirmationGate, ConfirmationPolicy
 from ygo74.agent_runtime.domains.security.audit import AuditTrail
 
 from ai_agent_lab.core.reasoning.ports import TextReasoner
-from ai_agent_lab.core.security.confirmation import ConfirmationGate, ConfirmationPolicy
 from ai_agent_lab.mail.catalog import MailOperations
 from ai_agent_lab.mail.domain.ports import MailboxOwnerDirectory
 from ai_agent_lab.mail.skills.action_extraction_skill import MailActionExtractionSkill

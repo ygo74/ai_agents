@@ -1,10 +1,10 @@
 # What could move to `ygo74-agent-runtime`
 
-> **Status, 2026-09-13.** Batches 1 to 6 of the sequencing table below have been
+> **Status, 2026-09-13.** Batches 1 to 8 of the sequencing table below have been
 > delivered: the security spine, the identity projection, the conversation port
-> and payloads, the capability registry, the token ports and the descriptor
-> factory now live in `ygo74-agent-runtime` 0.0.4 and have been deleted from this
-> repository. See
+> and payloads, the capability registry, the token ports, the descriptor factory,
+> the human-approval domain and the gated operation runner now live in
+> `ygo74-agent-runtime` and have been deleted from this repository. See
 > [architecture.md](./architecture.md#10-what-this-repository-no-longer-owns) for
 > what that changed here, and `docs/parity-status.md` in the runtime for the
 > .NET and Java debt it created. The rest of this document is unchanged and
@@ -473,8 +473,8 @@ listed here imports nothing that a later batch owns.
 | 4 | Security posture primitives (operations, floor, permissions, context, audit) | portable | 0 | **done** |
 | 5 | Tokens | portable | 1, 4 | **done** as `domains.auth.tokens` |
 | 6 | Descriptor factory, after deriving security schemes and tool invocation from configuration | portable | 2, 3 | **done** as `domains.discovery.manifest_descriptor`, defect fixed |
-| 7 | Human-approval domain, including the broker, the two ports and the storage contract | portable | 3, 4 | pending |
-| 8 | Gated operation runner | portable | 4, 7 | pending |
+| 7 | Human-approval domain, including the broker, the two ports and the storage contract | portable | 3, 4 | **done** as `domains.humanapproval`; the two ports proved unnecessary once the capability registry moved in batch 3 |
+| 8 | Gated operation runner | portable | 4, 7 | **done** as `domains.humanapproval.gated_operations`, generic over the tool enumeration |
 | 9 | Untrusted content, fencing and `ReasoningRequest`, after opening `UntrustedOrigin` | portable | 4 | pending |
 | 10 | `ConversationRuntimeCache`, after the lease and lock-scope repair | Python-first | 1, 2 | pending |
 | 11 | Generic HTTP settings, with issuer discovery instead of the Keycloak path | portable | 0 | pending |

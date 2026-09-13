@@ -14,13 +14,13 @@ nothing records which links those were.
 
 from __future__ import annotations
 
-from ygo74.agent_runtime.domains.security.user_context import UserContext
-
-from ai_agent_lab.core.security.confirmation import (
+from ygo74.agent_runtime.domains.humanapproval.confirmation import (
     ConfirmationDecision,
     ConfirmationDetail,
     ConfirmationRequest,
 )
+from ygo74.agent_runtime.domains.security.user_context import UserContext
+
 from ai_agent_lab.wiki.catalog import WikiToolName
 from ai_agent_lab.wiki.domain.models import WikiPage, WikiPageDraft
 from ai_agent_lab.wiki.skills.errors import EmptyPageContentError

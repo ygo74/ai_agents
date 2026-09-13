@@ -32,14 +32,14 @@ part that has not moved yet:
 
 | Module | Responsibility |
 |---|---|
-| `serving/confirmations.py` | Runs the operation a claimed ticket describes |
-| `serving/pending.py` | Renders what is waiting, so it can be answered by name |
 | `serving/runtimes.py` | Keeps one runtime per caller and conversation, bounded and expiring |
 
 | Provided by the library | Responsibility |
 |---|---|
 | `domains.endpoints.conversation_payloads` | Reads the loosely-typed request into a typed `ConversationTurn` |
 | `domains.discovery.manifest_descriptor` | Builds the descriptor from the manifest and the authentication in force |
+| `domains.humanapproval.confirmed_operations` | Runs the operation a claimed ticket describes |
+| `domains.humanapproval.pending_renderer` | Renders what is waiting, so it can be answered by name |
 
 What is specific to this agent is small, and deliberately so:
 `application/entrypoints/` and `application/approval/tickets.py`.

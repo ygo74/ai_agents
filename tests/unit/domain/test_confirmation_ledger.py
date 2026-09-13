@@ -9,6 +9,13 @@ are pinned here.
 from __future__ import annotations
 
 import pytest
+from ygo74.agent_runtime.domains.humanapproval.confirmation import (
+    ConfirmationDecision,
+    ConfirmationKey,
+    ConfirmationOutcome,
+    ConfirmationRequest,
+)
+from ygo74.agent_runtime.domains.humanapproval.ledger import InMemoryConfirmationLedger
 from ygo74.agent_runtime.domains.security.operations import (
     OperationType,
     RiskLevel,
@@ -16,13 +23,6 @@ from ygo74.agent_runtime.domains.security.operations import (
 )
 from ygo74.agent_runtime.domains.security.user_context import UserContext
 
-from ai_agent_lab.core.security.confirmation import (
-    ConfirmationDecision,
-    ConfirmationKey,
-    ConfirmationOutcome,
-    ConfirmationRequest,
-)
-from ai_agent_lab.core.security.ledger import InMemoryConfirmationLedger
 from ai_agent_lab.mail.domain.permissions import MailPermission
 
 OWNER = UserContext(user_id="owner", session_id="s1", permissions=MailPermission.declared())

@@ -184,6 +184,7 @@ copy per agent being one copy away from a weaker security path.
 | Conversation port, manifests, capability registry | `ygo74.agent_runtime.domains.contracts` |
 | Token ports (`AccessToken`, `TokenVerifier`, `DelegatedTokenSource`) | `ygo74.agent_runtime.domains.auth.tokens` |
 | Manifest-derived discovery descriptor | `ygo74.agent_runtime.domains.discovery.manifest_descriptor` |
+| Confirmation policy, tickets, approval parser, gated runner | `ygo74.agent_runtime.domains.humanapproval` |
 | Transport payload reading and reply rendering | `ygo74.agent_runtime.domains.endpoints` |
 
 The library is therefore a **foundation** dependency of `ai_agent_lab.core`, not
@@ -213,6 +214,15 @@ previously started and served the configured mailbox to anyone, because its JWT
 wiring is commented out and it had no equivalent of the Wiki Agent's start-up
 guard. Set `MAIL_AGENT_HTTP_API_KEY`, or re-enable `jwt_validation` in
 `build_app`.
+
+What is left of `ai_agent_lab.core` after all of this is small and deliberate:
+`security/` holds the join between an identity and the permissions a deployment
+grants it, plus the untrusted-content primitives; `serving/` holds the
+conversation state cache; `config/` and `reasoning/` are untouched. The two
+`skills/gating.py` modules are now one line each - a type alias binding this
+agent's tool enumeration to the library's generic runner - because the permission
+check, the confirmation policy and the audit record are the same three steps for
+every agent and are written once.
 
 What stays here, and why, is recorded in
 [runtime-extraction-candidates.md](./runtime-extraction-candidates.md).

@@ -18,22 +18,22 @@ from __future__ import annotations
 
 import pytest
 from tests.unit.wiki.conftest import make_page, make_wiki
-from ygo74.agent_runtime.domains.security.audit import AuditOutcome, InMemoryAuditTrail
-from ygo74.agent_runtime.domains.security.security_errors import PermissionDeniedError
-from ygo74.agent_runtime.domains.security.user_context import UserContext
-
-from ai_agent_lab.core.security.confirmation import (
+from ygo74.agent_runtime.domains.humanapproval.approval_errors import (
+    ConfirmationMismatchError,
+    ConfirmationRejectedError,
+    ConfirmationRequiredError,
+)
+from ygo74.agent_runtime.domains.humanapproval.confirmation import (
     ConfiguredConfirmationPolicy,
     ConfirmationDecision,
     ConfirmationGate,
     ConfirmationPreferences,
     InMemoryConfirmationPreferenceStore,
 )
-from ai_agent_lab.core.security.errors import (
-    ConfirmationMismatchError,
-    ConfirmationRejectedError,
-    ConfirmationRequiredError,
-)
+from ygo74.agent_runtime.domains.security.audit import AuditOutcome, InMemoryAuditTrail
+from ygo74.agent_runtime.domains.security.security_errors import PermissionDeniedError
+from ygo74.agent_runtime.domains.security.user_context import UserContext
+
 from ai_agent_lab.core.security.untrusted import UntrustedOrigin, untrusted
 from ai_agent_lab.wiki.catalog import WikiToolCatalog, WikiToolName
 from ai_agent_lab.wiki.domain.errors import WikiDraftNotFoundError

@@ -4,23 +4,23 @@ from __future__ import annotations
 
 import pytest
 from tests.conftest import make_message
-from ygo74.agent_runtime.domains.security.audit import AuditOutcome, InMemoryAuditTrail
-from ygo74.agent_runtime.domains.security.operations import RiskLevel
-from ygo74.agent_runtime.domains.security.security_errors import PermissionDeniedError, SecurityError
-from ygo74.agent_runtime.domains.security.user_context import UserContext
-
-from ai_agent_lab.core.security.confirmation import (
+from ygo74.agent_runtime.domains.humanapproval.approval_errors import (
+    ConfirmationMismatchError,
+    ConfirmationRejectedError,
+    ConfirmationRequiredError,
+)
+from ygo74.agent_runtime.domains.humanapproval.confirmation import (
     ConfiguredConfirmationPolicy,
     ConfirmationDecision,
     ConfirmationGate,
     ConfirmationPreferences,
     InMemoryConfirmationPreferenceStore,
 )
-from ai_agent_lab.core.security.errors import (
-    ConfirmationMismatchError,
-    ConfirmationRejectedError,
-    ConfirmationRequiredError,
-)
+from ygo74.agent_runtime.domains.security.audit import AuditOutcome, InMemoryAuditTrail
+from ygo74.agent_runtime.domains.security.operations import RiskLevel
+from ygo74.agent_runtime.domains.security.security_errors import PermissionDeniedError, SecurityError
+from ygo74.agent_runtime.domains.security.user_context import UserContext
+
 from ai_agent_lab.core.security.untrusted import UntrustedOrigin, untrusted
 from ai_agent_lab.mail.catalog import MailToolCatalog, MailToolName
 from ai_agent_lab.mail.config.mailbox_directory import ConfiguredMailboxOwnerDirectory

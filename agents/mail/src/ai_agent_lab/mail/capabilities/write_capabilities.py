@@ -12,10 +12,10 @@ from collections.abc import Awaitable, Callable
 from pydantic import BaseModel
 from ygo74.agent_runtime.domains.contracts.capability_registry import SkillDescriptor
 from ygo74.agent_runtime.domains.contracts.manifests import AgentManifest
+from ygo74.agent_runtime.domains.humanapproval.broker import ConfirmationBroker
+from ygo74.agent_runtime.domains.humanapproval.confirmation import ConfirmationDecision, ConfirmationRequest
 from ygo74.agent_runtime.domains.security.user_context import UserContext
 
-from ai_agent_lab.core.security.broker import ConfirmationBroker
-from ai_agent_lab.core.security.confirmation import ConfirmationDecision, ConfirmationRequest
 from ai_agent_lab.mail.capabilities.results import (
     DraftPreparedResult,
     DraftSavedResult,

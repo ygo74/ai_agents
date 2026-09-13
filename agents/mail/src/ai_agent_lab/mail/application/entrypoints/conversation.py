@@ -18,16 +18,16 @@ from dataclasses import dataclass
 
 from ygo74.agent_runtime.domains.auth.agent_principal import AgentPrincipal
 from ygo74.agent_runtime.domains.contracts.conversation import AgentReply, ConversationTurn
-
-from ai_agent_lab.core.security.commands import ConfirmationCommand, ConfirmationCommandParser
-from ai_agent_lab.core.security.tickets import (
+from ygo74.agent_runtime.domains.humanapproval.commands import ConfirmationCommand, ConfirmationCommandParser
+from ygo74.agent_runtime.domains.humanapproval.confirmed_operations import ConfirmedOperationRunner
+from ygo74.agent_runtime.domains.humanapproval.pending_renderer import PendingConfirmationRenderer
+from ygo74.agent_runtime.domains.humanapproval.tickets import (
     ConfirmationTicket,
     InMemoryPendingConfirmationStore,
     PendingConfirmationStore,
     UnknownTicketError,
 )
-from ai_agent_lab.core.serving.confirmations import ConfirmedOperationRunner
-from ai_agent_lab.core.serving.pending import PendingConfirmationRenderer
+
 from ai_agent_lab.core.serving.runtimes import ConversationRuntimeCache
 from ai_agent_lab.maf.approval import MafApprovalTranslator
 from ai_agent_lab.mail.application.approval.tickets import TicketApprovalResolver

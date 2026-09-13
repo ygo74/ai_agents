@@ -16,13 +16,13 @@ from pathlib import Path
 
 import pytest
 from tests.support.maf_fakes import ScriptedChatClient, ToolCall, calls, says
-
-from ai_agent_lab.core.security.commands import ConfirmationCommandParser
-from ai_agent_lab.core.security.tickets import (
+from ygo74.agent_runtime.domains.humanapproval.commands import ConfirmationCommandParser
+from ygo74.agent_runtime.domains.humanapproval.confirmed_operations import ConfirmedOperationRunner
+from ygo74.agent_runtime.domains.humanapproval.tickets import (
     InMemoryPendingConfirmationStore,
     UnknownTicketError,
 )
-from ai_agent_lab.core.serving.confirmations import ConfirmedOperationRunner
+
 from ai_agent_lab.maf.approval import MafApprovalTranslator
 from ai_agent_lab.mail.application.approval.tickets import TicketApprovalResolver
 from ai_agent_lab.mail.application.composition import MailAgentCompositionRoot

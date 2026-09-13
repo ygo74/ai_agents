@@ -405,8 +405,8 @@ def test_a_domain_layer_runs_without_a_web_stack():
         """
         import sys
 
-        import ai_agent_lab.core.security.confirmation
-        import ai_agent_lab.core.security.tickets
+        import ygo74.agent_runtime.domains.humanapproval.confirmation
+        import ygo74.agent_runtime.domains.humanapproval.tickets
         import ai_agent_lab.mail.capabilities.write_capabilities
         import ai_agent_lab.mail.domain.models
         import ai_agent_lab.mail.skills.send_skill

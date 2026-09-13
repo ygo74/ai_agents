@@ -12,9 +12,9 @@ considerably worse than a mangled character.
 from __future__ import annotations
 
 import pytest
+from ygo74.agent_runtime.domains.humanapproval.confirmation import ConfirmationDetail, ConfirmationRequest
 from ygo74.agent_runtime.domains.security.operations import OperationType, RiskLevel, ToolOperationDescriptor
 
-from ai_agent_lab.core.security.confirmation import ConfirmationDetail, ConfirmationRequest
 from ai_agent_lab.mail.application.console import (
     ConfirmationAnswer,
     Console,

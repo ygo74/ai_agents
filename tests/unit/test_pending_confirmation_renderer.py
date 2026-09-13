@@ -12,15 +12,15 @@ ticket they belong to.
 
 from __future__ import annotations
 
+from ygo74.agent_runtime.domains.humanapproval.confirmation import ConfirmationDetail, ConfirmationRequest
+from ygo74.agent_runtime.domains.humanapproval.pending_renderer import PendingConfirmationRenderer
+from ygo74.agent_runtime.domains.humanapproval.tickets import ConfirmationTicket
 from ygo74.agent_runtime.domains.security.operations import (
     OperationType,
     RiskLevel,
     ToolOperationDescriptor,
 )
 
-from ai_agent_lab.core.security.confirmation import ConfirmationDetail, ConfirmationRequest
-from ai_agent_lab.core.security.tickets import ConfirmationTicket
-from ai_agent_lab.core.serving.pending import PendingConfirmationRenderer
 from ai_agent_lab.mail.domain.permissions import MailPermission
 
 SUBJECT = "Continuez a explorer avec Visorando Premium"

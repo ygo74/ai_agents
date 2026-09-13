@@ -4,13 +4,13 @@ from __future__ import annotations
 
 import logging
 
-from ygo74.agent_runtime.domains.security.user_context import UserContext
-
-from ai_agent_lab.core.security.confirmation import (
+from ygo74.agent_runtime.domains.humanapproval.confirmation import (
     ConfirmationDecision,
     ConfirmationDetail,
     ConfirmationRequest,
 )
+from ygo74.agent_runtime.domains.security.user_context import UserContext
+
 from ai_agent_lab.mail.catalog import MailToolName
 from ai_agent_lab.mail.domain.models import MailDraft, MailSendRequest, MailSendResult
 from ai_agent_lab.mail.skills.gating import GatedMailOperationRunner

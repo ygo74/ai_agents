@@ -14,19 +14,19 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 
 import pytest
+from ygo74.agent_runtime.domains.humanapproval.commands import ConfirmationCommandParser, ConfirmationVerb
+from ygo74.agent_runtime.domains.humanapproval.confirmation import ConfirmationRequest
+from ygo74.agent_runtime.domains.humanapproval.tickets import (
+    ConfirmationTicket,
+    InMemoryPendingConfirmationStore,
+    UnknownTicketError,
+)
 from ygo74.agent_runtime.domains.security.operations import (
     OperationType,
     RiskLevel,
     ToolOperationDescriptor,
 )
 
-from ai_agent_lab.core.security.commands import ConfirmationCommandParser, ConfirmationVerb
-from ai_agent_lab.core.security.confirmation import ConfirmationRequest
-from ai_agent_lab.core.security.tickets import (
-    ConfirmationTicket,
-    InMemoryPendingConfirmationStore,
-    UnknownTicketError,
-)
 from ai_agent_lab.mail.domain.permissions import MailPermission
 
 ADA = "ada-3f9a"

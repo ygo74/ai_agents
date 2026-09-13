@@ -33,6 +33,15 @@ from langgraph.checkpoint.memory import InMemorySaver
 from ygo74.agent_runtime.domains.auth.agent_principal import AgentPrincipal
 from ygo74.agent_runtime.domains.contracts.capability_registry import SkillDescriptor, SkillRegistry
 from ygo74.agent_runtime.domains.contracts.manifests import AgentManifest
+from ygo74.agent_runtime.domains.humanapproval.broker import ConfirmationBroker
+from ygo74.agent_runtime.domains.humanapproval.confirmation import (
+    ConfiguredConfirmationPolicy,
+    ConfirmationGate,
+    ConfirmationPolicy,
+    InMemoryConfirmationPreferenceStore,
+)
+from ygo74.agent_runtime.domains.humanapproval.ledger import InMemoryConfirmationLedger
+from ygo74.agent_runtime.domains.humanapproval.unattended import UnattendedApprovalAuthority
 from ygo74.agent_runtime.domains.security.audit import InMemoryAuditTrail, LoggingAuditTrail
 from ygo74.agent_runtime.domains.security.permissions import PermissionRegistry
 from ygo74.agent_runtime.domains.security.user_context import UserContext
@@ -41,15 +50,6 @@ from ai_agent_lab.core.config.directory import ConfigurationDirectory
 from ai_agent_lab.core.config.manifests import AgentManifestLoader, SkillManifestLoader
 from ai_agent_lab.core.reasoning.envelope import PromptEnvelopeBuilder
 from ai_agent_lab.core.reasoning.ports import TextReasoner
-from ai_agent_lab.core.security.broker import ConfirmationBroker
-from ai_agent_lab.core.security.confirmation import (
-    ConfiguredConfirmationPolicy,
-    ConfirmationGate,
-    ConfirmationPolicy,
-    InMemoryConfirmationPreferenceStore,
-)
-from ai_agent_lab.core.security.ledger import InMemoryConfirmationLedger
-from ai_agent_lab.core.security.unattended import UnattendedApprovalAuthority
 from ai_agent_lab.core.security.user_contexts import UserContextFactory
 from ai_agent_lab.langgraph.approval import LangGraphApprovalTranslator
 from ai_agent_lab.langgraph.reasoner import LangGraphTextReasoner
