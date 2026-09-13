@@ -16,9 +16,11 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 
+from ygo74.agent_runtime.domains.security.untrusted import UntrustedText, untrusted
+
 from ai_agent_lab.core.reasoning.ports import UntrustedSection
-from ai_agent_lab.core.security.untrusted import UntrustedOrigin, UntrustedText, untrusted
 from ai_agent_lab.wiki.domain.models import WikiComment, WikiPage
+from ai_agent_lab.wiki.domain.origins import WikiOrigin
 
 TRUNCATION_NOTICE = "\n[... truncated ...]"
 
@@ -105,7 +107,7 @@ class WikiContextBuilder:
             "",
             self._truncate(page.body.expose(), self._max_page_characters),
         ]
-        return untrusted("\n".join(lines), UntrustedOrigin.WIKI_PAGE_BODY)
+        return untrusted("\n".join(lines), WikiOrigin.PAGE_BODY)
 
     def _comment_section(self, comment: WikiComment) -> UntrustedSection:
         """Build the section describing one comment."""
@@ -113,7 +115,7 @@ class WikiContextBuilder:
         body = self._truncate(comment.body.expose(), self._max_comment_characters)
         return UntrustedSection(
             label=label,
-            content=untrusted(body, UntrustedOrigin.WIKI_COMMENT_BODY),
+            content=untrusted(body, WikiOrigin.COMMENT_BODY),
         )
 
     @staticmethod

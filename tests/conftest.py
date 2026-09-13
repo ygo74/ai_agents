@@ -5,15 +5,16 @@ from __future__ import annotations
 from datetime import UTC, datetime
 
 import pytest
+from ygo74.agent_runtime.domains.security.untrusted import untrusted
 from ygo74.agent_runtime.domains.security.user_context import UserContext
 
-from ai_agent_lab.core.security.untrusted import UntrustedOrigin, untrusted
 from ai_agent_lab.mail.domain.models import (
     EmailAddress,
     MailMessage,
     MailParticipant,
     MailThread,
 )
+from ai_agent_lab.mail.domain.origins import MailOrigin
 from ai_agent_lab.mail.domain.permissions import MailPermission
 
 OWNER_EMAIL = "owner@example.com"
@@ -23,7 +24,7 @@ def make_participant(address: str, display_name: str | None = None) -> MailParti
     """Build a participant from a raw address."""
     return MailParticipant(
         address=EmailAddress(value=address),
-        display_name=None if display_name is None else untrusted(display_name, UntrustedOrigin.MAIL_SENDER_NAME),
+        display_name=None if display_name is None else untrusted(display_name, MailOrigin.SENDER_NAME),
     )
 
 
@@ -44,8 +45,8 @@ def make_message(
     return MailMessage(
         message_id=message_id,
         thread_id=thread_id,
-        subject=untrusted(subject, UntrustedOrigin.MAIL_SUBJECT),
-        body=untrusted(body, UntrustedOrigin.MAIL_BODY),
+        subject=untrusted(subject, MailOrigin.SUBJECT),
+        body=untrusted(body, MailOrigin.BODY),
         sender=make_participant(sender),
         to=tuple(make_participant(address) for address in to),
         sent_at=sent_at or datetime(2026, 9, 1, 10, 0, tzinfo=UTC),

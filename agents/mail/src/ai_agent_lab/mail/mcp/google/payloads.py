@@ -16,8 +16,8 @@ import logging
 from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field
+from ygo74.agent_runtime.domains.security.untrusted import untrusted
 
-from ai_agent_lab.core.security.untrusted import UntrustedOrigin, untrusted
 from ai_agent_lab.mail.domain.models import (
     EmailAddress,
     MailAttachment,
@@ -26,6 +26,7 @@ from ai_agent_lab.mail.domain.models import (
     MailMessage,
     MailParticipant,
 )
+from ai_agent_lab.mail.domain.origins import MailOrigin
 from ai_agent_lab.mail.mail_errors import MailToolProtocolError
 
 UNREAD_LABEL = "UNREAD"
@@ -61,7 +62,7 @@ class GmailAttachment(GmailPayload):
         )
         return MailAttachment(
             attachment_id=self.attachment_id,
-            file_name=untrusted(self.filename, UntrustedOrigin.MAIL_ATTACHMENT_NAME),
+            file_name=untrusted(self.filename, MailOrigin.ATTACHMENT_NAME),
             media_type=self.mime_type or "application/octet-stream",
             size_bytes=0,
         )
@@ -127,8 +128,8 @@ class GmailMessage(GmailPayload):
         return MailMessage(
             message_id=self.message_id,
             thread_id=self.thread_id or fallback_thread_id,
-            subject=untrusted(self.subject, UntrustedOrigin.MAIL_SUBJECT),
-            body=untrusted(self.plaintext_body or self.snippet, UntrustedOrigin.MAIL_BODY),
+            subject=untrusted(self.subject, MailOrigin.SUBJECT),
+            body=untrusted(self.plaintext_body or self.snippet, MailOrigin.BODY),
             sender=parse_participant(self.sender),
             to=tuple(parse_participant(item) for item in self.to_recipients),
             cc=tuple(parse_participant(item) for item in self.cc_recipients),
@@ -153,7 +154,7 @@ class GmailMessage(GmailPayload):
         return MailHeader(
             message_id=self.message_id,
             thread_id=self.thread_id or fallback_thread_id,
-            subject=untrusted(self.subject, UntrustedOrigin.MAIL_SUBJECT),
+            subject=untrusted(self.subject, MailOrigin.SUBJECT),
             sender=parse_participant(self.sender),
             recipient_count=len(self.to_recipients) + len(self.cc_recipients),
             sent_at=self.sent_at,
@@ -204,7 +205,7 @@ class GmailLabel(GmailPayload):
         )
         return MailLabel(
             label_id=self.label_id,
-            name=untrusted(self.name, UntrustedOrigin.MAIL_LABEL),
+            name=untrusted(self.name, MailOrigin.LABEL),
             is_system=self.label_type == _SYSTEM_LABEL,
         )
 
@@ -233,7 +234,7 @@ def parse_participant(value: str) -> MailParticipant:
     name, address = _split_address(text)
     return MailParticipant(
         address=EmailAddress(value=address),
-        display_name=untrusted(name, UntrustedOrigin.MAIL_SENDER_NAME) if name else None,
+        display_name=untrusted(name, MailOrigin.SENDER_NAME) if name else None,
     )
 
 

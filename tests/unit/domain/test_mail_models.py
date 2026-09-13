@@ -7,14 +7,15 @@ from datetime import UTC, datetime
 import pytest
 from pydantic import ValidationError
 from tests.conftest import make_message, make_thread
+from ygo74.agent_runtime.domains.security.untrusted import untrusted
 
-from ai_agent_lab.core.security.untrusted import UntrustedOrigin, untrusted
 from ai_agent_lab.mail.domain.models import (
     EmailAddress,
     MailSearchRequest,
     MailSearchResult,
     MailThread,
 )
+from ai_agent_lab.mail.domain.origins import MailOrigin
 
 
 class TestEmailAddress:
@@ -66,13 +67,13 @@ class TestMailThread:
         with pytest.raises(ValidationError):
             MailThread(
                 thread_id="t1",
-                subject=untrusted("s", UntrustedOrigin.MAIL_SUBJECT),
+                subject=untrusted("s", MailOrigin.SUBJECT),
                 messages=(make_message(), foreign),
             )
 
     def test_rejects_an_empty_thread(self):
         with pytest.raises(ValidationError):
-            MailThread(thread_id="t1", subject=untrusted("s", UntrustedOrigin.MAIL_SUBJECT), messages=())
+            MailThread(thread_id="t1", subject=untrusted("s", MailOrigin.SUBJECT), messages=())
 
     def test_participants_are_distinct_and_ordered(self):
         first = make_message(message_id="m1", sender="john@example.com")

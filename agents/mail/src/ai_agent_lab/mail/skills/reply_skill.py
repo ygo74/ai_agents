@@ -4,10 +4,10 @@ from __future__ import annotations
 
 import logging
 
+from ygo74.agent_runtime.domains.security.untrusted import untrusted
 from ygo74.agent_runtime.domains.security.user_context import UserContext
 
 from ai_agent_lab.core.reasoning.ports import ReasoningRequest, TextReasoner
-from ai_agent_lab.core.security.untrusted import UntrustedOrigin, untrusted
 from ai_agent_lab.mail.domain.errors import NoReplyRecipientError
 from ai_agent_lab.mail.domain.models import (
     EmailAddress,
@@ -15,6 +15,7 @@ from ai_agent_lab.mail.domain.models import (
     MailMessage,
     MailParticipant,
 )
+from ai_agent_lab.mail.domain.origins import MailOrigin
 from ai_agent_lab.mail.domain.permissions import MailPermission
 from ai_agent_lab.mail.domain.ports import MailboxOwnerDirectory
 from ai_agent_lab.mail.skills.analysis import MailReplyOutput
@@ -213,8 +214,8 @@ class MailReplySkill:
         return MailDraft(
             to=to,
             cc=cc,
-            subject=untrusted(self._subject_for(output, replied_to), UntrustedOrigin.MAIL_SUBJECT),
-            body=untrusted(output.body.strip(), UntrustedOrigin.MAIL_BODY),
+            subject=untrusted(self._subject_for(output, replied_to), MailOrigin.SUBJECT),
+            body=untrusted(output.body.strip(), MailOrigin.BODY),
             in_reply_to_message_id=replied_to.message_id,
             thread_id=replied_to.thread_id,
         )

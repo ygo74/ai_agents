@@ -12,10 +12,10 @@ from datetime import UTC, datetime, timedelta
 import pytest
 from pydantic import BaseModel
 from tests.unit.wiki.conftest import make_page, make_wiki
+from ygo74.agent_runtime.domains.security.prompt_envelope import PromptEnvelopeBuilder
 from ygo74.agent_runtime.domains.security.security_errors import PermissionDeniedError
 from ygo74.agent_runtime.domains.security.user_context import UserContext
 
-from ai_agent_lab.core.reasoning.envelope import PromptEnvelopeBuilder
 from ai_agent_lab.core.reasoning.ports import ReasoningOutputT, ReasoningRequest
 from ai_agent_lab.wiki.domain.enums import WikiFreshness
 from ai_agent_lab.wiki.domain.errors import EmptySearchRequestError, UngroundedAnswerError

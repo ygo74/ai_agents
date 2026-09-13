@@ -185,6 +185,9 @@ copy per agent being one copy away from a weaker security path.
 | Token ports (`AccessToken`, `TokenVerifier`, `DelegatedTokenSource`) | `ygo74.agent_runtime.domains.auth.tokens` |
 | Manifest-derived discovery descriptor | `ygo74.agent_runtime.domains.discovery.manifest_descriptor` |
 | Confirmation policy, tickets, approval parser, gated runner | `ygo74.agent_runtime.domains.humanapproval` |
+| Untrusted content, prompt fence, reasoning request | `ygo74.agent_runtime.domains.security` |
+| Conversation state cache | `ygo74.agent_runtime.domains.sessions` |
+| OIDC discovery and generic HTTP settings | `ygo74.agent_runtime.domains.auth`, `.configuration` |
 | Transport payload reading and reply rendering | `ygo74.agent_runtime.domains.endpoints` |
 
 The library is therefore a **foundation** dependency of `ai_agent_lab.core`, not
@@ -216,13 +219,29 @@ guard. Set `MAIL_AGENT_HTTP_API_KEY`, or re-enable `jwt_validation` in
 `build_app`.
 
 What is left of `ai_agent_lab.core` after all of this is small and deliberate:
-`security/` holds the join between an identity and the permissions a deployment
-grants it, plus the untrusted-content primitives; `serving/` holds the
-conversation state cache; `config/` and `reasoning/` are untouched. The two
-`skills/gating.py` modules are now one line each - a type alias binding this
+`errors.py`, the configuration loaders, the `TextReasoner` port and its errors,
+and the join between an identity and the permissions a deployment grants it. The
+two `skills/gating.py` modules are one line each - a type alias binding this
 agent's tool enumeration to the library's generic runner - because the permission
 check, the confirmation policy and the audit record are the same three steps for
 every agent and are written once.
+
+Two changes worth knowing about when reading the agents:
+
+- **Untrusted origins are declared per domain.** `MailOrigin.BODY` and
+  `WikiOrigin.PAGE_TITLE` live in each agent's `domain/origins.py`, exactly as
+  permissions do. The library used to carry a closed enumeration listing both
+  agents' values, which meant a third agent could not be added without changing
+  it.
+- **A conversation is leased, not looked up.** `respond` holds
+  `async with conversations.lease(...)`, so eviction and expiry cannot close the
+  MCP session a turn is still using. The previous `acquire` is gone rather than
+  deprecated, so a missed call site is an import error.
+
+The MCP plumbing - transport lifecycle, binding schema, dialect registry and the
+generic OAuth pieces - is available in `ygo74.agent_runtime.domains.mcp` but the
+two agents still carry their own copies. Rebinding them is the last step of the
+extraction and has not been taken yet.
 
 What stays here, and why, is recorded in
 [runtime-extraction-candidates.md](./runtime-extraction-candidates.md).

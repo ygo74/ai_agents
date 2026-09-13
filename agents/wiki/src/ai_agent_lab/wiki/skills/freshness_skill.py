@@ -16,9 +16,9 @@ import logging
 from collections.abc import Callable, Sequence
 from datetime import UTC, datetime
 
+from ygo74.agent_runtime.domains.security.untrusted import UntrustedText
 from ygo74.agent_runtime.domains.security.user_context import UserContext
 
-from ai_agent_lab.core.security.untrusted import UntrustedText
 from ai_agent_lab.wiki.domain.enums import WikiFreshness
 from ai_agent_lab.wiki.domain.models import (
     WikiFreshnessReport,

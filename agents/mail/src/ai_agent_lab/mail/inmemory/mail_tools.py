@@ -17,9 +17,9 @@ import uuid
 from collections.abc import Iterable, Mapping
 from datetime import UTC, datetime
 
+from ygo74.agent_runtime.domains.security.untrusted import untrusted
 from ygo74.agent_runtime.domains.security.user_context import UserContext
 
-from ai_agent_lab.core.security.untrusted import UntrustedOrigin, untrusted
 from ai_agent_lab.mail.domain.enums import MailSortOrder
 from ai_agent_lab.mail.domain.models import (
     MailDraft,
@@ -32,6 +32,7 @@ from ai_agent_lab.mail.domain.models import (
     MailSendResult,
     MailThread,
 )
+from ai_agent_lab.mail.domain.origins import MailOrigin
 from ai_agent_lab.mail.mail_errors import MailAccessDeniedError, MailNotFoundError
 
 _logger = logging.getLogger(__name__)
@@ -373,7 +374,7 @@ class InMemoryMailTools:
         label = mailbox.add_label(
             MailLabel(
                 label_id=mailbox.mint_label_id(name),
-                name=untrusted(name, UntrustedOrigin.MAIL_LABEL),
+                name=untrusted(name, MailOrigin.LABEL),
                 is_system=False,
             )
         )

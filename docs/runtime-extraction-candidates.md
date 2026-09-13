@@ -1,16 +1,18 @@
 # What could move to `ygo74-agent-runtime`
 
-> **Status, 2026-09-13.** Batches 1 to 8 of the sequencing table below have been
-> delivered: the security spine, the identity projection, the conversation port
-> and payloads, the capability registry, the token ports, the descriptor factory,
-> the human-approval domain and the gated operation runner now live in
-> `ygo74-agent-runtime` and have been deleted from this repository. See
-> [architecture.md](./architecture.md#10-what-this-repository-no-longer-owns) for
-> what that changed here, and `docs/parity-status.md` in the runtime for the
-> .NET and Java debt it created. The rest of this document is unchanged and
-> describes the remaining work.
+> **Status, 2026-09-13.** Batches 1 to 11 are delivered, and batch 12 is delivered
+> in the library but not yet adopted by the agents: `ygo74.agent_runtime.domains.mcp`
+> ships and is tested, while the Mail and Wiki agents still carry their own copies
+> of the transport lifecycle, the binding schema and the dialect registry.
+> Rebinding them is the one step left, and it was stopped rather than rushed: it
+> touches around forty call sites and the live Gmail and Atlassian paths, whose
+> tests run on doubles.
 >
-> Four corrections were forced by the delivery and are folded in below: the
+> See [architecture.md](./architecture.md#10-what-this-repository-no-longer-owns)
+> for what the move changed here, and `docs/parity-status.md` in the runtime for
+> the .NET and Java debt it created.
+>
+> Four corrections were forced along the way and are folded in below: the
 > capability registry could not move without the security spine, `py.typed`
 > turned out to be load-bearing, the moved error base broke every boundary that
 > rendered a refusal, and the library's package root pulled a web framework into
@@ -475,10 +477,10 @@ listed here imports nothing that a later batch owns.
 | 6 | Descriptor factory, after deriving security schemes and tool invocation from configuration | portable | 2, 3 | **done** as `domains.discovery.manifest_descriptor`, defect fixed |
 | 7 | Human-approval domain, including the broker, the two ports and the storage contract | portable | 3, 4 | **done** as `domains.humanapproval`; the two ports proved unnecessary once the capability registry moved in batch 3 |
 | 8 | Gated operation runner | portable | 4, 7 | **done** as `domains.humanapproval.gated_operations`, generic over the tool enumeration |
-| 9 | Untrusted content, fencing and `ReasoningRequest`, after opening `UntrustedOrigin` | portable | 4 | pending |
-| 10 | `ConversationRuntimeCache`, after the lease and lock-scope repair | Python-first | 1, 2 | pending |
-| 11 | Generic HTTP settings, with issuer discovery instead of the Keycloak path | portable | 0 | pending |
-| 12 | MCP transport lifecycle, binding schema and registry mechanics | Python-first | 0 | pending |
+| 9 | Untrusted content, fencing and `ReasoningRequest`, after opening `UntrustedOrigin` | portable | 4 | **done**; the origin became a value object on the `Permission` pattern, and each agent declares its own in `domain/origins.py` |
+| 10 | `ConversationRuntimeCache`, after the lease and lock-scope repair | Python-first | 1, 2 | **done**; `acquire` became a lease, and closers moved off the global lock |
+| 11 | Generic HTTP settings, with issuer discovery instead of the Keycloak path | portable | 0 | **done**; plain `pydantic` with `from_env(prefix)`, so no settings library is imposed |
+| 12 | MCP transport lifecycle, binding schema and registry mechanics | Python-first | 0 | **in the library, not yet adopted**; `domains.mcp` ships and is tested, the two agents still carry their own copies |
 
 ### What the delivered batches actually cost
 

@@ -6,7 +6,7 @@ Confluence, of storage format, of CQL, of REST or of any agent framework.
 
 Text produced by third parties - page titles, bodies, excerpts, space names,
 comments, author display names, labels, version messages - is wrapped in
-:class:`~ai_agent_lab.core.security.untrusted.UntrustedText` so that it can never
+:class:`~ygo74.agent_runtime.domains.security.untrusted.UntrustedText` so that it can never
 be silently treated as an instruction. On a wiki this matters more than it does
 on a mailbox: a page is durable, edited by many people, often reachable by
 externals, and a payload planted in it is read by every future question.
@@ -17,8 +17,8 @@ from __future__ import annotations
 from datetime import UTC, datetime
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from ygo74.agent_runtime.domains.security.untrusted import UntrustedText
 
-from ai_agent_lab.core.security.untrusted import UntrustedText
 from ai_agent_lab.wiki.domain.enums import (
     WikiContentFormat,
     WikiFreshness,

@@ -31,8 +31,8 @@ from ygo74.agent_runtime.domains.humanapproval.tickets import (
     PendingConfirmationStore,
     UnknownTicketError,
 )
+from ygo74.agent_runtime.domains.sessions.conversation_cache import ConversationRuntimeCache
 
-from ai_agent_lab.core.serving.runtimes import ConversationRuntimeCache
 from ai_agent_lab.langgraph.approval import LangGraphApprovalTranslator
 from ai_agent_lab.wiki.application.approval.tickets import WikiTicketApprovalResolver
 from ai_agent_lab.wiki.application.composition import WikiAgentCompositionRoot, WikiAgentRuntime
@@ -148,14 +148,16 @@ class WikiConversationEngine:
 
     async def respond(self, turn: ConversationTurn) -> AgentReply:
         """Return the agent's answer, honouring a confirmation if that is what it is."""
-        conversation = await self._conversations.acquire(turn.principal, turn.conversation_id)
+        # A lease rather than a lookup: while this block runs the conversation
+        # cannot be evicted or expired, so nothing closes the MCP session the
+        # turn is still using.
+        async with self._conversations.lease(turn.principal, turn.conversation_id) as conversation:
+            command = self._parser.parse(turn.message)
+            if command is not None:
+                return await self._honour(conversation, command)
 
-        command = self._parser.parse(turn.message)
-        if command is not None:
-            return await self._honour(conversation, command)
-
-        text = await conversation.session.ask(turn.message)
-        return self._reply(conversation, text)
+            text = await conversation.session.ask(turn.message)
+            return self._reply(conversation, text)
 
     async def _honour(self, conversation: WikiConversation, command: ConfirmationCommand) -> AgentReply:
         """Run what a claimed ticket describes, or report that there is none."""

@@ -87,13 +87,12 @@
         "ai_agent_lab.mail.application.entrypoints.service:build_app",
         "--factory",
         "--port",
-        "8123",
+        "8002",
         "--reload"
       ],
       "env": {
         "MAIL_AGENT_MODE": "mcp",
         "MAIL_MCP_SERVER": "gmail-api",
-        "MAIL_AGENT_HTTP_API_KEY": "demo-key",
         "MAIL_AGENT_LOG_LEVEL": "DEBUG",
         "PYTHONUTF8": "1"
       }

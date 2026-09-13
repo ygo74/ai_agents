@@ -567,7 +567,8 @@ class TestReasonerWiring:
     """The reasoning port, through the real LangChain path."""
 
     async def test_the_reasoner_asks_for_structured_output(self):
-        from ai_agent_lab.core.reasoning.envelope import PromptEnvelopeBuilder
+        from ygo74.agent_runtime.domains.security.prompt_envelope import PromptEnvelopeBuilder
+
         from ai_agent_lab.core.reasoning.ports import ReasoningRequest
         from ai_agent_lab.langgraph.reasoner import LangGraphTextReasoner
 
@@ -585,7 +586,8 @@ class TestReasonerWiring:
         assert answer.answer == "from the model"
 
     async def test_a_wrongly_shaped_answer_is_refused(self):
-        from ai_agent_lab.core.reasoning.envelope import PromptEnvelopeBuilder
+        from ygo74.agent_runtime.domains.security.prompt_envelope import PromptEnvelopeBuilder
+
         from ai_agent_lab.core.reasoning.errors import ReasoningOutputError
         from ai_agent_lab.core.reasoning.ports import ReasoningRequest
         from ai_agent_lab.langgraph.reasoner import LangGraphTextReasoner

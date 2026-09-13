@@ -6,8 +6,8 @@ from datetime import UTC, datetime
 
 import pytest
 from tests.unit.wiki.conftest import make_page
+from ygo74.agent_runtime.domains.security.untrusted import untrusted
 
-from ai_agent_lab.core.security.untrusted import UntrustedOrigin, untrusted
 from ai_agent_lab.wiki.domain.enums import WikiPageStatus
 from ai_agent_lab.wiki.domain.models import (
     WikiPageHistory,
@@ -15,6 +15,7 @@ from ai_agent_lab.wiki.domain.models import (
     WikiSearchRequest,
     WikiSearchResult,
 )
+from ai_agent_lab.wiki.domain.origins import WikiOrigin
 
 
 class TestWikiPage:
@@ -130,6 +131,6 @@ class TestUntrustedWiki:
 
     @pytest.mark.security
     def test_the_payload_is_only_reachable_through_expose(self):
-        text = untrusted("planted instruction", UntrustedOrigin.WIKI_PAGE_BODY)
+        text = untrusted("planted instruction", WikiOrigin.PAGE_BODY)
 
         assert text.expose() == "planted instruction"

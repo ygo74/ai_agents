@@ -17,8 +17,8 @@ from collections.abc import Callable, Sequence
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict
+from ygo74.agent_runtime.domains.security.fencing import UntrustedFence, untrusted_contract
 
-from ai_agent_lab.core.security.fencing import UntrustedFence, untrusted_contract
 from ai_agent_lab.wiki.domain.models import (
     WikiAnswer,
     WikiComment,

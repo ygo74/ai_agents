@@ -42,9 +42,9 @@ from datetime import UTC, datetime
 from typing import Any
 
 from mcp.types import CallToolResult, TextContent
+from ygo74.agent_runtime.domains.security.untrusted import untrusted
 from ygo74.agent_runtime.domains.security.user_context import UserContext
 
-from ai_agent_lab.core.security.untrusted import UntrustedOrigin, untrusted
 from ai_agent_lab.wiki.catalog import WikiToolName
 from ai_agent_lab.wiki.domain.enums import WikiContentFormat, WikiPageStatus, WikiSortOrder
 from ai_agent_lab.wiki.domain.models import (
@@ -59,6 +59,7 @@ from ai_agent_lab.wiki.domain.models import (
     WikiSearchResult,
     WikiSpace,
 )
+from ai_agent_lab.wiki.domain.origins import WikiOrigin
 from ai_agent_lab.wiki.mcp.binding import McpServerBinding
 from ai_agent_lab.wiki.mcp.connection import McpConnection
 from ai_agent_lab.wiki.wiki_errors import (
@@ -348,8 +349,8 @@ class AtlassianWikiTools:
             WikiPage,
             page_id=self._identifier(entry, "id"),
             space_key=self._space_key(entry),
-            title=untrusted(str(entry.get("title", "")), UntrustedOrigin.WIKI_PAGE_TITLE),
-            body=untrusted(body, UntrustedOrigin.WIKI_PAGE_BODY),
+            title=untrusted(str(entry.get("title", "")), WikiOrigin.PAGE_TITLE),
+            body=untrusted(body, WikiOrigin.PAGE_BODY),
             body_format=body_format,
             # This server does not serialise the publication status, so a page
             # is reported as current. Saying "archived" would be a guess, and
@@ -379,8 +380,8 @@ class AtlassianWikiTools:
             WikiPageReference,
             page_id=self._identifier(entry, "id"),
             space_key=self._space_key(entry),
-            title=untrusted(str(entry.get("title", "")), UntrustedOrigin.WIKI_PAGE_TITLE),
-            excerpt=(None if not excerpt else untrusted(excerpt, UntrustedOrigin.WIKI_PAGE_EXCERPT)),
+            title=untrusted(str(entry.get("title", "")), WikiOrigin.PAGE_TITLE),
+            excerpt=(None if not excerpt else untrusted(excerpt, WikiOrigin.PAGE_EXCERPT)),
             status=WikiPageStatus.CURRENT,
             last_modified_at=self._moment(entry.get("updated")) or created,
             version=self._version_of(entry),
@@ -395,7 +396,7 @@ class AtlassianWikiTools:
             WikiComment,
             comment_id=self._identifier(entry, "id"),
             page_id=page_id,
-            body=untrusted(str(entry.get("body", "")), UntrustedOrigin.WIKI_COMMENT_BODY),
+            body=untrusted(str(entry.get("body", "")), WikiOrigin.COMMENT_BODY),
             # Comment bodies come back as rendered view content rather than
             # Markdown, and the server offers no conversion for them.
             body_format=WikiContentFormat.PLAIN_TEXT,
@@ -415,7 +416,7 @@ class AtlassianWikiTools:
         if not key:
             return None
         name = str(space.get("name") or entry.get("title") or key)
-        return WikiSpace(key=key, name=untrusted(name, UntrustedOrigin.WIKI_SPACE_NAME))
+        return WikiSpace(key=key, name=untrusted(name, WikiOrigin.SPACE_NAME))
 
     @staticmethod
     def _author(value: object) -> WikiAuthor | None:
@@ -428,7 +429,7 @@ class AtlassianWikiTools:
             return None
         return WikiAuthor(
             account_id=value.strip(),
-            display_name=untrusted(value, UntrustedOrigin.WIKI_AUTHOR_NAME),
+            display_name=untrusted(value, WikiOrigin.AUTHOR_NAME),
         )
 
     @staticmethod

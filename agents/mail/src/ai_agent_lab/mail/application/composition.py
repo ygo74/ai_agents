@@ -33,11 +33,11 @@ from ygo74.agent_runtime.domains.humanapproval.ledger import InMemoryConfirmatio
 from ygo74.agent_runtime.domains.humanapproval.unattended import UnattendedApprovalAuthority
 from ygo74.agent_runtime.domains.security.audit import InMemoryAuditTrail, LoggingAuditTrail
 from ygo74.agent_runtime.domains.security.permissions import PermissionRegistry
+from ygo74.agent_runtime.domains.security.prompt_envelope import PromptEnvelopeBuilder
 from ygo74.agent_runtime.domains.security.user_context import UserContext
 
 from ai_agent_lab.core.config.directory import ConfigurationDirectory
 from ai_agent_lab.core.config.manifests import AgentManifestLoader, SkillManifestLoader
-from ai_agent_lab.core.reasoning.envelope import PromptEnvelopeBuilder
 from ai_agent_lab.core.reasoning.ports import TextReasoner
 from ai_agent_lab.core.security.user_contexts import UserContextFactory
 from ai_agent_lab.maf.reasoner import MafTextReasoner

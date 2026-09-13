@@ -19,8 +19,8 @@ import pytest
 from tests.support.maf_fakes import ScriptedChatClient, ToolCall, calls, says
 from ygo74.agent_runtime.domains.auth.agent_principal import AgentPrincipal
 from ygo74.agent_runtime.domains.contracts.conversation import ConversationTurn
+from ygo74.agent_runtime.domains.sessions.conversation_cache import ConversationRuntimeCache
 
-from ai_agent_lab.core.serving.runtimes import ConversationRuntimeCache
 from ai_agent_lab.mail.application.composition import MailAgentCompositionRoot
 from ai_agent_lab.mail.application.entrypoints.conversation import (
     MailConversation,
@@ -77,9 +77,9 @@ def labelling_script():
 
 async def labels_of(cache, message_id: str, principal: AgentPrincipal = ADA) -> tuple[str, ...]:
     """Read the mailbox back through the same conversation."""
-    conversation = await cache.acquire(principal, "conv-1")
-    message = await conversation.runtime.mail_tools.get_message(message_id, conversation.runtime.user)
-    return message.label_ids
+    async with cache.lease(principal, "conv-1") as conversation:
+        message = await conversation.runtime.mail_tools.get_message(message_id, conversation.runtime.user)
+        return message.label_ids
 
 
 class TestAnOrdinaryTurn:

@@ -6,10 +6,11 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
+from ygo74.agent_runtime.domains.security.untrusted import untrusted
 from ygo74.agent_runtime.domains.security.user_context import UserContext
 
-from ai_agent_lab.core.security.untrusted import UntrustedOrigin, untrusted
 from ai_agent_lab.wiki.domain.models import WikiPage, WikiSpace
+from ai_agent_lab.wiki.domain.origins import WikiOrigin
 from ai_agent_lab.wiki.domain.permissions import WikiPermission
 from ai_agent_lab.wiki.inmemory.dataset import WikiDatasetLoader
 from ai_agent_lab.wiki.inmemory.wiki import PageEntry, SpaceEntry, Wiki
@@ -41,10 +42,10 @@ def make_page(
     return WikiPage(
         page_id=page_id,
         space_key=space_key,
-        title=untrusted(title, UntrustedOrigin.WIKI_PAGE_TITLE),
-        body=untrusted(body, UntrustedOrigin.WIKI_PAGE_BODY),
+        title=untrusted(title, WikiOrigin.PAGE_TITLE),
+        body=untrusted(body, WikiOrigin.PAGE_BODY),
         parent_id=parent_id,
-        labels=tuple(untrusted(label, UntrustedOrigin.WIKI_LABEL) for label in labels),
+        labels=tuple(untrusted(label, WikiOrigin.LABEL) for label in labels),
         created_at=created,
         last_modified_at=last_modified_at or created,
         version=version,
@@ -53,7 +54,7 @@ def make_page(
 
 def make_space(key: str = "APOLLO", name: str = "Project Apollo") -> WikiSpace:
     """Build a space."""
-    return WikiSpace(key=key, name=untrusted(name, UntrustedOrigin.WIKI_SPACE_NAME))
+    return WikiSpace(key=key, name=untrusted(name, WikiOrigin.SPACE_NAME))
 
 
 def make_wiki(*entries: PageEntry, spaces: tuple[SpaceEntry, ...] = ()) -> Wiki:

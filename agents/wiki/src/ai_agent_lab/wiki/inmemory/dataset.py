@@ -18,7 +18,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from ai_agent_lab.core.security.untrusted import UntrustedOrigin, untrusted
+from ygo74.agent_runtime.domains.security.untrusted import untrusted
+
 from ai_agent_lab.wiki.domain.enums import WikiContentFormat, WikiPageStatus
 from ai_agent_lab.wiki.domain.models import (
     WikiAuthor,
@@ -28,6 +29,7 @@ from ai_agent_lab.wiki.domain.models import (
     WikiPageVersion,
     WikiSpace,
 )
+from ai_agent_lab.wiki.domain.origins import WikiOrigin
 from ai_agent_lab.wiki.inmemory.wiki import PageEntry, SpaceEntry, Wiki
 from ai_agent_lab.wiki.wiki_errors import WikiToolProtocolError
 
@@ -61,7 +63,7 @@ class WikiDatasetLoader:
         """Build one space from its JSON description."""
         space = WikiSpace(
             key=self._require_str(entry, "key"),
-            name=untrusted(self._require_str(entry, "name"), UntrustedOrigin.WIKI_SPACE_NAME),
+            name=untrusted(self._require_str(entry, "name"), WikiOrigin.SPACE_NAME),
             is_personal=bool(entry.get("is_personal", False)),
             homepage_id=self._optional_str(entry, "homepage_id"),
         )
@@ -84,12 +86,12 @@ class WikiDatasetLoader:
         return WikiPage(
             page_id=self._require_str(entry, "page_id"),
             space_key=self._require_str(entry, "space_key"),
-            title=untrusted(self._require_str(entry, "title"), UntrustedOrigin.WIKI_PAGE_TITLE),
-            body=untrusted(self._require_str(entry, "body"), UntrustedOrigin.WIKI_PAGE_BODY),
+            title=untrusted(self._require_str(entry, "title"), WikiOrigin.PAGE_TITLE),
+            body=untrusted(self._require_str(entry, "body"), WikiOrigin.PAGE_BODY),
             body_format=WikiContentFormat(str(entry.get("body_format", WikiContentFormat.MARKDOWN.value))),
             status=WikiPageStatus(str(entry.get("status", WikiPageStatus.CURRENT.value))),
             parent_id=self._optional_str(entry, "parent_id"),
-            labels=tuple(untrusted(label, UntrustedOrigin.WIKI_LABEL) for label in self._strings(entry, "labels")),
+            labels=tuple(untrusted(label, WikiOrigin.LABEL) for label in self._strings(entry, "labels")),
             created_at=created_at,
             created_by=self._build_author(entry.get("created_by")),
             last_modified_at=self._parse_datetime(str(entry.get("last_modified_at", entry["created_at"]))),
@@ -103,7 +105,7 @@ class WikiDatasetLoader:
         return WikiComment(
             comment_id=self._require_str(entry, "comment_id"),
             page_id=page_id,
-            body=untrusted(self._require_str(entry, "body"), UntrustedOrigin.WIKI_COMMENT_BODY),
+            body=untrusted(self._require_str(entry, "body"), WikiOrigin.COMMENT_BODY),
             body_format=WikiContentFormat(str(entry.get("body_format", WikiContentFormat.MARKDOWN.value))),
             author=self._build_author(entry.get("author")),
             created_at=self._parse_datetime(self._require_str(entry, "created_at")),
@@ -143,7 +145,7 @@ class WikiDatasetLoader:
             version=int(entry.get("version", 1)),
             modified_at=self._parse_datetime(self._require_str(entry, "modified_at")),
             modified_by=self._build_author(entry.get("modified_by")),
-            message=None if message is None else untrusted(message, UntrustedOrigin.WIKI_VERSION_MESSAGE),
+            message=None if message is None else untrusted(message, WikiOrigin.VERSION_MESSAGE),
             is_minor_edit=bool(entry.get("is_minor_edit", False)),
         )
 
@@ -156,7 +158,7 @@ class WikiDatasetLoader:
         display_name = self._optional_str(entry, "display_name")
         return WikiAuthor(
             account_id=self._require_str(entry, "account_id"),
-            display_name=(None if display_name is None else untrusted(display_name, UntrustedOrigin.WIKI_AUTHOR_NAME)),
+            display_name=(None if display_name is None else untrusted(display_name, WikiOrigin.AUTHOR_NAME)),
         )
 
     @staticmethod

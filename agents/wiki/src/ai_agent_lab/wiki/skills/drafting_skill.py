@@ -12,11 +12,12 @@ cannot rewrite it between the moment it is shown and the moment it is written.
 
 from __future__ import annotations
 
+from ygo74.agent_runtime.domains.security.untrusted import UntrustedText, untrusted
 from ygo74.agent_runtime.domains.security.user_context import UserContext
 
 from ai_agent_lab.core.reasoning.ports import ReasoningRequest, TextReasoner
-from ai_agent_lab.core.security.untrusted import UntrustedOrigin, UntrustedText, untrusted
 from ai_agent_lab.wiki.domain.models import WikiPage, WikiPageDraft
+from ai_agent_lab.wiki.domain.origins import WikiOrigin
 from ai_agent_lab.wiki.domain.permissions import WikiPermission
 from ai_agent_lab.wiki.skills.analysis import PageDraftOutput
 from ai_agent_lab.wiki.skills.context import WikiContextBuilder
@@ -80,8 +81,8 @@ class PageDraftingSkill:
         composed = await self._compose(_COMPOSE_TASK, request, tuple(pages))
         return WikiPageDraft(
             space_key=space_key,
-            title=untrusted(composed.title.strip() or title, UntrustedOrigin.WIKI_PAGE_TITLE),
-            body=untrusted(composed.body, UntrustedOrigin.WIKI_PAGE_BODY),
+            title=untrusted(composed.title.strip() or title, WikiOrigin.PAGE_TITLE),
+            body=untrusted(composed.body, WikiOrigin.PAGE_BODY),
             parent_id=parent_id,
         )
 
@@ -105,7 +106,7 @@ class PageDraftingSkill:
         return WikiPageDraft(
             space_key=page.space_key,
             title=self._revised_title(composed, page),
-            body=untrusted(composed.body, UntrustedOrigin.WIKI_PAGE_BODY),
+            body=untrusted(composed.body, WikiOrigin.PAGE_BODY),
             page_id=page.page_id,
             expected_version=page.version,
             parent_id=page.parent_id,
@@ -136,4 +137,4 @@ class PageDraftingSkill:
         proposed = composed.title.strip()
         if not proposed or proposed == page.title.expose():
             return page.title
-        return untrusted(proposed, UntrustedOrigin.WIKI_PAGE_TITLE)
+        return untrusted(proposed, WikiOrigin.PAGE_TITLE)

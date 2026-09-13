@@ -12,9 +12,9 @@ from datetime import UTC, datetime
 
 import pytest
 from tests.conftest import make_message
+from ygo74.agent_runtime.domains.security.untrusted import untrusted
 from ygo74.agent_runtime.domains.security.user_context import UserContext
 
-from ai_agent_lab.core.security.untrusted import UntrustedOrigin, untrusted
 from ai_agent_lab.mail.domain.enums import MailSortOrder
 from ai_agent_lab.mail.domain.models import (
     EmailAddress,
@@ -22,6 +22,7 @@ from ai_agent_lab.mail.domain.models import (
     MailSearchRequest,
     MailSendRequest,
 )
+from ai_agent_lab.mail.domain.origins import MailOrigin
 from ai_agent_lab.mail.domain.permissions import MailPermission
 from ai_agent_lab.mail.inmemory.mail_tools import InMemoryMailTools, Mailbox
 from ai_agent_lab.mail.mail_errors import MailAccessDeniedError, MailNotFoundError
@@ -35,8 +36,8 @@ def draft(to: str = "john@example.com") -> MailDraft:
     """Build a minimal draft."""
     return MailDraft(
         to=(EmailAddress(value=to),),
-        subject=untrusted("Re: Project Alpha", UntrustedOrigin.MAIL_SUBJECT),
-        body=untrusted("Agreed, I will review it tomorrow.", UntrustedOrigin.MAIL_BODY),
+        subject=untrusted("Re: Project Alpha", MailOrigin.SUBJECT),
+        body=untrusted("Agreed, I will review it tomorrow.", MailOrigin.BODY),
     )
 
 
@@ -332,7 +333,7 @@ class TestInMemoryMailToolsContract(MailToolsContractTests):
             ),
         )
         labels = (
-            MailLabel(label_id="INBOX", name=untrusted("Inbox", UntrustedOrigin.MAIL_LABEL), is_system=True),
-            MailLabel(label_id="PROJECT", name=untrusted("Project", UntrustedOrigin.MAIL_LABEL)),
+            MailLabel(label_id="INBOX", name=untrusted("Inbox", MailOrigin.LABEL), is_system=True),
+            MailLabel(label_id="PROJECT", name=untrusted("Project", MailOrigin.LABEL)),
         )
         return InMemoryMailTools({"owner": Mailbox("owner", messages, labels)})

@@ -14,9 +14,9 @@ from __future__ import annotations
 import uuid
 from datetime import UTC, datetime
 
+from ygo74.agent_runtime.domains.security.untrusted import untrusted
 from ygo74.agent_runtime.domains.security.user_context import UserContext
 
-from ai_agent_lab.core.security.untrusted import UntrustedOrigin, untrusted
 from ai_agent_lab.wiki.domain.enums import WikiContentFormat, WikiSortOrder
 from ai_agent_lab.wiki.domain.models import (
     WikiComment,
@@ -29,6 +29,7 @@ from ai_agent_lab.wiki.domain.models import (
     WikiSearchResult,
     WikiSpace,
 )
+from ai_agent_lab.wiki.domain.origins import WikiOrigin
 from ai_agent_lab.wiki.inmemory.wiki import PageEntry, Wiki
 from ai_agent_lab.wiki.wiki_errors import WikiConcurrentEditError, WikiNotFoundError
 
@@ -98,8 +99,8 @@ class InMemoryWikiTools:
         page = WikiPage(
             page_id=f"page-{uuid.uuid4().hex[:8]}",
             space_key=space_key,
-            title=untrusted(title, UntrustedOrigin.WIKI_PAGE_TITLE),
-            body=untrusted(body, UntrustedOrigin.WIKI_PAGE_BODY),
+            title=untrusted(title, WikiOrigin.PAGE_TITLE),
+            body=untrusted(body, WikiOrigin.PAGE_BODY),
             body_format=WikiContentFormat.MARKDOWN,
             parent_id=parent_id,
             created_at=now,
@@ -125,8 +126,8 @@ class InMemoryWikiTools:
         now = datetime.now(UTC)
         updated = entry.page.model_copy(
             update={
-                "body": untrusted(body, UntrustedOrigin.WIKI_PAGE_BODY),
-                "title": (entry.page.title if title is None else untrusted(title, UntrustedOrigin.WIKI_PAGE_TITLE)),
+                "body": untrusted(body, WikiOrigin.PAGE_BODY),
+                "title": (entry.page.title if title is None else untrusted(title, WikiOrigin.PAGE_TITLE)),
                 "last_modified_at": now,
                 "version": entry.page.version + 1,
             }
@@ -161,7 +162,7 @@ class InMemoryWikiTools:
         comment = WikiComment(
             comment_id=f"comment-{uuid.uuid4().hex[:8]}",
             page_id=page_id,
-            body=untrusted(body, UntrustedOrigin.WIKI_COMMENT_BODY),
+            body=untrusted(body, WikiOrigin.COMMENT_BODY),
             created_at=datetime.now(UTC),
             parent_comment_id=parent_comment_id,
         )
@@ -234,7 +235,7 @@ class InMemoryWikiTools:
             update={
                 "excerpt": untrusted(
                     page.body.expose()[:EXCERPT_LENGTH],
-                    UntrustedOrigin.WIKI_PAGE_EXCERPT,
+                    WikiOrigin.PAGE_EXCERPT,
                 )
             }
         )

@@ -30,10 +30,10 @@ from ygo74.agent_runtime import (
 )
 from ygo74.agent_runtime.domains.auth.jwt_authenticator import JwksKeyResolver, JwtValidationConfig
 from ygo74.agent_runtime.domains.discovery.manifest_descriptor import AdvertisedSecurity
+from ygo74.agent_runtime.domains.sessions.conversation_cache import ConversationRuntimeCache
 
 from ai_agent_lab.core.config.azure_credentials import AzureIdentityCredentialProvider
 from ai_agent_lab.core.config.environment import EnvironmentFile
-from ai_agent_lab.core.serving.runtimes import ConversationRuntimeCache
 from ai_agent_lab.maf.chat_client import MafChatClientFactory
 from ai_agent_lab.mail.application.chat_client import ConfiguredChatClientFactory
 from ai_agent_lab.mail.application.composition import MailAgentCompositionRoot
@@ -74,7 +74,7 @@ def build_app(*, base_path: Path | None = None) -> FastAPI:
     _logger.debug("build_app arguments: base_path=%s", base_path)
     EnvironmentFile().load()
     settings = MailAgentSettings()
-    http = MailAgentHttpSettings()
+    http = MailAgentHttpSettings.load()
     logging.basicConfig(level=settings.log_level.upper())
 
     _refuse_an_open_service(http)

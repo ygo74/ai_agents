@@ -12,7 +12,8 @@ and nothing downstream could tell.
 
 from __future__ import annotations
 
-from ai_agent_lab.core.security.untrusted import UntrustedOrigin, untrusted
+from ygo74.agent_runtime.domains.security.untrusted import untrusted
+
 from ai_agent_lab.wiki.domain.enums import WikiContentFormat, WikiPageStatus
 from ai_agent_lab.wiki.domain.models import (
     WikiAuthor,
@@ -25,6 +26,7 @@ from ai_agent_lab.wiki.domain.models import (
     WikiSearchResult,
     WikiSpace,
 )
+from ai_agent_lab.wiki.domain.origins import WikiOrigin
 from ai_agent_lab.wiki.wiki_errors import WikiToolProtocolError
 from wiki_mcp.protocol import payloads as wire
 
@@ -47,9 +49,9 @@ class WikiWireMapper:
             WikiPageReference,
             page_id=payload.page_id,
             space_key=payload.space_key,
-            title=untrusted(payload.title, UntrustedOrigin.WIKI_PAGE_TITLE),
+            title=untrusted(payload.title, WikiOrigin.PAGE_TITLE),
             excerpt=(
-                None if payload.excerpt is None else untrusted(payload.excerpt, UntrustedOrigin.WIKI_PAGE_EXCERPT)
+                None if payload.excerpt is None else untrusted(payload.excerpt, WikiOrigin.PAGE_EXCERPT)
             ),
             status=WikiPageStatus(payload.status.value),
             last_modified_at=payload.last_modified_at,
@@ -63,12 +65,12 @@ class WikiWireMapper:
             WikiPage,
             page_id=payload.page_id,
             space_key=payload.space_key,
-            title=untrusted(payload.title, UntrustedOrigin.WIKI_PAGE_TITLE),
-            body=untrusted(payload.body, UntrustedOrigin.WIKI_PAGE_BODY),
+            title=untrusted(payload.title, WikiOrigin.PAGE_TITLE),
+            body=untrusted(payload.body, WikiOrigin.PAGE_BODY),
             body_format=WikiContentFormat(payload.body_format.value),
             status=WikiPageStatus(payload.status.value),
             parent_id=payload.parent_id,
-            labels=tuple(untrusted(label, UntrustedOrigin.WIKI_LABEL) for label in payload.labels),
+            labels=tuple(untrusted(label, WikiOrigin.LABEL) for label in payload.labels),
             created_at=payload.created_at,
             created_by=self.author(payload.created_by),
             last_modified_at=payload.last_modified_at,
@@ -94,7 +96,7 @@ class WikiWireMapper:
         return self._built(
             WikiSpace,
             key=payload.key,
-            name=untrusted(payload.name, UntrustedOrigin.WIKI_SPACE_NAME),
+            name=untrusted(payload.name, WikiOrigin.SPACE_NAME),
             is_personal=payload.is_personal,
             homepage_id=payload.homepage_id,
         )
@@ -109,7 +111,7 @@ class WikiWireMapper:
             WikiComment,
             comment_id=payload.comment_id,
             page_id=payload.page_id,
-            body=untrusted(payload.body, UntrustedOrigin.WIKI_COMMENT_BODY),
+            body=untrusted(payload.body, WikiOrigin.COMMENT_BODY),
             body_format=WikiContentFormat(payload.body_format.value),
             author=self.author(payload.author),
             created_at=payload.created_at,
@@ -141,7 +143,7 @@ class WikiWireMapper:
             modified_at=payload.modified_at,
             modified_by=self.author(payload.modified_by),
             message=(
-                None if payload.message is None else untrusted(payload.message, UntrustedOrigin.WIKI_VERSION_MESSAGE)
+                None if payload.message is None else untrusted(payload.message, WikiOrigin.VERSION_MESSAGE)
             ),
             is_minor_edit=payload.is_minor_edit,
         )
@@ -156,7 +158,7 @@ class WikiWireMapper:
             display_name=(
                 None
                 if payload.display_name is None
-                else untrusted(payload.display_name, UntrustedOrigin.WIKI_AUTHOR_NAME)
+                else untrusted(payload.display_name, WikiOrigin.AUTHOR_NAME)
             ),
         )
 

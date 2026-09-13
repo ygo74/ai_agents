@@ -33,8 +33,8 @@ from ygo74.agent_runtime import (
     StaticApiKeyUserResolver,
     add_ai_endpoints,
 )
+from ygo74.agent_runtime.domains.sessions.conversation_cache import ConversationRuntimeCache
 
-from ai_agent_lab.core.serving.runtimes import ConversationRuntimeCache
 from ai_agent_lab.mail.application.composition import MailAgentCompositionRoot
 from ai_agent_lab.mail.application.entrypoints.conversation import (
     MailConversation,

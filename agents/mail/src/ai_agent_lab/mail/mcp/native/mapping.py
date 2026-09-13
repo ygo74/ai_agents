@@ -11,7 +11,8 @@ from __future__ import annotations
 
 import logging
 
-from ai_agent_lab.core.security.untrusted import UntrustedOrigin, untrusted
+from ygo74.agent_runtime.domains.security.untrusted import untrusted
+
 from ai_agent_lab.mail.domain.enums import MailImportance
 from ai_agent_lab.mail.domain.models import (
     EmailAddress,
@@ -26,6 +27,7 @@ from ai_agent_lab.mail.domain.models import (
     MailSendResult,
     MailThread,
 )
+from ai_agent_lab.mail.domain.origins import MailOrigin
 from mail_mcp.protocol import payloads as wire
 
 _logger = logging.getLogger(__name__)
@@ -46,7 +48,7 @@ class MailWireMapper:
             display_name=(
                 None
                 if payload.display_name is None
-                else untrusted(payload.display_name, UntrustedOrigin.MAIL_SENDER_NAME)
+                else untrusted(payload.display_name, MailOrigin.SENDER_NAME)
             ),
         )
 
@@ -61,7 +63,7 @@ class MailWireMapper:
         )
         return MailAttachment(
             attachment_id=payload.attachment_id,
-            file_name=untrusted(payload.file_name, UntrustedOrigin.MAIL_ATTACHMENT_NAME),
+            file_name=untrusted(payload.file_name, MailOrigin.ATTACHMENT_NAME),
             media_type=payload.media_type,
             size_bytes=payload.size_bytes,
         )
@@ -76,7 +78,7 @@ class MailWireMapper:
         )
         return MailLabel(
             label_id=payload.label_id,
-            name=untrusted(payload.name, UntrustedOrigin.MAIL_LABEL),
+            name=untrusted(payload.name, MailOrigin.LABEL),
             is_system=payload.is_system,
         )
 
@@ -108,7 +110,7 @@ class MailWireMapper:
         return MailHeader(
             message_id=payload.message_id,
             thread_id=payload.thread_id,
-            subject=untrusted(payload.subject, UntrustedOrigin.MAIL_SUBJECT),
+            subject=untrusted(payload.subject, MailOrigin.SUBJECT),
             sender=self.participant(payload.sender),
             recipient_count=payload.recipient_count,
             sent_at=payload.sent_at,
@@ -136,8 +138,8 @@ class MailWireMapper:
         return MailMessage(
             message_id=payload.message_id,
             thread_id=payload.thread_id,
-            subject=untrusted(payload.subject, UntrustedOrigin.MAIL_SUBJECT),
-            body=untrusted(payload.body, UntrustedOrigin.MAIL_BODY),
+            subject=untrusted(payload.subject, MailOrigin.SUBJECT),
+            body=untrusted(payload.body, MailOrigin.BODY),
             sender=self.participant(payload.sender),
             to=tuple(self.participant(item) for item in payload.to),
             cc=tuple(self.participant(item) for item in payload.cc),
@@ -161,7 +163,7 @@ class MailWireMapper:
         )
         return MailThread(
             thread_id=payload.thread_id,
-            subject=untrusted(payload.subject, UntrustedOrigin.MAIL_SUBJECT),
+            subject=untrusted(payload.subject, MailOrigin.SUBJECT),
             messages=tuple(self.message(item) for item in payload.messages),
         )
 
@@ -210,8 +212,8 @@ class MailWireMapper:
             draft_id=payload.draft_id,
             to=tuple(EmailAddress(value=item) for item in payload.to),
             cc=tuple(EmailAddress(value=item) for item in payload.cc),
-            subject=untrusted(payload.subject, UntrustedOrigin.MAIL_SUBJECT),
-            body=untrusted(payload.body, UntrustedOrigin.MAIL_BODY),
+            subject=untrusted(payload.subject, MailOrigin.SUBJECT),
+            body=untrusted(payload.body, MailOrigin.BODY),
             in_reply_to_message_id=payload.in_reply_to_message_id,
             thread_id=payload.thread_id,
         )

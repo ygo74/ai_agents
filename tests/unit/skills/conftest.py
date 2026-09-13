@@ -6,10 +6,11 @@ from datetime import UTC, datetime
 
 import pytest
 from tests.conftest import make_message
+from ygo74.agent_runtime.domains.security.prompt_envelope import PromptEnvelopeBuilder
+from ygo74.agent_runtime.domains.security.untrusted import untrusted
 
-from ai_agent_lab.core.reasoning.envelope import PromptEnvelopeBuilder
-from ai_agent_lab.core.security.untrusted import UntrustedOrigin, untrusted
 from ai_agent_lab.mail.domain.models import MailLabel
+from ai_agent_lab.mail.domain.origins import MailOrigin
 from ai_agent_lab.mail.inmemory.mail_tools import InMemoryMailTools, Mailbox
 from ai_agent_lab.mail.skills.analysis import MailAnalysisMapper
 from ai_agent_lab.mail.skills.categories import MailCategoryCatalog
@@ -56,8 +57,8 @@ def messages():
 def mail_tools(messages):
     """Mail MCP tools serving the deterministic mailbox of ``owner``."""
     labels = (
-        MailLabel(label_id="INBOX", name=untrusted("Inbox", UntrustedOrigin.MAIL_LABEL), is_system=True),
-        MailLabel(label_id="PROJECT", name=untrusted("Project", UntrustedOrigin.MAIL_LABEL)),
+        MailLabel(label_id="INBOX", name=untrusted("Inbox", MailOrigin.LABEL), is_system=True),
+        MailLabel(label_id="PROJECT", name=untrusted("Project", MailOrigin.LABEL)),
     )
     return InMemoryMailTools({"owner": Mailbox("owner", messages, labels)})
 

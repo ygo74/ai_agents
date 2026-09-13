@@ -11,9 +11,11 @@ from __future__ import annotations
 import logging
 from collections.abc import Iterable
 
+from ygo74.agent_runtime.domains.security.untrusted import UntrustedText, untrusted
+
 from ai_agent_lab.core.reasoning.ports import UntrustedSection
-from ai_agent_lab.core.security.untrusted import UntrustedOrigin, UntrustedText, untrusted
 from ai_agent_lab.mail.domain.models import MailMessage, MailParticipant
+from ai_agent_lab.mail.domain.origins import MailOrigin
 
 _TRUNCATION_NOTICE = "\n[... truncated ...]"
 _logger = logging.getLogger(__name__)
@@ -94,7 +96,7 @@ class MailContextBuilder:
         lines.append(f"Subject: {message.subject.expose()}")
         lines.append("")
         lines.append(self._truncate(message.body.expose()))
-        return untrusted("\n".join(lines), UntrustedOrigin.MAIL_BODY)
+        return untrusted("\n".join(lines), MailOrigin.BODY)
 
     @staticmethod
     def _describe(participant: MailParticipant) -> str:

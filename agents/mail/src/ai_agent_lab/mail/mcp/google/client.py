@@ -23,9 +23,9 @@ from collections.abc import Iterable, Sequence
 from typing import Any
 
 from mcp.types import CallToolResult, TextContent
+from ygo74.agent_runtime.domains.security.untrusted import untrusted
 from ygo74.agent_runtime.domains.security.user_context import UserContext
 
-from ai_agent_lab.core.security.untrusted import UntrustedOrigin, untrusted
 from ai_agent_lab.mail.domain.enums import MailSortOrder
 from ai_agent_lab.mail.domain.models import (
     MailDraft,
@@ -39,6 +39,7 @@ from ai_agent_lab.mail.domain.models import (
     MailSendResult,
     MailThread,
 )
+from ai_agent_lab.mail.domain.origins import MailOrigin
 from ai_agent_lab.mail.mail_errors import (
     MailAccessDeniedError,
     MailToolProtocolError,
@@ -188,7 +189,7 @@ class GmailMailTools:
         ordered = tuple(sorted(messages, key=lambda message: message.sent_at))
         return MailThread(
             thread_id=payload.thread_id or thread_id,
-            subject=untrusted(payload.messages[0].subject, UntrustedOrigin.MAIL_SUBJECT),
+            subject=untrusted(payload.messages[0].subject, MailOrigin.SUBJECT),
             messages=ordered,
         )
 

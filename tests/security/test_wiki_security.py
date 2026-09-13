@@ -20,9 +20,9 @@ from pathlib import Path
 
 import pytest
 from ygo74.agent_runtime.domains.auth.agent_principal import AgentPrincipal
+from ygo74.agent_runtime.domains.security.prompt_envelope import PromptEnvelopeBuilder
 from ygo74.agent_runtime.domains.security.user_context import UserContext
 
-from ai_agent_lab.core.reasoning.envelope import PromptEnvelopeBuilder
 from ai_agent_lab.wiki.application.composition import thread_id_of
 from ai_agent_lab.wiki.capabilities.results import (
     WIKI_UNTRUSTED_SOURCE,
@@ -354,16 +354,18 @@ class TestDraftSubstitution:
         assert set(PageDraftInput.model_fields) == {"draft_reference"}
 
     def test_a_draft_reference_is_scoped_to_its_author(self):
-        from ai_agent_lab.core.security.untrusted import UntrustedOrigin, untrusted
+        from ygo74.agent_runtime.domains.security.untrusted import untrusted
+
         from ai_agent_lab.wiki.domain.errors import WikiDraftNotFoundError
         from ai_agent_lab.wiki.domain.models import WikiPageDraft
+        from ai_agent_lab.wiki.domain.origins import WikiOrigin
         from ai_agent_lab.wiki.inmemory.draft_store import InMemoryWikiDraftStore
 
         store = InMemoryWikiDraftStore()
         mine = UserContext(user_id="diana", session_id="s", permissions=WikiPermission.declared())
         theirs = UserContext(user_id="alice", session_id="s", permissions=WikiPermission.declared())
         reference = store.put(
-            WikiPageDraft(page_id="p1", body=untrusted("secret", UntrustedOrigin.WIKI_PAGE_BODY)),
+            WikiPageDraft(page_id="p1", body=untrusted("secret", WikiOrigin.PAGE_BODY)),
             mine,
         )
 

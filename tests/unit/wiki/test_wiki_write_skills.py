@@ -32,12 +32,13 @@ from ygo74.agent_runtime.domains.humanapproval.confirmation import (
 )
 from ygo74.agent_runtime.domains.security.audit import AuditOutcome, InMemoryAuditTrail
 from ygo74.agent_runtime.domains.security.security_errors import PermissionDeniedError
+from ygo74.agent_runtime.domains.security.untrusted import untrusted
 from ygo74.agent_runtime.domains.security.user_context import UserContext
 
-from ai_agent_lab.core.security.untrusted import UntrustedOrigin, untrusted
 from ai_agent_lab.wiki.catalog import WikiToolCatalog, WikiToolName
 from ai_agent_lab.wiki.domain.errors import WikiDraftNotFoundError
 from ai_agent_lab.wiki.domain.models import WikiPageDraft
+from ai_agent_lab.wiki.domain.origins import WikiOrigin
 from ai_agent_lab.wiki.domain.permissions import WikiPermission
 from ai_agent_lab.wiki.inmemory.draft_store import InMemoryWikiDraftStore
 from ai_agent_lab.wiki.inmemory.wiki import PageEntry
@@ -108,8 +109,8 @@ def draft_for_new_page(body: str = "A new page.") -> WikiPageDraft:
     """A draft that would create a page."""
     return WikiPageDraft(
         space_key="APOLLO",
-        title=untrusted("Runbook", UntrustedOrigin.WIKI_PAGE_TITLE),
-        body=untrusted(body, UntrustedOrigin.WIKI_PAGE_BODY),
+        title=untrusted("Runbook", WikiOrigin.PAGE_TITLE),
+        body=untrusted(body, WikiOrigin.PAGE_BODY),
     )
 
 
@@ -117,8 +118,8 @@ def draft_for_revision(body: str = "A revised page.", *, version: int | None = 2
     """A draft that would replace the body of ``p1``."""
     return WikiPageDraft(
         space_key="APOLLO",
-        title=untrusted("Charter", UntrustedOrigin.WIKI_PAGE_TITLE),
-        body=untrusted(body, UntrustedOrigin.WIKI_PAGE_BODY),
+        title=untrusted("Charter", WikiOrigin.PAGE_TITLE),
+        body=untrusted(body, WikiOrigin.PAGE_BODY),
         page_id="p1",
         expected_version=version,
     )
@@ -437,19 +438,19 @@ class TestDraftModel:
 
     def test_a_draft_with_no_destination_is_refused(self):
         with pytest.raises(ValueError, match="either the page it replaces or the space"):
-            WikiPageDraft(body=untrusted("x", UntrustedOrigin.WIKI_PAGE_BODY))
+            WikiPageDraft(body=untrusted("x", WikiOrigin.PAGE_BODY))
 
     def test_a_new_page_needs_a_title(self):
         with pytest.raises(ValueError, match="must carry a title"):
             WikiPageDraft(
                 space_key="APOLLO",
-                body=untrusted("x", UntrustedOrigin.WIKI_PAGE_BODY),
+                body=untrusted("x", WikiOrigin.PAGE_BODY),
             )
 
     def test_a_revision_needs_no_title(self):
         draft = WikiPageDraft(
             page_id="p1",
-            body=untrusted("x", UntrustedOrigin.WIKI_PAGE_BODY),
+            body=untrusted("x", WikiOrigin.PAGE_BODY),
         )
 
         assert draft.replaces_a_page

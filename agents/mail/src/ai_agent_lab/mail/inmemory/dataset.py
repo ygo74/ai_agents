@@ -14,7 +14,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from ai_agent_lab.core.security.untrusted import UntrustedOrigin, untrusted
+from ygo74.agent_runtime.domains.security.untrusted import untrusted
+
 from ai_agent_lab.mail.domain.enums import MailImportance
 from ai_agent_lab.mail.domain.models import (
     EmailAddress,
@@ -23,6 +24,7 @@ from ai_agent_lab.mail.domain.models import (
     MailMessage,
     MailParticipant,
 )
+from ai_agent_lab.mail.domain.origins import MailOrigin
 from ai_agent_lab.mail.inmemory.mail_tools import Mailbox
 from ai_agent_lab.mail.mail_errors import MailToolProtocolError
 
@@ -79,7 +81,7 @@ class MailDatasetLoader:
         )
         return MailLabel(
             label_id=self._require_str(entry, "label_id"),
-            name=untrusted(self._require_str(entry, "name"), UntrustedOrigin.MAIL_LABEL),
+            name=untrusted(self._require_str(entry, "name"), MailOrigin.LABEL),
             is_system=bool(entry.get("is_system", False)),
         )
 
@@ -94,8 +96,8 @@ class MailDatasetLoader:
             return MailMessage(
                 message_id=self._require_str(entry, "message_id"),
                 thread_id=self._require_str(entry, "thread_id"),
-                subject=untrusted(self._require_str(entry, "subject"), UntrustedOrigin.MAIL_SUBJECT),
-                body=untrusted(self._require_str(entry, "body"), UntrustedOrigin.MAIL_BODY),
+                subject=untrusted(self._require_str(entry, "subject"), MailOrigin.SUBJECT),
+                body=untrusted(self._require_str(entry, "body"), MailOrigin.BODY),
                 sender=self._build_participant(entry["sender"]),
                 to=tuple(self._build_participant(item) for item in self._sequence(entry, "to")),
                 cc=tuple(self._build_participant(item) for item in self._sequence(entry, "cc")),
@@ -120,7 +122,7 @@ class MailDatasetLoader:
         return MailParticipant(
             address=EmailAddress(value=self._require_str(entry, "address")),
             display_name=(
-                None if display_name is None else untrusted(str(display_name), UntrustedOrigin.MAIL_SENDER_NAME)
+                None if display_name is None else untrusted(str(display_name), MailOrigin.SENDER_NAME)
             ),
         )
 
@@ -132,7 +134,7 @@ class MailDatasetLoader:
         )
         return MailAttachment(
             attachment_id=self._require_str(entry, "attachment_id"),
-            file_name=untrusted(self._require_str(entry, "file_name"), UntrustedOrigin.MAIL_ATTACHMENT_NAME),
+            file_name=untrusted(self._require_str(entry, "file_name"), MailOrigin.ATTACHMENT_NAME),
             media_type=self._require_str(entry, "media_type"),
             size_bytes=int(entry.get("size_bytes", 0)),
         )

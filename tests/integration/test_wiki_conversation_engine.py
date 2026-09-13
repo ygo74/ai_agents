@@ -20,8 +20,8 @@ import pytest
 from tests.support.langgraph_fakes import ScriptedChatModel, ToolCall, calls, says
 from ygo74.agent_runtime.domains.auth.agent_principal import AgentPrincipal
 from ygo74.agent_runtime.domains.contracts.conversation import ConversationTurn
+from ygo74.agent_runtime.domains.sessions.conversation_cache import ConversationRuntimeCache
 
-from ai_agent_lab.core.serving.runtimes import ConversationRuntimeCache
 from ai_agent_lab.wiki.application.composition import WikiAgentCompositionRoot
 from ai_agent_lab.wiki.application.entrypoints.conversation import (
     WikiConversation,
@@ -90,9 +90,9 @@ async def comments_of(
     conversation: str = "conv-1",
 ) -> tuple[str, ...]:
     """Read the page's comments back through the same conversation."""
-    live = await cache.acquire(principal, conversation)
-    comments = await live.runtime.wiki_tools.get_comments(PAGE_ID, live.runtime.user)
-    return tuple(comment.body.expose() for comment in comments)
+    async with cache.lease(principal, conversation) as live:
+        comments = await live.runtime.wiki_tools.get_comments(PAGE_ID, live.runtime.user)
+        return tuple(comment.body.expose() for comment in comments)
 
 
 class TestAnOrdinaryTurn:

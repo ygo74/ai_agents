@@ -27,8 +27,8 @@ from ygo74.agent_runtime.domains.humanapproval.tickets import (
     PendingConfirmationStore,
     UnknownTicketError,
 )
+from ygo74.agent_runtime.domains.sessions.conversation_cache import ConversationRuntimeCache
 
-from ai_agent_lab.core.serving.runtimes import ConversationRuntimeCache
 from ai_agent_lab.maf.approval import MafApprovalTranslator
 from ai_agent_lab.mail.application.approval.tickets import TicketApprovalResolver
 from ai_agent_lab.mail.application.composition import MailAgentCompositionRoot, MailAgentRuntime
@@ -195,14 +195,16 @@ class MailConversationEngine:
             turn.conversation_id,
             len(turn.message),
         )
-        conversation = await self._conversations.acquire(turn.principal, turn.conversation_id)
+        # A lease rather than a lookup: while this block runs the conversation
+        # cannot be evicted or expired, so nothing closes the MCP session the
+        # turn is still using.
+        async with self._conversations.lease(turn.principal, turn.conversation_id) as conversation:
+            command = self._parser.parse(turn.message)
+            if command is not None:
+                return await self._honour(conversation, command)
 
-        command = self._parser.parse(turn.message)
-        if command is not None:
-            return await self._honour(conversation, command)
-
-        text = await conversation.session.ask(turn.message)
-        return self._reply(conversation, text)
+            text = await conversation.session.ask(turn.message)
+            return self._reply(conversation, text)
 
     async def _honour(self, conversation: MailConversation, command: ConfirmationCommand) -> AgentReply:
         """Run what a claimed ticket describes, or report that there is none."""

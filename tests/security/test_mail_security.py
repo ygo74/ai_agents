@@ -26,12 +26,13 @@ from ygo74.agent_runtime.domains.humanapproval.confirmation import (
 )
 from ygo74.agent_runtime.domains.security.audit import AuditOutcome, InMemoryAuditTrail, LoggingAuditTrail
 from ygo74.agent_runtime.domains.security.security_errors import PermissionDeniedError
+from ygo74.agent_runtime.domains.security.untrusted import untrusted
 from ygo74.agent_runtime.domains.security.user_context import UserContext
 
-from ai_agent_lab.core.security.untrusted import UntrustedOrigin, untrusted
 from ai_agent_lab.mail.catalog import MailToolCatalog, MailToolName
 from ai_agent_lab.mail.domain.errors import DraftNotFoundError
 from ai_agent_lab.mail.domain.models import EmailAddress, MailDraft, MailSearchRequest
+from ai_agent_lab.mail.domain.origins import MailOrigin
 from ai_agent_lab.mail.domain.permissions import MailPermission
 from ai_agent_lab.mail.inmemory.dataset import MailDatasetLoader
 from ai_agent_lab.mail.inmemory.draft_store import InMemoryDraftStore
@@ -273,7 +274,7 @@ def _draft() -> MailDraft:
     """Build a draft carrying recognisable content."""
     return MailDraft(
         to=(EmailAddress(value="john.smith@example.com"),),
-        subject=untrusted("Secret subject", UntrustedOrigin.MAIL_SUBJECT),
-        body=untrusted("confidential body", UntrustedOrigin.MAIL_BODY),
+        subject=untrusted("Secret subject", MailOrigin.SUBJECT),
+        body=untrusted("confidential body", MailOrigin.BODY),
         in_reply_to_message_id="m-alpha-1",
     )
