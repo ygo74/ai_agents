@@ -11,16 +11,21 @@
 # Over HTTP they are two containers. The credential stays in one of them, the
 # agent holds none, and the boundary between them is a port.
 #
-# A port is reachable by anything on the network, so it is authenticated. Set the
-# same secret on both sides:
+# A port is reachable by anything on the network, so it is authenticated. The
+# simplest deployment sets the same secret on both sides:
 #
 #   agent   MAIL_MCP_AUTH_SCHEME=bearer
 #           MAIL_MCP_HTTP_TOKEN=<the shared secret>
 #   server  MAIL_MCP_HTTP_TOKEN=<the same secret>
 #
-# The server refuses to start over HTTP without it. That refusal is deliberate:
-# an unauthenticated port would hand the mailbox to anything that can reach it,
-# and the only sign of it would be the absence of a line in a log.
+# The server refuses to start over HTTP without a way to identify its caller. That
+# refusal is deliberate: an unauthenticated port would hand the mailbox to anything
+# that can reach it, and the only sign of it would be the absence of a line in a log.
+#
+# `MAIL_MCP_AUTH_MODE` picks the scheme explicitly - `api_key`, `jwt` or `none`. It
+# can be left unset when a token is configured, because a configured token is an
+# unambiguous statement. It can never be left unset to mean `none`: serving everyone
+# is a decision and has to be written down. See docs/deployment.md.
 #
 # The secret says "you are the agent I was deployed with". It says nothing about
 # whose mailbox is read — that was settled by the Google credential the server

@@ -11,18 +11,23 @@ requires-python = ">=3.12"
 # Framework free on purpose: the security model, the reasoning port and the
 # skill registry must never depend on an agentic framework.
 #
-# `ygo74-agent-runtime` is not a framework and not a transport. It now owns the
-# security model, the authenticated caller, the conversation port and the
-# capability contracts this distribution used to carry, so it is a foundation
-# dependency rather than an optional one. Importing it pulls in `pydantic` and
-# `PyJWT` and nothing else: `fastapi` is declared in its own `http` extra and
+# The runtime is not a framework and not a transport. It owns the security model,
+# the authenticated caller, the conversation port and the capability contracts this
+# distribution used to carry, so it is a foundation dependency rather than an
+# optional one.
+#
+# Both halves are named rather than leaning on the transitive pin: this code imports
+# `domains.security` and `domains.contracts` directly, and a dependency you rely on
+# is a dependency you declare. Together they pull in `pydantic` and `PyJWT` and
+# nothing else - `fastapi` lives in the agents distribution's own `http` extra and is
 # imported defensively, so a domain test still runs without a web stack.
 dependencies = [
     "pydantic>=2,<3",
     "pydantic-settings>=2,<3",
     "python-dotenv>=1,<2",
     "pyyaml>=6,<7",
-    "ygo74-agent-runtime>=0.0.4,<0.1",
+    "ygo74-agent-runtime-security>=0.1,<0.2",
+    "ygo74-agent-runtime-agents>=0.1,<0.2",
 ]
 
 [project.optional-dependencies]
@@ -30,7 +35,7 @@ dependencies = [
 # module of its own - the descriptor factory it used to carry now lives in the
 # library - so the extra exists to pull the library's own `http` dependencies
 # through for an agent that is served rather than run at a console.
-http = ["ygo74-agent-runtime[http]>=0.0.4,<0.1"]
+http = ["ygo74-agent-runtime-agents[http]>=0.1,<0.2"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/ai_agent_lab"]

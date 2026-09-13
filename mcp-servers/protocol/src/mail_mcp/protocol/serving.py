@@ -17,7 +17,7 @@ from __future__ import annotations
 from collections.abc import Awaitable, Callable, Sequence
 from datetime import datetime
 from functools import wraps
-from typing import Annotated, Protocol
+from typing import TYPE_CHECKING, Annotated, Protocol
 
 from mcp.server.fastmcp import FastMCP
 from mcp.server.fastmcp.exceptions import ToolError
@@ -25,6 +25,10 @@ from pydantic import Field
 
 from mail_mcp.protocol import payloads as wire
 from mail_mcp.protocol.errors import AccessDeniedError, MailServerError, ProtocolError
+
+if TYPE_CHECKING:  # pragma: no cover - imported for typing only
+    from ygo74.agent_runtime.domains.mcpserver.http_binding import McpHttpBinding
+    from ygo74.agent_runtime.domains.mcpserver.settings import McpServerAuthentication
 
 MailboxOwner = Annotated[str, Field(description="Identifier of the mailbox owner the call acts for.")]
 MessageId = Annotated[str, Field(description="Identifier of a message.")]
@@ -187,21 +191,27 @@ class MailToolSurface:
         """Serve the tools over stdio until the client disconnects."""
         self._server.run()
 
-    def run_http(self, *, token: str) -> None:
-        """Serve the tools over streamable HTTP, to callers carrying the token.
+    def run_http(self, authentication: McpServerAuthentication, *, binding: McpHttpBinding | None = None) -> None:
+        """Serve the tools over streamable HTTP, to callers that prove who they are.
 
-        Where to bind was settled at construction. What keeps an open bind safe
-        is the token, not the address.
+        The transport, the authentication chain, the open health probe and the OAuth
+        discovery document all come from ``ygo74-agent-runtime-mcp``, which is what
+        keeps this server and the wiki one from growing two different answers to the
+        same question.
+
+        Where to bind was settled at construction. What keeps an open bind safe is
+        the credential, not the address - and the host refuses to serve at all if the
+        application would answer its own callers with 421.
         """
-        import uvicorn
+        from ygo74.agent_runtime.domains.mcpserver.host import McpServerHost
+        from ygo74.agent_runtime.domains.mcpserver.http_binding import McpHttpBinding as Binding
 
-        from mail_mcp.protocol.http_surface import authenticating
-
-        uvicorn.run(
-            authenticating(self._server.streamable_http_app(), token),
-            host=self._server.settings.host,
-            port=self._server.settings.port,
+        host = McpServerHost(
+            policy=authentication.policy,
+            binding=binding or Binding(host=self._server.settings.host, port=self._server.settings.port),
+            resource_url=authentication.resource_url,
         )
+        host.serve(self._server)
 
     def _register_read(self) -> None:
         """Expose the tools that never change anything."""

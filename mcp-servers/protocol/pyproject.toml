@@ -21,5 +21,14 @@ serving = [
     "mcp>=1.24,<2",
 ]
 
+# Serving that surface over HTTP. The transport, the authentication chain, the open
+# health probe and the OAuth discovery document come from the runtime, so this server
+# and the wiki one cannot grow two different answers to the same question. Stdio
+# needs none of it, which is why it is an extra.
+http = [
+    "mcp>=1.24,<2",
+    "ygo74-agent-runtime-mcp[http]>=0.1,<0.2",
+]
+
 [tool.hatch.build.targets.wheel]
 packages = ["src/mail_mcp"]

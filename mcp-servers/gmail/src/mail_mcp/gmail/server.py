@@ -25,7 +25,7 @@ from mail_mcp.gmail.api import GmailApiClient
 from mail_mcp.gmail.credentials import GmailCredentials
 from mail_mcp.gmail.environment import EnvironmentFile
 from mail_mcp.gmail.mailbox import GmailMailbox
-from mail_mcp.protocol.http_surface import required_token
+from mail_mcp.protocol.authentication import MailMcpAuthentication
 from mail_mcp.protocol.serving import DEFAULT_MCP_PORT, LOOPBACK, MailToolSurface, SingleMailbox
 
 SERVER_NAME = "mail-mcp-gmail"
@@ -72,11 +72,12 @@ def main() -> None:
         build_surface(arguments.owner).run()
         return
 
-    # Read the token *before* building anything: a missing one must fail at
-    # start-up, not after the mailbox client is already holding a credential.
-    token = required_token()
+    # Read the authentication *before* building anything: a server that cannot say
+    # who may call it must fail at start-up, not after the mailbox client is already
+    # holding a credential.
+    authentication = MailMcpAuthentication.from_environment()
     surface = build_surface(arguments.owner, host=arguments.host, port=arguments.port)
-    surface.run_http(token=token)
+    surface.run_http(authentication)
 
 
 if __name__ == "__main__":

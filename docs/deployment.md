@@ -26,7 +26,28 @@ equally dangerous.
 |---|---|---|
 | `mail-agent` | An API key, or a bearer token from your identity provider | **Refuses to start.** Neither configured means no way to tell callers apart |
 | `wiki-agent` | Same, with its own key and its own audience | **Refuses to start**, same rule |
-| `mail-mcp-gmail` | A shared secret, presented as `Authorization: Bearer` | **Refuses to start over HTTP.** Over stdio no token is needed |
+| `mail-mcp-gmail` | A shared secret, a token from your IDP, or — if you say so — everyone | **Refuses to start over HTTP.** Over stdio no credential is needed |
+
+### The three modes of an MCP server
+
+`MAIL_MCP_AUTH_MODE` (and `WIKI_MCP_AUTH_MODE` for the wiki server) picks how a
+caller is identified:
+
+| Mode | What it checks | When to use it |
+|---|---|---|
+| `api_key` | A shared secret, as `Authorization: Bearer <secret>` | Two containers deployed together. The secret says "you are the agent I was deployed with", nothing about whose mailbox is read |
+| `jwt` | A token from an OIDC issuer, against its published keys | A real identity provider. The server then publishes OAuth 2.1 metadata, so any MCP client discovers the issuer from the URL alone |
+| `none` | Nothing | A server over public, read-only data — and only when somebody decided that |
+
+The mode may be left unset when a token or an issuer is configured: that is an
+unambiguous statement and existing deployments keep working. **It can never be left
+unset to mean `none`.** A forgotten variable stops the process instead of opening a
+port, because the alternative is a mailbox on an open port with nothing in the log
+to say so.
+
+In `jwt` mode the server also needs `MAIL_MCP_RESOURCE_URL` — the URL it calls
+itself by, which is the audience a token must carry. A resource server that cannot
+name itself cannot be discovered, so it refuses to start without one.
 
 `mail-mcp-gmail` deserves a sentence of its own. **That process holds a Google
 refresh token for a real mailbox.** Over stdio its security came from the process
@@ -116,7 +137,9 @@ services:
     command: ["--transport", "streamable-http", "--host", "0.0.0.0", "--port", "9100"]
     environment:
       # The secret that replaces the process boundary. Same value as the agent's
-      # MAIL_MCP_HTTP_TOKEN below.
+      # MAIL_MCP_HTTP_TOKEN below. No MAIL_MCP_AUTH_MODE is needed: a configured
+      # token is an unambiguous statement. Set it to `jwt` or `none` to say
+      # something else.
       MAIL_MCP_HTTP_TOKEN: ${MAIL_MCP_HTTP_TOKEN:?set a shared secret}
       GMAIL_OAUTH_CLIENT_ID: ${GMAIL_OAUTH_CLIENT_ID:?}
       GMAIL_OAUTH_CLIENT_SECRET: ${GMAIL_OAUTH_CLIENT_SECRET:?}

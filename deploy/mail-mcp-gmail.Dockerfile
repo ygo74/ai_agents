@@ -31,12 +31,18 @@ WORKDIR /build
 COPY mcp-servers/protocol mcp-servers/protocol
 COPY mcp-servers/gmail mcp-servers/gmail
 
+# Locally built runtime wheels, when there are any. Empty in a normal build, so the
+# runtime comes from the index like every other dependency. It exists because a
+# release cannot be verified in a container before it is published, and the one
+# defect that cost this repository a production-shaped incident was invisible
+# outside one. See deploy/README.md.
+COPY deploy/wheels /wheels
+
 RUN python -m venv /opt/venv \
  && /opt/venv/bin/pip install --upgrade pip wheel \
- && /opt/venv/bin/pip install \
-      "./mcp-servers/protocol[serving]" \
-      ./mcp-servers/gmail \
- && /opt/venv/bin/pip install "uvicorn[standard]>=0.30"
+ && /opt/venv/bin/pip install $(ls /wheels/*.whl >/dev/null 2>&1 && echo "--find-links /wheels") \
+      "./mcp-servers/protocol[serving,http]" \
+      ./mcp-servers/gmail
 
 # ------------------------------------------------------------- runtime stage
 FROM python:${PYTHON_VERSION}-slim AS runtime
