@@ -113,10 +113,14 @@ def build_app(*, base_path: Path | None = None) -> FastAPI:
         enable_openai_chat_completions=True,
         enable_openai_responses=False,
         enable_anthropic_messages=False,
-        # jwt_validation=_jwt_validation(http),
-        # require_bearer_token=http.requires_authentication,
         jwt_validation=jwt_validation,
-        require_bearer_token=False,
+        # Always on, whichever credential the deployment uses. The runtime's
+        # authenticator chain accepts the API key as well as a bearer token, so
+        # this is not "tokens only": it is "something, always". Without it a
+        # credential-less request is not refused at the door - it reaches the
+        # entrypoint, finds no authenticated caller and dies as a 500, which
+        # reads like a broken service rather than a working gate.
+        require_bearer_token=True,
         api_key_resolver=api_key_resolver,
         descriptor_registry=DescriptorRegistry(
             [_descriptor(composition, jwt_validation=jwt_validation, api_key_resolver=api_key_resolver)]

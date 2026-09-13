@@ -12,10 +12,12 @@ from ai_agent_lab.mail.catalog import MailToolName
 from ai_agent_lab.mail.config.settings import (
     MailAgentMode,
     MailAgentSettings,
+    MailMcpAuthScheme,
     MailMcpSettings,
 )
 from ai_agent_lab.mail.inmemory.dataset import MailDatasetLoader
 from ai_agent_lab.mail.inmemory.mail_tools import InMemoryMailTools
+from ai_agent_lab.mail.mcp.bearer import BearerTokenAuth
 from ai_agent_lab.mail.mcp.binding import McpServerBinding, McpServerBindingLoader, McpTransport
 from ai_agent_lab.mail.mcp.connection import McpConnection
 from ai_agent_lab.mail.mcp.dialects import MailDialectRegistry
@@ -140,22 +142,29 @@ class MailToolsProvider:
         )
         return tools
 
-    @staticmethod
-    def _auth(binding: McpServerBinding) -> httpx.Auth | None:
+    def _auth(self, binding: McpServerBinding) -> httpx.Auth | None:
         """Build the authentication a remote server requires.
 
         A stdio server runs as a local process and is trusted through the
         operating system, so it carries no credential of its own.
+
+        Over HTTP the answer depends on *which* server. Google's endpoint needs
+        the authorisation-code flow; the server this repository deploys next to
+        the agent needs the shared secret the two were given. Guessing between
+        them is not possible, so the deployment says which.
         """
         _logger.info("Selecting Mail MCP authentication")
         _logger.debug(
-            "MailToolsProvider._auth arguments: server=%s, transport=%s, has_url=%s",
+            "MailToolsProvider._auth arguments: server=%s, transport=%s, has_url=%s, scheme=%s",
             binding.server,
             binding.transport.value,
             bool(binding.url),
+            self._mcp_settings.auth_scheme.value,
         )
         if binding.transport is not McpTransport.HTTP:
             return None
+        if self._mcp_settings.auth_scheme is MailMcpAuthScheme.BEARER:
+            return BearerTokenAuth(self._mcp_settings.bearer_token())
         return MailOAuthProvider().build(binding.url)
 
     def _binding(self, base_path: Path | None) -> McpServerBinding:

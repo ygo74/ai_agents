@@ -1,0 +1,48 @@
+# What never belongs in a build context.
+#
+# Two reasons, and the first one is the important one.
+#
+# Secrets. A `.env`, a token file or a credential copied into a layer stays in
+# that layer even if a later instruction deletes it, and anyone who can pull the
+# image can read it back. Everything that could hold one is excluded here, and
+# the images take their configuration from the environment or a mounted volume.
+#
+# Size and cache. A virtual environment or a test cache in the context is copied
+# to the daemon on every build and invalidates layers for no reason.
+
+# Credentials and local configuration
+.env
+.env.*
+!.env.example
+.secrets/
+**/.secrets/
+*.pem
+*.key
+**/gmail-token.json
+
+# Environments and caches
+.venvs/
+.venv/
+venv/
+**/__pycache__/
+*.py[cod]
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+**/*.egg-info/
+build/
+dist/
+
+# Version control and editor state
+.git/
+.gitignore
+.vscode/
+.idea/
+
+# Nothing an image needs at runtime
+tests/
+scenarios/
+docs/
+.github/
+*.md
+!README.md

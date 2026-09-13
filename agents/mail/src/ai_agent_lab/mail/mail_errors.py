@@ -64,6 +64,15 @@ class MailToolProtocolError(MailToolError):
     """
 
 
+class MailAgentConfigurationError(MailToolError):
+    """Raised when the agent cannot be assembled as configured.
+
+    Refusing to start is the point: a configuration that half-works produces an
+    agent that half-reaches its mailbox, and the symptom appears at the first
+    tool call rather than at boot.
+    """
+
+
 _SEPARATOR = ": "
 
 

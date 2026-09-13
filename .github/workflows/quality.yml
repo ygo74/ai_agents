@@ -1,0 +1,63 @@
+# Quality gates.
+#
+# Three checks, in the order in which they are cheapest to fail: the linter, the
+# type checker, then the suite. They run on every push and every pull request,
+# and `images.yml` calls this workflow before it publishes anything - because an
+# image whose tests never ran is an image nobody knows anything about.
+#
+# The whole repository is installed rather than one distribution at a time. The
+# architecture and boundary tests scan every distribution and cannot see what is
+# not installed; the `dev` environment is the one place where the two agentic
+# frameworks legitimately coexist. See scripts/install.py.
+
+name: Quality
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+  workflow_call:
+
+concurrency:
+  group: quality-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    name: Lint, type-check and test
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v7.0.1
+
+      - name: Set up Python
+        uses: actions/setup-python@v7.0.0
+        with:
+          # The agents target 3.12. The runtime library targets 3.11, but it is
+          # consumed here as a published wheel, not built.
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install every distribution and the development tools
+        # Installs into the runner's interpreter, which is what `--into` absent
+        # means. `ygo74-agent-runtime` comes from PyPI, exactly as a deployment
+        # would take it.
+        run: python -m scripts.install --env dev
+
+      - name: Lint
+        run: python -m ruff check .
+
+      - name: Type-check
+        # No arguments: the packages under strict checking are named in
+        # pyproject.toml, so CI and a workstation check the same set.
+        run: python -m mypy
+
+      - name: Test
+        # No credential and no network. The suite is deterministic by design, and
+        # a test that needed a live mailbox would not belong in it.
+        run: python -m pytest

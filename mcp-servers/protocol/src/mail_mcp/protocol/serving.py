@@ -34,6 +34,12 @@ LabelName = Annotated[str, Field(description="Name of a label, as the mailbox ow
 
 _ACKNOWLEDGED = "ok"
 
+# `FastMCP`'s own defaults. Named here because binding loopback is what keeps its
+# DNS-rebinding protection switched on, and that is a decision worth being able
+# to see rather than one buried in a default argument.
+LOOPBACK = "127.0.0.1"
+DEFAULT_MCP_PORT = 8000
+
 
 class Mailbox(Protocol):
     """One mailbox, expressed in protocol payloads.
@@ -152,9 +158,22 @@ def reporting[**P, R](tool: Callable[P, Awaitable[R]]) -> Callable[P, Awaitable[
 class MailToolSurface:
     """Registers the twelve mail tools on an MCP server."""
 
-    def __init__(self, directory: MailboxDirectory, *, name: str) -> None:
+    def __init__(
+        self,
+        directory: MailboxDirectory,
+        *,
+        name: str,
+        host: str = LOOPBACK,
+        port: int = DEFAULT_MCP_PORT,
+    ) -> None:
+        # The bind address is decided here rather than before serving, because
+        # `FastMCP` derives its DNS-rebinding protection from it at construction
+        # and never revisits that decision. Binding loopback keeps the protection
+        # on, as the library intends; binding an interface a container can reach
+        # turns it off, because an allow-list frozen to `localhost` would answer
+        # every real request with 421 and nothing in the log would say why.
         self._directory = directory
-        self._server = FastMCP(name)
+        self._server = FastMCP(name, host=host, port=port)
         self._register_read()
         self._register_message_writes()
         self._register_label_lifecycle()
@@ -167,6 +186,22 @@ class MailToolSurface:
     def run(self) -> None:
         """Serve the tools over stdio until the client disconnects."""
         self._server.run()
+
+    def run_http(self, *, token: str) -> None:
+        """Serve the tools over streamable HTTP, to callers carrying the token.
+
+        Where to bind was settled at construction. What keeps an open bind safe
+        is the token, not the address.
+        """
+        import uvicorn
+
+        from mail_mcp.protocol.http_surface import authenticating
+
+        uvicorn.run(
+            authenticating(self._server.streamable_http_app(), token),
+            host=self._server.settings.host,
+            port=self._server.settings.port,
+        )
 
     def _register_read(self) -> None:
         """Expose the tools that never change anything."""

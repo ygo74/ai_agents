@@ -10,12 +10,13 @@ from __future__ import annotations
 from enum import StrEnum
 from pathlib import Path
 
-from pydantic import Field
+from pydantic import Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from ygo74.agent_runtime.domains.humanapproval.confirmation import ConfirmationPreferences
 
 from ai_agent_lab.core.config.chat import AzureCredentialMode, ChatProvider
 from ai_agent_lab.core.config.environment import ENV_FILE
+from ai_agent_lab.mail.mail_errors import MailAgentConfigurationError
 
 __all__ = [
     "ENV_FILE",
@@ -24,6 +25,7 @@ __all__ = [
     "ChatProvider",
     "MailAgentMode",
     "MailAgentSettings",
+    "MailMcpAuthScheme",
     "MailMcpSettings",
 ]
 
@@ -114,12 +116,32 @@ class ChatClientSettings(BaseSettings):
             raise ValueError(f"AGENT_CHAT_TEMPERATURE must be a number or empty, got {value!r}") from error
 
 
+class MailMcpAuthScheme(StrEnum):
+    """How the agent proves itself to a mail MCP server reached over HTTP.
+
+    A stdio server needs nothing: it is a child process, trusted through the
+    operating system. Over HTTP the question is real, and the two answers are not
+    interchangeable.
+
+    ``oauth``
+        Google's own endpoint. The agent runs the authorisation-code flow and
+        holds a token scoped to the mailbox.
+    ``bearer``
+        Our own server, deployed alongside. The shared secret says "you are the
+        agent I was deployed with" - the mailbox identity was already settled by
+        the credential that server holds.
+    """
+
+    OAUTH = "oauth"
+    BEARER = "bearer"
+
+
 class MailMcpSettings(BaseSettings):
     """Connection settings of the mail MCP server.
 
     Where the server lives and which tools it exposes are delivered in
-    ``config/mcp/<server>.yaml``; only the choice of server and the timeout are
-    environment concerns.
+    ``config/mcp/<server>.yaml``; only the choice of server, the timeout and how
+    to authenticate are environment concerns.
     """
 
     model_config = SettingsConfigDict(
@@ -131,6 +153,24 @@ class MailMcpSettings(BaseSettings):
 
     server: str = "local"
     request_timeout_seconds: int = 30
+
+    # Defaulting to OAuth keeps every existing deployment behaving as it did:
+    # before this setting existed, an HTTP binding always meant Google.
+    auth_scheme: MailMcpAuthScheme = MailMcpAuthScheme.OAUTH
+
+    # The shared secret of a `bearer` deployment. Held as `SecretStr` so logging
+    # a settings object cannot leak it.
+    http_token: SecretStr = SecretStr("")
+
+    def bearer_token(self) -> str:
+        """Return the shared secret, or say plainly that none was configured."""
+        token = self.http_token.get_secret_value().strip()
+        if not token:
+            raise MailAgentConfigurationError(
+                "MAIL_MCP_AUTH_SCHEME is 'bearer' but MAIL_MCP_HTTP_TOKEN is empty: "
+                "the agent has nothing to present, and the server will refuse every call"
+            )
+        return token
 
 
 def _names(value: str) -> frozenset[str]:
