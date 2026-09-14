@@ -24,6 +24,8 @@ concurrency:
 
 permissions:
   contents: read
+  checks: write
+  pull-requests: write
 
 jobs:
   quality:
@@ -60,4 +62,10 @@ jobs:
       - name: Test
         # No credential and no network. The suite is deterministic by design, and
         # a test that needed a live mailbox would not belong in it.
-        run: python -m pytest
+        run: python -m pytest --junitxml=test-results.xml
+
+      - name: Publish Test Results
+        uses: EnricoMi/publish-unit-test-result-action@v2
+        if: always()
+        with:
+          files: "test-results.xml"

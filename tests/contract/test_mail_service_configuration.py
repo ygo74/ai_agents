@@ -37,6 +37,8 @@ def single_caller_deployment(monkeypatch):
     monkeypatch.setenv("MAIL_AGENT_USER_ID", "local-user")
     monkeypatch.setenv("MAIL_AGENT_USER_EMAIL", "local-user@example.com")
     monkeypatch.setenv("MAIL_AGENT_HTTP_API_KEY", "demonstration-key")
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-mock-key-for-service-wiring-tests")
+    monkeypatch.setenv("OPENAI_CHAT_MODEL", "gpt-4o-mini")
     monkeypatch.delenv("MAIL_AGENT_HTTP_OIDC_ISSUER", raising=False)
 
 
