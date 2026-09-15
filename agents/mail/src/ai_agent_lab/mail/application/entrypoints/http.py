@@ -19,10 +19,10 @@ from collections.abc import Mapping
 from datetime import UTC, datetime
 from typing import Any
 
-from ygo74.agent_runtime import AgentDescriptor
 from ygo74.agent_runtime.domains.contracts.contract_errors import EmptyRequestError
 from ygo74.agent_runtime.domains.contracts.conversation import AgentReply, ConversationTurn
 from ygo74.agent_runtime.domains.contracts.manifests import AgentManifest
+from ygo74.agent_runtime.domains.discovery.agent_descriptor import AgentDescriptor
 from ygo74.agent_runtime.domains.discovery.manifest_descriptor import (
     AdvertisedSecurity,
     AgentDescriptorFactory,

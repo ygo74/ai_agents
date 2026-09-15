@@ -1,0 +1,4 @@
+# Locally built runtime wheels, for verifying a container before the release is
+# published. Never committed: an image must be reproducible from an index.
+*.whl
+

@@ -27,7 +27,7 @@ native = ["wiki-mcp-protocol"]
 # Serving the agent over HTTP. See the Mail Agent's pyproject for why the
 # runtime library is a range rather than an exact pin.
 http = [
-    "ygo74-agent-runtime>=0.0.4,<0.1",
+    "ygo74-agent-runtime-agents>=0.1,<0.2",
     "fastapi>=0.115",
     "uvicorn[standard]>=0.30",
 ]

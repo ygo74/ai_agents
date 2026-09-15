@@ -20,16 +20,14 @@ from contextlib import AbstractAsyncContextManager, asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI
-from ygo74.agent_runtime import (
-    AgentDescriptor,
-    DescriptorRegistry,
-    DiscoveryConfiguration,
-    ResolvedUser,
-    StaticApiKeyUserResolver,
-    add_ai_endpoints,
-)
+from ygo74.agent_runtime.domains.auth.apikey_authenticator import StaticApiKeyUserResolver
+from ygo74.agent_runtime.domains.auth.auth_context import ResolvedUser
 from ygo74.agent_runtime.domains.auth.jwt_authenticator import JwksKeyResolver, JwtValidationConfig
+from ygo74.agent_runtime.domains.discovery.agent_descriptor import AgentDescriptor
+from ygo74.agent_runtime.domains.discovery.descriptor_registry import DescriptorRegistry
+from ygo74.agent_runtime.domains.discovery.discovery_configuration import DiscoveryConfiguration
 from ygo74.agent_runtime.domains.discovery.manifest_descriptor import AdvertisedSecurity
+from ygo74.agent_runtime.domains.endpoints.fastapi_endpoints import add_ai_endpoints
 from ygo74.agent_runtime.domains.sessions.conversation_cache import ConversationRuntimeCache
 
 from ai_agent_lab.core.config.azure_credentials import AzureIdentityCredentialProvider
@@ -113,10 +111,14 @@ def build_app(*, base_path: Path | None = None) -> FastAPI:
         enable_openai_chat_completions=True,
         enable_openai_responses=False,
         enable_anthropic_messages=False,
-        # jwt_validation=_jwt_validation(http),
-        # require_bearer_token=http.requires_authentication,
         jwt_validation=jwt_validation,
-        require_bearer_token=False,
+        # Always on, whichever credential the deployment uses. The runtime's
+        # authenticator chain accepts the API key as well as a bearer token, so
+        # this is not "tokens only": it is "something, always". Without it a
+        # credential-less request is not refused at the door - it reaches the
+        # entrypoint, finds no authenticated caller and dies as a 500, which
+        # reads like a broken service rather than a working gate.
+        require_bearer_token=True,
         api_key_resolver=api_key_resolver,
         descriptor_registry=DescriptorRegistry(
             [_descriptor(composition, jwt_validation=jwt_validation, api_key_resolver=api_key_resolver)]

@@ -27,16 +27,14 @@ from pathlib import Path
 
 from fastapi import FastAPI
 from langchain_core.language_models import BaseChatModel
-from ygo74.agent_runtime import (
-    AgentDescriptor,
-    DescriptorRegistry,
-    DiscoveryConfiguration,
-    ResolvedUser,
-    StaticApiKeyUserResolver,
-    add_ai_endpoints,
-)
+from ygo74.agent_runtime.domains.auth.apikey_authenticator import StaticApiKeyUserResolver
+from ygo74.agent_runtime.domains.auth.auth_context import ResolvedUser
 from ygo74.agent_runtime.domains.auth.jwt_authenticator import JwksKeyResolver, JwtValidationConfig
+from ygo74.agent_runtime.domains.discovery.agent_descriptor import AgentDescriptor
+from ygo74.agent_runtime.domains.discovery.descriptor_registry import DescriptorRegistry
+from ygo74.agent_runtime.domains.discovery.discovery_configuration import DiscoveryConfiguration
 from ygo74.agent_runtime.domains.discovery.manifest_descriptor import AdvertisedSecurity
+from ygo74.agent_runtime.domains.endpoints.fastapi_endpoints import add_ai_endpoints
 from ygo74.agent_runtime.domains.sessions.conversation_cache import ConversationRuntimeCache
 
 from ai_agent_lab.core.config.environment import EnvironmentFile

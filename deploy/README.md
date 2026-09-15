@@ -1,12 +1,38 @@
 # Deployment assets
 
-Everything needed to run an agent of this laboratory behind a chat interface.
+Everything needed to run an agent of this laboratory — as a container behind an
+orchestrator, or on a workstation behind a chat interface.
 
 ## What is here
 
 | File | Purpose |
 |---|---|
+| `mail-agent.Dockerfile` | The Mail Agent, HTTP, port 8123. |
+| `wiki-agent.Dockerfile` | The Wiki Agent, HTTP, port 8124. |
+| `mail-mcp-gmail.Dockerfile` | Our mail MCP server on the Gmail API, port 9100. |
+| `healthcheck.py` | The probe all three images use, and why it carries no credential. |
 | `librechat.yaml` | Declares the Mail Agent as a custom OpenAI-compatible endpoint. |
+
+The images are built and published by
+[`.github/workflows/images.yml`](../.github/workflows/images.yml) to
+`ghcr.io/ygo74/{mail-agent,wiki-agent,mail-mcp-gmail}`, for `linux/amd64` and
+`linux/arm64`, after the quality gates have passed. Each carries an SBOM and a
+provenance attestation and is scanned by Trivy.
+
+**[docs/deployment.md](../docs/deployment.md) is the deployment guide** — the
+compose file, the Gmail token prerequisite, and the security posture of each
+port. What follows here is the workstation path.
+
+## Building locally
+
+```powershell
+docker build -f deploy/mail-agent.Dockerfile     -t mail-agent:dev .
+docker build -f deploy/wiki-agent.Dockerfile     -t wiki-agent:dev .
+docker build -f deploy/mail-mcp-gmail.Dockerfile -t mail-mcp-gmail:dev .
+```
+
+The build context is the repository root in all three cases: each image installs
+several of the ten local distributions, and they live in different directories.
 
 ## Running the Mail Agent for LibreChat
 

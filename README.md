@@ -128,12 +128,32 @@ No test needs a network, an API key, a mailbox or a wiki.
 | [docs/agent-design.md](./docs/agent-design.md) | What an agent is, framework adapters, confirmation model. |
 | [docs/mcp-design.md](./docs/mcp-design.md) | Tool contracts, tool surface, error translation. |
 | [docs/configuration.md](./docs/configuration.md) | What is delivered as configuration, and what stays in code. |
+| [docs/implementing-an-agent.md](./docs/implementing-an-agent.md) | **Step by step: adding a new agent, from its permissions to its image.** |
+| [docs/deployment.md](./docs/deployment.md) | **Running the containers: images, compose, and the posture of each port.** |
 | [docs/mail-agent.md](./docs/mail-agent.md) | The Mail Agent: capabilities, skills, security, how to run it. |
 | [docs/mail-mcp-servers.md](./docs/mail-mcp-servers.md) | Which mail MCP servers are supported, and how to plug in another. |
 | [docs/wiki-agent.md](./docs/wiki-agent.md) | The Wiki Agent: capabilities, grounding, confirmation on LangGraph. |
 | [docs/wiki-agent-running.md](./docs/wiki-agent-running.md) | **How to run it, and how to configure the MCP server.** |
 | [docs/wiki-mcp-servers.md](./docs/wiki-mcp-servers.md) | Which wiki MCP servers are supported, Cloud versus Data Center. |
 | [docs/runtime-extraction-candidates.md](./docs/runtime-extraction-candidates.md) | What could move to `ygo74-agent-runtime`, and what must stay here. |
+
+## Continuous integration and images
+
+Two workflows, answering two different questions.
+
+| Workflow | What it does |
+|---|---|
+| [Quality](./.github/workflows/quality.yml) | ruff, mypy strict and the full suite, on every push and pull request. |
+| [Images](./.github/workflows/images.yml) | Builds the three images for `amd64` and `arm64`, scans them, and publishes them to GHCR — only after Quality has passed. |
+
+| Image | What it is |
+|---|---|
+| `ghcr.io/ygo74/mail-agent` | The Mail Agent, HTTP. |
+| `ghcr.io/ygo74/wiki-agent` | The Wiki Agent, HTTP. |
+| `ghcr.io/ygo74/mail-mcp-gmail` | Our mail MCP server on the Gmail API. **Holds a Google credential — never expose its port.** |
+
+Each image carries an SBOM and a provenance attestation, and is scanned by Trivy
+on every build. See [docs/deployment.md](./docs/deployment.md).
 
 ## Security
 

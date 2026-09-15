@@ -15,9 +15,25 @@ Within an environment, order matters: a distribution is installed after the ones
 it depends on, so pip resolves each local name against the copy in this working
 tree rather than looking for it on an index.
 
-``--runtime-source`` links a ``ygo74-agent-runtime`` checkout instead of using the
-published release. That library is developed alongside this repository, and
-publishing a release to try a fix is a slow way to find out it was the wrong fix.
+``--runtime-source`` links a runtime checkout instead of using the published
+release. That library is developed alongside this repository, and publishing a
+release to try a fix is a slow way to find out it was the wrong fix. Since 0.1.0 it
+is three distributions, and all three are linked together: they pin each other by
+exact version, so linking a subset makes pip fetch published copies over the working
+ones.
+
+One caveat worth knowing before it costs an hour. **An editable install is invisible
+to mypy.** setuptools installs an import hook, and mypy only walks the directories on
+``sys.path``, so a linked checkout type-checks as if it were not there - every type
+it exposes silently becomes ``Any``, at exactly the boundary that carries the
+security model. Either point ``MYPYPATH`` at the three distribution roots (all on
+one line, separated by ``;`` on Windows and ``:`` elsewhere)::
+
+    <checkout>/packages/python/security
+    <checkout>/packages/python/agents
+    <checkout>/packages/python/mcpserver
+
+or install built wheels instead, which is what CI and a deployment do.
 """
 
 from __future__ import annotations
@@ -47,6 +63,11 @@ EXTRAS = {
     LANGGRAPH: "azure",
     MAIL: "maf,native,http",
     WIKI: "langgraph,native,http",
+    # `serving` is the tool surface; `http` is serving it over a port, which brings
+    # the runtime's MCP hosting with it. The development environment installs both
+    # because the suite exercises the HTTP surface of the mail server.
+    MAIL_PROTOCOL: "serving,http",
+    WIKI_PROTOCOL: "serving,http",
 }
 
 DEVELOPMENT_TOOLS = (
@@ -60,9 +81,12 @@ DEVELOPMENT_TOOLS = (
     "httpx>=0.27",
 )
 
-# Where the Python distribution sits inside a runtime checkout. The repository is
-# multi-language, so its root is not an installable project.
-RUNTIME_PACKAGE = Path("packages/python")
+# Where the Python distributions sit inside a runtime checkout. The repository is
+# multi-language, and since 0.1.0 its Python side is split so that a host installs
+# the machinery it runs: an MCP server has no agent and no discovery descriptor, but
+# it has exactly the same question to answer about who is calling.
+RUNTIME_PACKAGES = Path("packages/python")
+RUNTIME_DISTRIBUTIONS = ("security", "agents", "mcpserver")
 
 
 @dataclass(frozen=True, slots=True)
@@ -180,19 +204,31 @@ def _missing_distributions(environment: Environment) -> list[Path]:
     return [path for path in environment.distributions if not (ROOT / path / "pyproject.toml").is_file()]
 
 
-def _runtime_distribution(checkout: Path) -> Path:
-    """Locate the installable Python project inside a runtime checkout.
+def _runtime_distributions(checkout: Path) -> list[Path]:
+    """Locate the installable Python projects inside a runtime checkout.
 
-    Both layouts are accepted - the repository root or the Python package
-    directly - because being wrong about which one to pass is a five-minute
-    detour, and the answer is knowable from the filesystem.
+    Several layouts are accepted - the repository root, the `packages/python`
+    directory, or one distribution directly - because being wrong about which one to
+    pass is a five-minute detour and the answer is knowable from the filesystem.
+
+    They are returned in dependency order. `agents` and `mcpserver` both pin
+    `security` by exact version, so installing it last would have pip fetch a
+    published copy over the working one.
     """
     resolved = checkout.expanduser().resolve()
-    for candidate in (resolved / RUNTIME_PACKAGE, resolved):
-        if (candidate / "pyproject.toml").is_file():
-            return candidate
 
-    raise SystemExit(f"no installable Python project under {resolved}: expected a pyproject.toml")
+    for root in (resolved / RUNTIME_PACKAGES, resolved):
+        found = [root / name for name in RUNTIME_DISTRIBUTIONS if (root / name / "pyproject.toml").is_file()]
+        if found:
+            return found
+
+    if (resolved / "pyproject.toml").is_file():
+        return [resolved]
+
+    expected = ", ".join(RUNTIME_DISTRIBUTIONS)
+    raise SystemExit(
+        f"no installable Python project under {resolved}: expected {RUNTIME_PACKAGES}/{{{expected}}}"
+    )
 
 
 def _print_environments() -> None:
@@ -252,9 +288,9 @@ def main() -> None:
     # Before the distributions, so pip finds the requirement already satisfied
     # and leaves the working copy alone rather than replacing it with a wheel.
     if arguments.runtime_source is not None:
-        distribution = _runtime_distribution(arguments.runtime_source)
-        print(f"\n== linked ygo74-agent-runtime from {distribution}")
-        installer.install("--editable", str(distribution))
+        for distribution in _runtime_distributions(arguments.runtime_source):
+            print(f"\n== linked {distribution.name} from {distribution}")
+            installer.install("--editable", str(distribution))
 
     for distribution in environment.distributions:
         installer.editable(distribution)

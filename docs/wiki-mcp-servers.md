@@ -145,6 +145,20 @@ Confluence. It reproduces page and space restrictions, because a double that let
 everyone read everything would let a client pass a conformance suite it would
 fail in production.
 
+It serves over stdio by default and over streamable HTTP on request, using the same
+hosting as the mail server:
+
+```powershell
+$env:WIKI_MCP_AUTH_MODE = "api_key"
+$env:WIKI_MCP_HTTP_TOKEN = "choose-a-secret"
+.\.venvs\dev\Scripts\wiki-mcp-reference.exe --transport streamable-http --host 127.0.0.1 --port 9200
+```
+
+Like every server here it refuses to open a port until somebody has said who may
+reach it. `WIKI_MCP_AUTH_MODE` takes `api_key`, `jwt` or `none`; the mode may be left
+unset when a token or an issuer is configured, but never to mean `none`. See
+[deployment.md](deployment.md) for what each mode guarantees.
+
 ## Running mcp-atlassian
 
 It is not vendored. It is a third-party server, run as one.

@@ -29,6 +29,7 @@ from ai_agent_lab.mail.catalog import MailToolCatalog, MailToolName
 from ai_agent_lab.mail.domain.permissions import MailPermission
 from ai_agent_lab.mail.mcp.binding import McpBindingError, McpServerBindingLoader, McpTransport
 from ai_agent_lab.mail.security_floor import MailSecurityFloor
+from ai_agent_lab.wiki.mcp.binding import McpServerBindingLoader as WikiMcpServerBindingLoader
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 
@@ -102,6 +103,18 @@ def write_package(folder: Path, **overrides: str) -> Path:
 def delivered() -> ConfigurationDirectory:
     """Return the configuration delivered with the repository."""
     return ConfigurationDirectory.resolve(base_path=REPOSITORY_ROOT)
+
+
+def assert_addressable(binding) -> None:
+    """Assert a binding says where its server is, in the way its transport needs.
+
+    The two domains have their own ``McpTransport`` enumerations, so the value is
+    compared rather than the member: this helper serves both.
+    """
+    if binding.transport.value == McpTransport.HTTP.value:
+        assert binding.url
+        return
+    assert binding.command
 
 
 class TestConfigurationDirectory:
@@ -304,3 +317,51 @@ class TestMcpBinding:
 
         with pytest.raises(McpBindingError, match="requires 'url'"):
             McpServerBindingLoader(ConfigurationDirectory(tmp_path)).load("x")
+
+
+class TestEveryDeliveredBindingLoads:
+    """No delivered binding may be broken, including ones only a deployment uses.
+
+    The bindings written for containers - `gmail-http`, `mcp-atlassian-service` -
+    are never exercised on a workstation, so a typo in one of them would surface
+    for the first time in a deployment. Loading all of them here costs
+    milliseconds and moves that discovery back to the suite.
+
+    Which file belongs to which domain is written out rather than guessed. That
+    is what makes the last test below meaningful: adding a binding without
+    naming it here fails, instead of quietly joining the set of things nobody
+    checks.
+    """
+
+    MAIL_BINDINGS = ("local", "gmail", "gmail-api", "gmail-http")
+    WIKI_BINDINGS = ("wiki-local", "mcp-atlassian", "mcp-atlassian-http", "mcp-atlassian-service")
+
+    @pytest.mark.parametrize("name", MAIL_BINDINGS)
+    def test_a_delivered_mail_binding_loads(self, name):
+        binding = McpServerBindingLoader(delivered()).load(name)
+
+        assert binding.capabilities
+        assert_addressable(binding)
+
+    @pytest.mark.parametrize("name", WIKI_BINDINGS)
+    def test_a_delivered_wiki_binding_loads(self, name):
+        binding = WikiMcpServerBindingLoader(delivered()).load(name)
+
+        assert binding.capabilities
+        assert_addressable(binding)
+
+    def test_a_container_binding_names_a_service_rather_than_localhost(self):
+        """`localhost` inside a container means that container, not its neighbour."""
+        for loader, name in (
+            (McpServerBindingLoader(delivered()), "gmail-http"),
+            (WikiMcpServerBindingLoader(delivered()), "mcp-atlassian-service"),
+        ):
+            url = loader.load(name).url
+
+            assert "localhost" not in url
+            assert "127.0.0.1" not in url
+
+    def test_every_delivered_binding_is_covered(self):
+        delivered_files = {path.stem for path in (REPOSITORY_ROOT / "config" / "mcp").glob("*.yaml")}
+
+        assert delivered_files == set(self.MAIL_BINDINGS) | set(self.WIKI_BINDINGS)

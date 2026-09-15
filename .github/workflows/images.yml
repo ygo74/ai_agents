@@ -1,0 +1,177 @@
+# Container images, published to the GitHub Container Registry.
+#
+# Three images, one per deployable unit:
+#
+#   ghcr.io/ygo74/mail-agent        the Mail Agent, HTTP
+#   ghcr.io/ygo74/wiki-agent        the Wiki Agent, HTTP
+#   ghcr.io/ygo74/mail-mcp-gmail    the Gmail MCP server
+#
+# Quality first. This workflow calls `quality.yml` and builds nothing until it
+# passes: publishing an image whose tests never ran is publishing an image nobody
+# knows anything about.
+#
+# On a pull request the images are built but not pushed, so a change that breaks
+# a Dockerfile is caught before it is merged rather than after it is released.
+#
+# Multi-architecture through QEMU rather than one native runner per architecture.
+# Emulation is slower, but it keeps SBOM and provenance attestations on a single
+# manifest, which the split-and-merge arrangement makes awkward. The build cache
+# absorbs most of the cost after the first run.
+
+name: Images
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: images-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  REGISTRY: ghcr.io
+
+jobs:
+  quality:
+    name: Quality
+    uses: ./.github/workflows/quality.yml
+
+  build:
+    name: ${{ matrix.image }}
+    needs: quality
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+
+    permissions:
+      contents: read
+      packages: write
+      # Trivy reports through the code-scanning API, which is what puts findings
+      # in the Security tab instead of in a log nobody reads.
+      security-events: write
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - image: mail-agent
+            dockerfile: deploy/mail-agent.Dockerfile
+          - image: wiki-agent
+            dockerfile: deploy/wiki-agent.Dockerfile
+          - image: mail-mcp-gmail
+            dockerfile: deploy/mail-mcp-gmail.Dockerfile
+
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v7.0.1
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v4.3.0
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@v4.3.0
+
+      - name: Sign in to the registry
+        # Skipped on pull requests: a fork's token cannot write packages, and
+        # nothing is pushed from a pull request anyway.
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v4.6.0
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Work out tags and labels
+        id: meta
+        uses: docker/metadata-action@v6.2.0
+        with:
+          images: ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ matrix.image }}
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=ref,event=branch
+            type=ref,event=pr
+            type=sha,format=short
+            type=raw,value=latest,enable={{is_default_branch}}
+          labels: |
+            org.opencontainers.image.title=${{ matrix.image }}
+            org.opencontainers.image.revision=${{ github.sha }}
+
+      - name: Build and push
+        id: build
+        uses: docker/build-push-action@v7.3.0
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          # Only the architectures a deployment would actually run on. Emulating
+          # a third would cost minutes for nobody.
+          platforms: ${{ github.event_name == 'pull_request' && 'linux/amd64' || 'linux/amd64,linux/arm64' }}
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=${{ matrix.image }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.image }}
+          # What went into the image, and where it came from. An enterprise
+          # deployment is asked both questions sooner or later.
+          sbom: ${{ github.event_name != 'pull_request' }}
+          provenance: ${{ github.event_name != 'pull_request' && 'mode=max' || 'false' }}
+
+      - name: Build a local image to scan
+        # Trivy scans what was built, not what is in the registry, so a pull
+        # request is examined too. `load` needs a single architecture, and the
+        # cache makes this a second read rather than a second build.
+        uses: docker/build-push-action@v7.3.0
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          platforms: linux/amd64
+          load: true
+          tags: scan-target/${{ matrix.image }}:${{ github.sha }}
+          cache-from: type=gha,scope=${{ matrix.image }}
+
+      - name: Scan for known vulnerabilities
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: scan-target/${{ matrix.image }}:${{ github.sha }}
+          format: sarif
+          output: trivy-${{ matrix.image }}.sarif
+          severity: CRITICAL,HIGH
+          # The report is the deliverable. A base-image advisory with no fix
+          # available should not stop a release; it should be visible.
+          exit-code: "0"
+          ignore-unfixed: true
+
+      - name: Publish the scan report
+        # `always()` so a scan that found something still reports it - but not on
+        # a pull request from a fork, whose token is read-only: the upload would
+        # fail with "resource not accessible" and fail a build that succeeded.
+        # The report is still in the step log there.
+        if: always() && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: trivy-${{ matrix.image }}.sarif
+          category: trivy-${{ matrix.image }}
+
+      - name: Summarise
+        if: always()
+        env:
+          TAGS: ${{ steps.meta.outputs.tags }}
+          PUSHED: ${{ github.event_name != 'pull_request' }}
+        run: |
+          {
+            echo "### ${{ matrix.image }}"
+            echo
+            if [ "$PUSHED" = "true" ]; then
+              echo "Published:"
+            else
+              echo "Built only - a pull request does not publish. Tags it would carry:"
+            fi
+            echo '```'
+            echo "$TAGS"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"

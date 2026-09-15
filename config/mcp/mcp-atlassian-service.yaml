@@ -1,0 +1,45 @@
+# sooperset/mcp-atlassian, reached as a sibling service rather than on localhost.
+#
+# The same server, the same dialect and the same identity model as
+# config/mcp/mcp-atlassian-http.yaml — read that file for why HTTP matters here,
+# how the per-user `Authorization` header works, and which scheme to send.
+#
+# Only the address differs, and it differs for one reason: `localhost` inside a
+# container means *that* container. A binding written for a workstation cannot be
+# reused as-is in a deployment where the server is a neighbour on a network.
+#
+# The hostname is the service name. In Compose that is the `mcp-atlassian`
+# service; in Kubernetes it is the Service. Mount your own binding over
+# /app/config if your deployment names it something else. See docs/deployment.md.
+server: mcp-atlassian-service
+transport: http
+url: http://mcp-atlassian:9000/mcp
+
+dialect: atlassian
+
+# Set WIKI_MCP_READ_ONLY to match how the server container was started, and the
+# agent withdraws the four write capabilities rather than proposing edits the
+# server will refuse.
+read_only_variable: WIKI_MCP_READ_ONLY
+
+capabilities:
+  - search_wiki
+  - get_page
+  - get_page_children
+  - list_spaces
+  - get_comments
+  - create_page
+  - update_page
+  - add_comment
+  - delete_page
+
+tools:
+  search_wiki: confluence_search
+  get_page: confluence_get_page
+  get_page_children: confluence_get_page_children
+  get_comments: confluence_get_comments
+  list_spaces: confluence_search
+  create_page: confluence_create_page
+  update_page: confluence_update_page
+  delete_page: confluence_delete_page
+  add_comment: confluence_add_comment
