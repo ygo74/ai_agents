@@ -38,7 +38,7 @@ rather than a serving extra. Because it is developed alongside this repository,
 link a working copy instead of resolving the published wheel:
 
 ```powershell
-python -m scripts.install --environment dev --runtime-source <path-to-checkout>
+python -m scripts.install --env dev --runtime-source <path-to-checkout>
 ```
 
 ## The two agents

@@ -299,16 +299,44 @@ a side effect without passing the deterministic confirmation policy.
 
 ### Setup
 
-One virtual environment per agent and per framework:
+One virtual environment per agent and per framework. From the repository root,
+run the installer with the `mail-agent` environment selected:
 
 ```powershell
-py -3.12 -m venv .venvs\mail-agent-maf
-.\.venvs\mail-agent-maf\Scripts\python.exe -m scripts.install
+py -3.12 -m scripts.install --env mail-agent --into .venvs\mail-agent-maf
+```
+
+On Linux, use the same command with the POSIX path separator:
+
+```bash
+python3 -m scripts.install --env mail-agent --into .venvs/mail-agent-maf
+```
+
+Then copy the example configuration:
+
+```powershell
 Copy-Item .env.example .env
 ```
 
-The script installs every distribution in editable mode, in dependency order,
-including the Entra ID support used when authenticating to Azure OpenAI.
+`--into` creates the virtual environment if it does not exist, or installs into
+it if you have already created it. The installer installs each Mail Agent
+distribution in editable mode and dependency order, including the Entra ID
+support used when authenticating to Azure OpenAI. The Linux VS Code debug
+configuration uses `.venvs/mail-agent-maf/bin/python`.
+
+To use the current `ygo74-agent-runtime` checkout instead of the published
+runtime packages, run this from the `ai_agents` repository root. It reuses the
+existing environment and installs all three runtime distributions in editable
+mode before the Mail Agent packages:
+
+```bash
+.venvs/mail-agent-maf/bin/python -m scripts.install \
+  --env mail-agent \
+  --into .venvs/mail-agent-maf \
+  --runtime-source /data/repos/ai-enterprise-agent-runtime
+```
+
+Changes to runtime source code are then available directly without reinstalling.
 
 ### Model provider - OpenAI or Azure OpenAI
 

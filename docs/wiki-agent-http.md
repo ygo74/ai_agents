@@ -19,6 +19,12 @@ Routes, OpenAI request shapes, JWT validation and discovery come from
 [`ygo74-agent-runtime`](https://github.com/ygo74/ai-enterprise-agent-runtime). We
 do not reimplement them.
 
+The service composes these through the runtime's fluent `HostingFactory`: it
+registers the Wiki entrypoint and descriptor, exposes Chat Completions, applies
+one authentication policy, then enables authenticated model discovery. An OIDC
+issuer selects JWT validation and takes precedence over the demonstration API
+key; without an issuer, the configured key is used.
+
 | Owned by the runtime library | Owned here |
 |---|---|
 | `POST /v1/chat/completions`, `GET /v1/models` | Which caller a request is attributed to |
@@ -80,9 +86,9 @@ served *somebody's* view of the wiki without anyone having decided whose.
 Starting and failing later would be worse - the misconfiguration would surface as
 an odd answer rather than as a refusal to run.
 
-Authentication is always required once it does start, whichever credential is
-configured. The runtime's authenticator chain accepts the API key as well as a
-bearer token, so this is not "tokens only": it is "something, always".
+Authentication is always required once it does start. The service uses one
+policy: an OIDC issuer selects bearer-token validation, otherwise the configured
+API key is used. The API key is not accepted as a fallback in OIDC mode.
 
 ### A caller needs no e-mail address
 
