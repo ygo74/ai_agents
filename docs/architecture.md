@@ -2,7 +2,7 @@
 
 This page describes the repository's layers and dependency rules. The broader
 system boundary, runtime flow, ownership, and security invariants are specified
-in [system-specification.md](./system-specification.md).
+in [the system specification](../spec/README.md).
 
 ## 1. Purpose
 

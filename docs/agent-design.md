@@ -2,7 +2,7 @@
 
 This page covers agent and framework composition. The repository-wide
 responsibilities and runtime boundary are defined in
-[system-specification.md](./system-specification.md).
+[the system specification](../spec/README.md).
 
 ## 1. What an agent is in this repository
 

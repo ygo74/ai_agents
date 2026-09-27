@@ -62,7 +62,8 @@ config/            delivered configuration: agents, skill packages, MCP bindings
 tests/             unit, contract, integration, agent, security, architecture
 data/              deterministic datasets
 scenarios/         reproducible agent scenarios
-docs/              system specification, architecture and design documents
+spec/              system-level specification
+docs/              architecture and design documents
 ```
 
 No `mail_mcp` or `wiki_mcp` package imports `ai_agent_lab`: a server we write and
@@ -123,7 +124,7 @@ No test needs a network, an API key, a mailbox or a wiki.
 
 | Document | Content |
 |---|---|
-| [docs/system-specification.md](./docs/system-specification.md) | System boundary, component ownership, runtime flow, contracts and security invariants. |
+| [spec/README.md](./spec/README.md) | System boundary, component ownership, runtime flow, contracts and security invariants. |
 | [docs/architecture.md](./docs/architecture.md) | Layers, dependency rule, runtime modes. |
 | [docs/repository-structure.md](./docs/repository-structure.md) | The distributions, the per-agent environments, how to plug a server. |
 | [docs/agent-design.md](./docs/agent-design.md) | What an agent is, framework adapters, confirmation model. |

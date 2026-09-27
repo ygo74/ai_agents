@@ -128,9 +128,9 @@ runtime APIs.
 
 ## Detailed specifications
 
-- [Architecture and dependency boundaries](./architecture.md)
-- [Agent and framework design](./agent-design.md)
-- [Configuration and manifest contracts](./configuration.md)
-- [MCP tool and server boundaries](./mcp-design.md)
-- [Repository distributions and installation](./repository-structure.md)
-- [Adding a new agent](./implementing-an-agent.md)
+- [Architecture and dependency boundaries](../docs/architecture.md)
+- [Agent and framework design](../docs/agent-design.md)
+- [Configuration and manifest contracts](../docs/configuration.md)
+- [MCP tool and server boundaries](../docs/mcp-design.md)
+- [Repository distributions and installation](../docs/repository-structure.md)
+- [Adding a new agent](../docs/implementing-an-agent.md)
