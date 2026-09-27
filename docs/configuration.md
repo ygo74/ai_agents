@@ -7,7 +7,7 @@ speaks, what it is allowed to do or which MCP server it talks to is a delivery o
 
 ## Where it lives
 
-`config/` at the repository root, or wherever `AI_AGENT_LAB_CONFIG_DIR` points.
+`config/` at the repository root, or wherever `YGO74_AGENT_RUNTIME_CONFIG_DIR` points.
 
 ```text
 config/
@@ -67,6 +67,35 @@ The name advertised to the model can therefore be changed independently from
 the Python class, but the corresponding capability binding must still exist in
 the agent code. An unknown permission, an invalid security declaration or an
 undelivered package is refused at load time.
+
+## Fixed manifest schemas
+
+`agent.yaml` and `skill.yaml` have versioned, fixed structures. The runtime
+package ships Draft 2020-12 schemas as
+`ygo74/agent_runtime/domains/configuration/schemas/agent.schema.json` and
+`skill.schema.json`. Their stable identifiers are
+`urn:ygo74:agent-runtime:agent-manifest:1` and
+`urn:ygo74:agent-runtime:skill-manifest:1`. The input models in
+`ygo74.agent_runtime.domains.configuration.manifest_inputs` generate these
+schemas and validate the same field sets when the runtime loads YAML. Unknown
+fields and invalid enum values are rejected.
+
+Python callers can read the packaged schemas without locating the installed
+wheel themselves:
+
+```python
+import json
+
+from ygo74.agent_runtime.domains.configuration.manifest_schemas import ManifestSchemas
+
+agent_schema = json.loads(ManifestSchemas.agent())
+skill_schema = json.loads(ManifestSchemas.skill())
+```
+
+The schema checks structure and fixed values. Permission names are resolved
+against the application's `PermissionRegistry`, and operation settings are
+checked against the code-owned `SecurityFloor` at load time. `AGENT.md` and
+`SKILL.md` remain Markdown inputs and are not part of either YAML schema.
 
 ## Configuration capability versus Python skill
 

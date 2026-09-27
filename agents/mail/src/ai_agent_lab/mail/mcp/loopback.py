@@ -16,8 +16,7 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 from urllib.parse import parse_qs, urlparse
 
 import anyio
-
-from ai_agent_lab.core.errors import DomainError
+from ygo74.agent_runtime.domains.errors import DomainError
 
 LOOPBACK = "127.0.0.1"
 CALLBACK_PATH = "/oauth/callback"

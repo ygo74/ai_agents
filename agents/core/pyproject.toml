@@ -8,26 +8,13 @@ version = "0.1.0"
 description = "Shared foundations of the AI Agent Lab agents"
 requires-python = ">=3.12"
 
-# Framework free on purpose: the security model, the reasoning port and the
-# skill registry must never depend on an agentic framework.
+# Framework free on purpose: the model-provider choices and Azure credential
+# provider are shared by both agents and must not depend on an agentic framework.
 #
-# The runtime is not a framework and not a transport. It owns the security model,
-# the authenticated caller, the conversation port and the capability contracts this
-# distribution used to carry, so it is a foundation dependency rather than an
-# optional one.
-#
-# Both halves are named rather than leaning on the transitive pin: this code imports
-# `domains.security` and `domains.contracts` directly, and a dependency you rely on
-# is a dependency you declare. Together they pull in `pydantic` and `PyJWT` and
-# nothing else - `fastapi` lives in the agents distribution's own `http` extra and is
-# imported defensively, so a domain test still runs without a web stack.
+# This distribution now contains only the Azure credential provider and chat
+# provider enums. The runtime owns the shared domain errors they inherit from.
 dependencies = [
-    "pydantic>=2,<3",
-    "pydantic-settings>=2,<3",
-    "python-dotenv>=1,<2",
-    "pyyaml>=6,<7",
     "ygo74-agent-runtime-security>=0.1,<0.2",
-    "ygo74-agent-runtime-agents>=0.1,<0.2",
 ]
 
 [project.optional-dependencies]

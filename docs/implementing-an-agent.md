@@ -329,7 +329,7 @@ need it.
    `packages`. Strict typing is not negotiable at the security boundary.
 3. Write `deploy/<name>-agent.Dockerfile`, copying one of the two existing ones.
    Two stages, `python:3.12-slim`, non-root, `config/` bundled and overridable
-   through `AI_AGENT_LAB_CONFIG_DIR`, and a health check.
+   through `YGO74_AGENT_RUNTIME_CONFIG_DIR`, and a health check.
 4. Add it to the matrix in
    [`.github/workflows/images.yml`](../.github/workflows/images.yml). Three lines:
    the name and the Dockerfile.

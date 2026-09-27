@@ -21,8 +21,7 @@ from typing import TYPE_CHECKING
 
 from langchain_core.language_models import BaseChatModel
 from langchain_openai import AzureChatOpenAI, ChatOpenAI
-
-from ai_agent_lab.core.errors import DomainError
+from ygo74.agent_runtime.domains.errors import DomainError
 
 if TYPE_CHECKING:
     from azure.core.credentials import TokenCredential

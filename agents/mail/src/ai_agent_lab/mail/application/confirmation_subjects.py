@@ -21,10 +21,10 @@ from __future__ import annotations
 
 import logging
 
+from ygo74.agent_runtime.domains.errors import DomainError
 from ygo74.agent_runtime.domains.security.security_errors import SecurityError
 from ygo74.agent_runtime.domains.security.user_context import UserContext
 
-from ai_agent_lab.core.errors import DomainError
 from ai_agent_lab.mail.skills.management_skill import MailManagementSkill
 from ai_agent_lab.mail.skills.search_skill import MailReadSkill
 

@@ -165,8 +165,9 @@ dependencies never leak into a comparison:
 .venvs/mail-agent-maf/     Mail Agent + Microsoft Agent Framework
 ```
 
-`ai_agent_lab.core` is framework free; only `ai_agent_lab.maf` depends on an
-agentic framework. Install everything in editable mode with
+`ai_agent_lab.core` is framework free. The Mail and Wiki agents select separate
+framework adapters, which keeps their dependencies isolated. Install everything
+in editable mode with
 `python -m scripts.install`.
 
 ## 10. What this repository no longer owns
@@ -178,7 +179,9 @@ copy per agent being one copy away from a weaker security path.
 
 | Concern | Now provided by |
 |---|---|
+| Common domain errors | `ygo74.agent_runtime.domains.errors` |
 | Permissions, user context, operation classification | `ygo74.agent_runtime.domains.security` |
+| User-context construction | `ygo74.agent_runtime.domains.security.user_context_factory` |
 | Security floor and audit trail | `ygo74.agent_runtime.domains.security` |
 | Authenticated caller | `ygo74.agent_runtime.domains.auth.agent_principal` |
 | Conversation port, manifests, capability registry | `ygo74.agent_runtime.domains.contracts` |
@@ -186,15 +189,18 @@ copy per agent being one copy away from a weaker security path.
 | Manifest-derived discovery descriptor | `ygo74.agent_runtime.domains.discovery.manifest_descriptor` |
 | Confirmation policy, tickets, approval parser, gated runner | `ygo74.agent_runtime.domains.humanapproval` |
 | Untrusted content, prompt fence, reasoning request | `ygo74.agent_runtime.domains.security` |
+| Text reasoning port and its error hierarchy | `ygo74.agent_runtime.domains.reasoning` |
+| Configuration discovery, `.env` and manifest loading | `ygo74.agent_runtime.domains.configuration` |
+| Fixed `agent.yaml` and `skill.yaml` JSON Schemas | `ygo74.agent_runtime.domains.configuration.schemas` |
 | Conversation state cache | `ygo74.agent_runtime.domains.sessions` |
 | OIDC discovery and generic HTTP settings | `ygo74.agent_runtime.domains.auth`, `.configuration` |
 | Transport payload reading and reply rendering | `ygo74.agent_runtime.domains.endpoints` |
 
-The library is therefore a **foundation** dependency of `ai_agent_lab.core`, not
-an optional serving one. It is not a framework and not a transport: importing it
-pulls in `pydantic` and `PyJWT`, and FastAPI stays behind its own extra. The
-architecture tests pin that distinction - a domain, skill or capability may name
-the library but must not reach `ygo74.agent_runtime.domains.endpoints`.
+The runtime is a direct dependency of the agents and adapters that consume it. It
+is not a framework and not a transport: configuration loading is installed with
+the runtime's `configuration` extra, and FastAPI stays behind its own extra. The
+architecture tests pin that distinction - transport-free layers may use the
+runtime contracts but must not reach `ygo74.agent_runtime.domains.endpoints`.
 
 Two consequences worth knowing before an upgrade:
 
@@ -218,13 +224,12 @@ wiring is commented out and it had no equivalent of the Wiki Agent's start-up
 guard. Set `MAIL_AGENT_HTTP_API_KEY`, or re-enable `jwt_validation` in
 `build_app`.
 
-What is left of `ai_agent_lab.core` after all of this is small and deliberate:
-`errors.py`, the configuration loaders, the `TextReasoner` port and its errors,
-and the join between an identity and the permissions a deployment grants it. The
-two `skills/gating.py` modules are one line each - a type alias binding this
-agent's tool enumeration to the library's generic runner - because the permission
-check, the confirmation policy and the audit record are the same three steps for
-every agent and are written once.
+What remains in `ai_agent_lab.core` is limited to `config/chat.py` and
+`config/azure_credentials.py`. The credential provider and chat-provider choices
+are the only shared code here specific to the agents' model configuration. The
+configuration loaders, reasoning port, common errors and user-context factory are
+runtime APIs. The two `skills/gating.py` modules remain one-line type aliases
+binding each agent's tool enumeration to the generic runtime runner.
 
 Two changes worth knowing about when reading the agents:
 

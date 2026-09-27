@@ -100,7 +100,7 @@ class TestOneFailedTurnDoesNotEndTheConversation:
         assert any("second turn answered" in line for line in written)
 
     async def test_a_domain_failure_is_still_named(self):
-        from ai_agent_lab.core.errors import DomainError
+        from ygo74.agent_runtime.domains.errors import DomainError
 
         written: list[str] = []
         console = Console(reader=_typed(["do something", "exit"]), writer=written.append)

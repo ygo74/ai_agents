@@ -45,7 +45,7 @@ LABEL org.opencontainers.image.title="mail-agent" \
 ENV PATH="/opt/venv/bin:${PATH}" \
     PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
-    AI_AGENT_LAB_CONFIG_DIR=/app/config
+    YGO74_AGENT_RUNTIME_CONFIG_DIR=/app/config
 
 # Non-root, and owning nothing it does not need. The agent writes no file at
 # runtime: its state is in memory and its configuration is read-only.

@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import pytest
+from ygo74.agent_runtime.domains.reasoning.errors import ReasoningOutputError
 
-from ai_agent_lab.core.reasoning.errors import ReasoningOutputError
 from ai_agent_lab.mail.domain.enums import ActionOrigin, ConfidenceLevel, MailCategory
 from ai_agent_lab.mail.inmemory.reasoner import ScriptedTextReasoner
 from ai_agent_lab.mail.skills.action_extraction_skill import MailActionExtractionSkill

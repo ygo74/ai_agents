@@ -5,10 +5,9 @@ from __future__ import annotations
 from typing import cast
 
 from agent_framework import ChatOptions, ChatResponse, Message, SupportsChatGetResponse
+from ygo74.agent_runtime.domains.reasoning.errors import ReasoningOutputError, ReasoningUnavailableError
+from ygo74.agent_runtime.domains.reasoning.ports import ReasoningOutputT, ReasoningRequest
 from ygo74.agent_runtime.domains.security.prompt_envelope import PromptEnvelopeBuilder
-
-from ai_agent_lab.core.reasoning.errors import ReasoningOutputError, ReasoningUnavailableError
-from ai_agent_lab.core.reasoning.ports import ReasoningOutputT, ReasoningRequest
 
 
 class MafTextReasoner:

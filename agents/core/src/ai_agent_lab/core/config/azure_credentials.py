@@ -15,8 +15,9 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import TYPE_CHECKING
 
+from ygo74.agent_runtime.domains.errors import DomainError
+
 from ai_agent_lab.core.config.chat import AzureCredentialMode
-from ai_agent_lab.core.errors import DomainError
 
 if TYPE_CHECKING:
     from azure.core.credentials import TokenCredential

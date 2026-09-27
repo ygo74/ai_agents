@@ -12,10 +12,10 @@ cannot rewrite it between the moment it is shown and the moment it is written.
 
 from __future__ import annotations
 
+from ygo74.agent_runtime.domains.reasoning.ports import ReasoningRequest, TextReasoner
 from ygo74.agent_runtime.domains.security.untrusted import UntrustedText, untrusted
 from ygo74.agent_runtime.domains.security.user_context import UserContext
 
-from ai_agent_lab.core.reasoning.ports import ReasoningRequest, TextReasoner
 from ai_agent_lab.wiki.domain.models import WikiPage, WikiPageDraft
 from ai_agent_lab.wiki.domain.origins import WikiOrigin
 from ai_agent_lab.wiki.domain.permissions import WikiPermission

@@ -7,11 +7,10 @@ from typing import Any, Literal
 
 from agent_framework import FunctionTool
 from ygo74.agent_runtime.domains.contracts.capability_registry import ResultRenderer, SkillDescriptor, SkillRegistry
+from ygo74.agent_runtime.domains.errors import DomainError
 from ygo74.agent_runtime.domains.humanapproval.confirmation import ConfirmationPolicy
 from ygo74.agent_runtime.domains.security.security_errors import SecurityError
 from ygo74.agent_runtime.domains.security.user_context import UserContext
-
-from ai_agent_lab.core.errors import DomainError
 
 ApprovalMode = Literal["always_require", "never_require"]
 

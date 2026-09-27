@@ -22,8 +22,8 @@ from pathlib import Path
 from typing import Any
 
 import yaml
+from ygo74.agent_runtime.domains.configuration.directory import ConfigurationDirectory
 
-from ai_agent_lab.core.config.directory import ConfigurationDirectory
 from ai_agent_lab.mail.catalog import MailToolName
 from ai_agent_lab.mail.mail_errors import MailToolProtocolError
 

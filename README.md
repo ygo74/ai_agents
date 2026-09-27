@@ -47,7 +47,7 @@ own. See [docs/repository-structure.md](./docs/repository-structure.md).
 
 ```text
 agents/                          the products
-  core/       ai_agent_lab.core       security, reasoning ports, manifests, skill registry
+  core/       ai_agent_lab.core       chat-provider choices and Azure credentials
   maf/        ai_agent_lab.maf        Microsoft Agent Framework adapter
   langgraph/  ai_agent_lab.langgraph  LangChain / LangGraph adapter
   mail/       ai_agent_lab.mail       mail domain, skills, capabilities, composition root

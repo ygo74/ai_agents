@@ -259,7 +259,7 @@ server mounts its own over the top:
       - ./my-config:/app/config:ro
 ```
 
-`AI_AGENT_LAB_CONFIG_DIR` points elsewhere if you prefer a different path.
+`YGO74_AGENT_RUNTIME_CONFIG_DIR` points elsewhere if you prefer a different path.
 
 ---
 

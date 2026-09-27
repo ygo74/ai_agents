@@ -15,6 +15,7 @@ from __future__ import annotations
 import logging
 from collections.abc import Sequence
 
+from ygo74.agent_runtime.domains.errors import DomainError
 from ygo74.agent_runtime.domains.humanapproval.confirmation import (
     ConfirmationDecision,
     ConfirmationOutcome,
@@ -25,7 +26,6 @@ from ygo74.agent_runtime.domains.humanapproval.ledger import InMemoryConfirmatio
 from ygo74.agent_runtime.domains.security.security_errors import SecurityError
 from ygo74.agent_runtime.domains.security.user_context import UserContext
 
-from ai_agent_lab.core.errors import DomainError
 from ai_agent_lab.maf.approval import PendingToolApproval
 from ai_agent_lab.mail.application.approval.resolver import ApprovalRound
 from ai_agent_lab.mail.application.confirmation_presenter import MailConfirmationPresenter

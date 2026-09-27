@@ -9,11 +9,11 @@ import uuid
 from pathlib import Path
 
 from agent_framework import SupportsChatGetResponse
+from ygo74.agent_runtime.domains.configuration.environment import EnvironmentFile
+from ygo74.agent_runtime.domains.errors import DomainError
 from ygo74.agent_runtime.domains.security.security_errors import SecurityError
 
 from ai_agent_lab.core.config.azure_credentials import AzureIdentityCredentialProvider
-from ai_agent_lab.core.config.environment import EnvironmentFile
-from ai_agent_lab.core.errors import DomainError
 from ai_agent_lab.maf.approval import MafApprovalTranslator
 from ai_agent_lab.maf.chat_client import MafChatClientFactory
 from ai_agent_lab.mail.application.approval.console import ConsoleApprovalResolver

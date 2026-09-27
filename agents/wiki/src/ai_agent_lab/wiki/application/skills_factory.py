@@ -11,8 +11,8 @@ import logging
 from dataclasses import dataclass
 
 from ygo74.agent_runtime.domains.contracts.manifests import AgentManifest
+from ygo74.agent_runtime.domains.reasoning.ports import TextReasoner
 
-from ai_agent_lab.core.reasoning.ports import TextReasoner
 from ai_agent_lab.wiki.capabilities.read_capabilities import ANSWER_FROM_WIKI, SUMMARISE_PAGE
 from ai_agent_lab.wiki.capabilities.write_capabilities import DRAFT_PAGE_CONTENT
 from ai_agent_lab.wiki.skills.analysis import WikiAnalysisMapper

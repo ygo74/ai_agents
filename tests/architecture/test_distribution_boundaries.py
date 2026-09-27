@@ -68,6 +68,51 @@ ALLOWED_DISTRIBUTION_IMPORTS: dict[str, frozenset[str]] = {
     "wiki_mcp.reference": frozenset({"wiki_mcp.protocol"}),
 }
 
+# Agent code may depend on the language-neutral runtime domains it uses, but
+# `core` is deliberately much smaller after the extraction and must not regain
+# the configuration, security or reasoning layers.
+ALLOWED_RUNTIME_IMPORTS: dict[str, tuple[str, ...]] = {
+    "ai_agent_lab.core": ("ygo74.agent_runtime.domains.errors",),
+    "ai_agent_lab.maf": (
+        "ygo74.agent_runtime.domains.contracts",
+        "ygo74.agent_runtime.domains.errors",
+        "ygo74.agent_runtime.domains.humanapproval",
+        "ygo74.agent_runtime.domains.reasoning",
+        "ygo74.agent_runtime.domains.security",
+    ),
+    "ai_agent_lab.langgraph": (
+        "ygo74.agent_runtime.domains.contracts",
+        "ygo74.agent_runtime.domains.errors",
+        "ygo74.agent_runtime.domains.humanapproval",
+        "ygo74.agent_runtime.domains.reasoning",
+        "ygo74.agent_runtime.domains.security",
+    ),
+    "ai_agent_lab.mail": (
+        "ygo74.agent_runtime.domains.auth",
+        "ygo74.agent_runtime.domains.configuration",
+        "ygo74.agent_runtime.domains.contracts",
+        "ygo74.agent_runtime.domains.discovery",
+        "ygo74.agent_runtime.domains.endpoints",
+        "ygo74.agent_runtime.domains.errors",
+        "ygo74.agent_runtime.domains.humanapproval",
+        "ygo74.agent_runtime.domains.reasoning",
+        "ygo74.agent_runtime.domains.security",
+        "ygo74.agent_runtime.domains.sessions",
+    ),
+    "ai_agent_lab.wiki": (
+        "ygo74.agent_runtime.domains.auth",
+        "ygo74.agent_runtime.domains.configuration",
+        "ygo74.agent_runtime.domains.contracts",
+        "ygo74.agent_runtime.domains.discovery",
+        "ygo74.agent_runtime.domains.endpoints",
+        "ygo74.agent_runtime.domains.errors",
+        "ygo74.agent_runtime.domains.humanapproval",
+        "ygo74.agent_runtime.domains.reasoning",
+        "ygo74.agent_runtime.domains.security",
+        "ygo74.agent_runtime.domains.sessions",
+    ),
+}
+
 # The distributions that are agents, and the framework adapter each is allowed to
 # use. An agent naming the other one would make a framework comparison worthless.
 AGENT_DISTRIBUTIONS: dict[str, str] = {
@@ -139,11 +184,6 @@ LAYERS_WITHOUT_SDKS = frozenset({"domain", "skills", "capabilities", "inmemory"}
 # used to have by construction - `core` knew no web stack - would be gone with no
 # test to notice.
 RUNTIME_TRANSPORT_MODULE = "ygo74.agent_runtime.domains.endpoints"
-
-# The one part of `core` allowed to know a transport. Everything else in that
-# distribution - the security model, the reasoning port, the configuration
-# loaders - must import without one.
-CORE_SERVING_PREFIX = "ai_agent_lab.core.serving"
 
 NAMESPACES = ("ai_agent_lab", "mail_mcp", "wiki_mcp")
 
@@ -223,11 +263,11 @@ MODULE_IDS = [module.dotted_name for module in ALL_MODULES]
 def _must_avoid_the_transport(module: ModuleUnderTest) -> bool:
     """Whether this module has to import without a web stack.
 
-    Two families qualify: the business layers of an agent, and every part of
-    `core` outside `core.serving`.
+    Two families qualify: the business layers of an agent, and every module in
+    the framework-free core distribution.
     """
     if module.distribution == "ai_agent_lab.core":
-        return not module.dotted_name.startswith(CORE_SERVING_PREFIX)
+        return True
     return module.agent_layer in LAYERS_WITHOUT_SDKS
 
 
@@ -245,6 +285,22 @@ def test_distributions_only_import_what_they_declare(module: ModuleUnderTest):
     violations = {imported for imported in module.imported_distributions() if imported not in allowed}
 
     assert not violations, f"{module.dotted_name} must not import {sorted(violations)}"
+
+
+@pytest.mark.parametrize("module", ALL_MODULES, ids=MODULE_IDS)
+def test_agent_runtime_imports_stay_within_the_declared_domains(module: ModuleUnderTest):
+    """Each agent distribution names only the runtime domains it consumes."""
+    if module.distribution not in ALLOWED_RUNTIME_IMPORTS:
+        pytest.skip("not an agent distribution")
+    allowed = ALLOWED_RUNTIME_IMPORTS.get(module.distribution, ())
+    violations = {
+        imported
+        for imported in module.imported_modules()
+        if imported.startswith("ygo74.agent_runtime.domains.")
+        and not any(imported == prefix or imported.startswith(f"{prefix}.") for prefix in allowed)
+    }
+
+    assert not violations, f"{module.dotted_name} must not import runtime domain(s) {sorted(violations)}"
 
 
 @pytest.mark.security
@@ -372,11 +428,8 @@ def test_business_code_ignores_the_runtime_transport(module: ModuleUnderTest):
     where FastAPI is imported - and a module that must run in a domain test with
     no web stack must not reach it.
 
-    Before the security model moved into the library, this property held by
-    construction because ``core`` imported no serving code at all. It now needs a
-    test, and ``core`` is most of what that test exists for: ``core.serving`` is
-    the one part allowed to know a transport, and every other part of ``core`` is
-    not.
+    The shared configuration and domain code imports the runtime, but it must
+    remain independent from the runtime's FastAPI endpoint adapters.
     """
     if not _must_avoid_the_transport(module):
         pytest.skip("adapter, composition root, serving module or server")

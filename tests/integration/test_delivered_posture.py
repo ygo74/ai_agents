@@ -53,7 +53,7 @@ def delivered(tmp_path, monkeypatch):
     """A copy of the delivered configuration this test may rewrite."""
     root = tmp_path / "config"
     shutil.copytree(REPOSITORY_ROOT / "config", root)
-    monkeypatch.setenv("AI_AGENT_LAB_CONFIG_DIR", str(root))
+    monkeypatch.setenv("YGO74_AGENT_RUNTIME_CONFIG_DIR", str(root))
     return root
 
 

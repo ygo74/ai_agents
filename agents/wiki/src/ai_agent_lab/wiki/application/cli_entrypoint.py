@@ -13,11 +13,11 @@ from pathlib import Path
 
 from langchain_core.language_models import BaseChatModel
 from ygo74.agent_runtime.domains.auth.agent_principal import AgentPrincipal
+from ygo74.agent_runtime.domains.configuration.environment import EnvironmentFile
+from ygo74.agent_runtime.domains.errors import DomainError
 from ygo74.agent_runtime.domains.security.security_errors import SecurityError
 
 from ai_agent_lab.core.config.azure_credentials import AzureIdentityCredentialProvider
-from ai_agent_lab.core.config.environment import EnvironmentFile
-from ai_agent_lab.core.errors import DomainError
 from ai_agent_lab.langgraph.approval import LangGraphApprovalTranslator
 from ai_agent_lab.langgraph.chat_model import AzureOpenAIRoute, LangGraphChatModelFactory
 from ai_agent_lab.wiki.application.composition import WikiAgentCompositionRoot, WikiAgentRuntime
