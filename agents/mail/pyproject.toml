@@ -14,7 +14,7 @@ requires-python = ">=3.12"
 dependencies = [
     "ai-agent-lab-core",
     "mcp>=1.24,<2",
-    "ygo74-agent-runtime-agents[configuration]>=0.6",
+    "ygo74-agent-runtime-agents[configuration,mcp]>=0.6",
     "ygo74-agent-runtime-security>=0.6",
 ]
 

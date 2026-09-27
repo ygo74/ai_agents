@@ -132,7 +132,7 @@ class MailToolsProvider:
             timeout_seconds=self._mcp_settings.request_timeout_seconds,
             auth=self._auth(binding),
         )
-        tools = self._dialects.build(self._connection, binding, self._owner_id)
+        tools = self._dialects.build(binding, self._connection, self._owner_id)
         _logger.debug(
             "Built MCP Mail tools backend: binding=%s, transport=%s, dialect=%s, tools_type=%s",
             binding.server,
@@ -142,7 +142,7 @@ class MailToolsProvider:
         )
         return tools
 
-    def _auth(self, binding: McpServerBinding) -> httpx.Auth | None:
+    def _auth(self, binding: McpServerBinding[MailToolName]) -> httpx.Auth | None:
         """Build the authentication a remote server requires.
 
         A stdio server runs as a local process and is trusted through the
@@ -167,7 +167,7 @@ class MailToolsProvider:
             return BearerTokenAuth(self._mcp_settings.bearer_token())
         return MailOAuthProvider().build(binding.url)
 
-    def _binding(self, base_path: Path | None) -> McpServerBinding:
+    def _binding(self, base_path: Path | None) -> McpServerBinding[MailToolName]:
         """Load the delivered description of the bound server."""
         _logger.info("Loading Mail MCP server binding")
         _logger.debug(

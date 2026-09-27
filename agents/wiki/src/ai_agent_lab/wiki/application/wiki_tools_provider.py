@@ -19,7 +19,12 @@ from ai_agent_lab.wiki.config.settings import (
 from ai_agent_lab.wiki.inmemory.dataset import WikiDatasetLoader
 from ai_agent_lab.wiki.inmemory.wiki_tools import InMemoryWikiTools
 from ai_agent_lab.wiki.mcp.authorization import WikiAuthorization, authorization_for
-from ai_agent_lab.wiki.mcp.binding import McpServerBinding, McpServerBindingLoader
+from ai_agent_lab.wiki.mcp.binding import (
+    McpServerBinding,
+    McpServerBindingLoader,
+    capabilities_in,
+    with_resolved_stdio_environment,
+)
 from ai_agent_lab.wiki.mcp.connection import McpConnection
 from ai_agent_lab.wiki.mcp.dialects import DialectContext, WikiDialectRegistry
 from ai_agent_lab.wiki.tools_port import WikiTools
@@ -86,7 +91,7 @@ class WikiToolsProvider:
             caps = frozenset(WikiToolName)
             _logger.debug("Mock mode capabilities count=%d", len(caps))
             return caps
-        caps = self._binding(base_path).capabilities_in(self._environment)
+        caps = capabilities_in(self._binding(base_path), self._environment)
         _logger.debug(
             "MCP binding '%s' capabilities count=%d: %s",
             self._mcp_settings.server,
@@ -118,7 +123,7 @@ class WikiToolsProvider:
         header and the authorisation is empty, which is what tells the dialect it
         is speaking for exactly one person.
         """
-        binding = self._binding(base_path)
+        binding = with_resolved_stdio_environment(self._binding(base_path), self._environment)
         authorization = self._authorization()
         _logger.info(
             "Building MCP wiki tools with server='%s', dialect='%s', transport='%s'",
@@ -138,8 +143,8 @@ class WikiToolsProvider:
             headers=authorization.headers_for(self._caller()),
         )
         return self._dialects.build(
-            self._connection,
             binding,
+            self._connection,
             DialectContext(
                 account_id=self._mcp_settings.account_id,
                 is_per_user=authorization.is_per_user,
@@ -170,7 +175,7 @@ class WikiToolsProvider:
         """
         return UserContext(user_id=self._user_id, session_id="mcp-connection")
 
-    def _binding(self, base_path: Path | None) -> McpServerBinding:
+    def _binding(self, base_path: Path | None) -> McpServerBinding[WikiToolName]:
         """Load the delivered description of the bound server."""
         directory = ConfigurationDirectory.resolve(base_path=base_path)
         return McpServerBindingLoader(directory).load(self._mcp_settings.server)

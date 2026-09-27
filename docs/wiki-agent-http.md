@@ -155,8 +155,11 @@ hashes the authenticated subject *together with* the conversation - the half a
 caller controls is only ever half.
 
 State is bounded and expires, and eviction closes the MCP session the runtime
-holds. Against a real Confluence that matters: a process that exits without
-closing them leaves sessions looking active long after they are not.
+holds. The runtime's generic `HttpConversationEngine` handles command parsing
+and reply assembly. The Wiki factory and LangGraph session adapter retain the
+subject-derived `thread_id` and framework state translation. Against a real
+Confluence it matters that eviction closes sessions rather than leaving them
+looking active after the caller has gone.
 
 > Each conversation gets its own `InMemorySaver`. That is right for a
 > proof of concept - one runtime per conversation, closed on eviction - but a

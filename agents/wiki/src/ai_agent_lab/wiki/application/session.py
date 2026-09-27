@@ -23,11 +23,14 @@ from __future__ import annotations
 import logging
 from typing import Any, Protocol
 
+from ygo74.agent_runtime.domains.humanapproval.approval_loop import ApprovalLoop
+
 from ai_agent_lab.langgraph.approval import LangGraphApprovalTranslator, PendingToolApproval
 from ai_agent_lab.wiki.application.composition import WikiAgentRuntime
 
 _MAX_ASKED_ROUNDS = 25
 _MAX_TOTAL_ROUNDS = 200
+_MAX_DECLINE_ROUNDS = 25
 
 _logger = logging.getLogger(__name__)
 
@@ -70,8 +73,14 @@ class WikiAgentSession:
         self._runtime = runtime
         self._resolver = resolver
         self._translator = translator
-        self._max_asked_rounds = max_approval_rounds
-        self._max_total_rounds = max_total_rounds
+        self._approval_loop = ApprovalLoop(
+            self,
+            max_approval_rounds=max_approval_rounds,
+            max_total_rounds=max_total_rounds,
+            max_decline_rounds=_MAX_DECLINE_ROUNDS,
+            interrupted_message=_INTERRUPTED,
+            exhausted_message=_EXHAUSTED,
+        )
 
     @property
     def _config(self) -> dict[str, Any]:
@@ -93,36 +102,15 @@ class WikiAgentSession:
             {"messages": [{"role": "user", "content": message}]},
             config=self._config,
         )
-        asked = 0
-        for round_idx in range(self._max_total_rounds):
-            pending = self._pending_of(result)
-            if not pending:
-                response = self._text_of(result)
-                _logger.info("Turn completed normally in round %d (response_length=%d)", round_idx + 1, len(response))
-                _logger.debug("Turn assistant response: %s", response)
-                return response
-            _logger.info(
-                "Round %d: %d pending tool approval(s) suspended by middleware",
-                round_idx + 1,
-                len(pending),
-            )
-            _logger.debug(
-                "Pending approvals: %s",
-                [(p.tool_name, p.arguments) for p in pending],
-            )
-            if self._resolver.will_question(pending):
-                asked += 1
-                _logger.debug("Approval round %d / max %d required human question", asked, self._max_asked_rounds)
-                if asked > self._max_asked_rounds:
-                    _logger.warning("Max approval rounds (%d) exceeded, abandoning turn", self._max_asked_rounds)
-                    return await self._abandon(result, _INTERRUPTED)
-            result = await self._resume(pending)
-        _logger.warning("Max total rounds (%d) exceeded, abandoning turn", self._max_total_rounds)
-        return await self._abandon(result, _EXHAUSTED)
+        return await self._approval_loop.run(result)
 
-    def _pending_of(self, result: Any) -> tuple[PendingToolApproval, ...]:
+    def pending(self, result: Any) -> tuple[PendingToolApproval, ...]:
         """Every tool call the middleware suspended in this result."""
         return self._translator.pending_approvals(self._interrupts_of(result))
+
+    def will_question(self, pending: tuple[PendingToolApproval, ...]) -> bool:
+        """Delegate question classification to the application resolver."""
+        return self._resolver.will_question(pending)
 
     @staticmethod
     def _interrupts_of(result: Any) -> tuple[Any, ...]:
@@ -139,47 +127,29 @@ class WikiAgentSession:
             return tuple(result.get("__interrupt__") or ())
         return ()
 
-    async def _resume(self, pending: tuple[PendingToolApproval, ...]) -> Any:
+    async def resume(self, pending: tuple[PendingToolApproval, ...]) -> Any:
         """Collect the user's answers and let the graph continue."""
-        _logger.debug("Resolving %d pending approvals with resolver", len(pending))
         decisions = await self._resolver.resolve(pending)
-        _logger.info("Resuming graph execution with %d decision(s)", len(decisions))
-        _logger.debug("Resume decisions: %s", decisions)
         return await self._runtime.agent.ainvoke(
             self._translator.resume_command(decisions),
             config=self._config,
         )
 
-    async def _abandon(self, result: Any, reason: str) -> str:
-        """Leave a turn without letting anything pending execute.
+    async def decline(self, pending: tuple[PendingToolApproval, ...]) -> Any:
+        """Refuse remaining calls in LangGraph's resume-command shape."""
+        answers = [approval.answer(approved=False) for approval in pending]
+        return await self._runtime.agent.ainvoke(
+            self._translator.resume_command(answers),
+            config=self._config,
+        )
 
-        Everything still suspended is rejected. Simply walking away would leave
-        the graph interrupted under this thread, and the next turn would resume
-        a batch the user was told had been abandoned.
-
-        The confirmation ledger is emptied for the same reason. An answer given
-        under one premise must never authorise an operation during a later,
-        unrelated turn, and an approval collected for a call that was then
-        abandoned is exactly such an answer.
-        """
+    def discard_authorizations(self) -> None:
+        """Purge recorded grants before or during abandonment cleanup."""
         self._runtime.confirmation_ledger.discard(self._runtime.user)
-        _logger.info("Abandoning turn, reason: %s", reason)
-        current = result
-        for _ in range(self._max_asked_rounds):
-            pending = self._pending_of(current)
-            if not pending:
-                return reason
-            answers = [approval.answer(approved=False) for approval in pending]
-            _logger.debug("Rejecting %d pending approval(s) during abandonment", len(answers))
-            try:
-                current = await self._runtime.agent.ainvoke(
-                    self._translator.resume_command(answers),
-                    config=self._config,
-                )
-            except Exception as error:  # noqa: BLE001 - see the docstring
-                _logger.warning("could not finish declining an abandoned turn: %s", type(error).__name__)
-                return reason
-        return reason
+
+    def final_text(self, result: Any) -> str:
+        """Extract the final user-facing response from LangGraph state."""
+        return self._text_of(result)
 
     @staticmethod
     def _text_of(result: Any) -> str:

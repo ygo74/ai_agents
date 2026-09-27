@@ -165,10 +165,11 @@ and friends are refused when the endpoints are registered, so a misconfiguration
 fails at startup rather than leaking a token into a handler, a log or a prompt.
 
 State is bounded and expires, and eviction closes the MCP session the runtime
-holds. Microsoft's Python hosting helpers ship a session store that is
-process-local with no eviction, and .NET's per-principal isolation has no Python
-equivalent; `ConversationRuntimeCache` is that missing piece, written without any
-knowledge of mail so it can be contributed upstream.
+holds. `ConversationRuntimeCache` leases the application-created conversation;
+the runtime's generic `HttpConversationEngine` handles confirmation commands
+before the agent session and adds pending ticket details to the shared reply.
+The Mail factory, runtime composition and Microsoft Agent Framework session
+adapter remain application code.
 
 ## What the installed runtime supports
 
