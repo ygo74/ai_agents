@@ -39,7 +39,7 @@ alongside this repository, link a working copy instead of resolving the publishe
 wheel:
 
 ```powershell
-python -m scripts.install --environment dev --runtime-source <path-to-checkout>
+python -m scripts.install --env dev --runtime-source <path-to-checkout>
 ```
 
 ## The two agents

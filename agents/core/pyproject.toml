@@ -14,7 +14,12 @@ requires-python = ">=3.12"
 # This distribution now contains only the Azure credential provider and chat
 # provider enums. The runtime owns the shared domain errors they inherit from.
 dependencies = [
-    "ygo74-agent-runtime-security>=0.1,<0.2",
+    "pydantic>=2,<3",
+    "pydantic-settings>=2,<3",
+    "python-dotenv>=1,<2",
+    "pyyaml>=6,<7",
+    "ygo74-agent-runtime-security>=0.6",
+    "ygo74-agent-runtime-agents>=0.6",
 ]
 
 [project.optional-dependencies]
@@ -22,7 +27,7 @@ dependencies = [
 # module of its own - the descriptor factory it used to carry now lives in the
 # library - so the extra exists to pull the library's own `http` dependencies
 # through for an agent that is served rather than run at a console.
-http = ["ygo74-agent-runtime-agents[http]>=0.1,<0.2"]
+http = ["ygo74-agent-runtime-agents[http]>=0.6"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/ai_agent_lab"]

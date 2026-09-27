@@ -263,20 +263,32 @@ the ticket is not a limitation of the transport — it is the design.
 ## Step 10 — Expose it over HTTP
 
 The routes, the OpenAI payload shapes, the JWT validation and discovery all come
-from the library. You write a `build_app()` that assembles them:
+from the library. In `build_app()`, compose them with the fluent
+`HostingFactory`: register the entrypoint and descriptor, choose the endpoint
+surface and one authentication policy, then configure discovery before
+registering the app.
 
 ```python
-add_ai_endpoints(
-    app,
-    WikiAgentEntrypoint(WikiConversationEngine(conversations)),
-    default_route_key=AGENT_ID,
-    enable_openai_chat_completions=True,
-    jwt_validation=jwt_validation,
-    require_bearer_token=True,
-    api_key_resolver=api_key_resolver,
-    descriptor_registry=DescriptorRegistry([descriptor]),
-    discovery=DiscoveryConfiguration(enable_openai_models=True, require_authentication=True),
+from ygo74.agent_runtime.domains.auth.authentication_policy import AuthenticationPolicy
+from ygo74.agent_runtime.domains.discovery.discovery_configuration import DiscoveryConfiguration
+from ygo74.agent_runtime.domains.endpoints.hosting_factory import EndpointSurface, HostingFactory
+
+authentication = (
+  AuthenticationPolicy.jwt(jwt_validation)
+  if jwt_validation is not None
+  else AuthenticationPolicy.api_key(api_key_resolver)
 )
+
+HostingFactory(app).add_agent(
+  WikiAgentEntrypoint(WikiConversationEngine(conversations)),
+  descriptor,
+).add_ai_endpoints(
+  EndpointSurface.OPENAI_CHAT_COMPLETIONS
+).add_security(
+  authentication
+).add_discovery(
+  DiscoveryConfiguration(enable_openai_models=True, require_authentication=True)
+).register()
 ```
 
 Three decisions to copy rather than reinvent:

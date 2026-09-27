@@ -132,8 +132,9 @@ $env:WIKI_AGENT_HTTP_API_KEY = "demo-key"
 
 A confirmation cannot hold an HTTP request open, so a gated write ends its turn
 unperformed and comes back as a ticket to answer in a later message. That, the
-authentication modes and the current limit on acting per-caller against
-Confluence are all in [wiki-agent-http.md](./wiki-agent-http.md).
+fluent `HostingFactory` setup, authentication modes and the current limit on
+acting per-caller against Confluence are all in
+[wiki-agent-http.md](./wiki-agent-http.md).
 
 ---
 

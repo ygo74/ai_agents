@@ -7,9 +7,9 @@ validation, discovery - comes from ``ygo74-agent-runtime``.
 
 Authentication is deliberately explicit. ``MAIL_AGENT_HTTP_API_KEY`` starts a
 single-caller service for a demonstration; a Keycloak realm turns the same
-service multi-user without touching a line of agent code. Both go through the
-runtime's authenticator chain, so ``auth_context`` reaches the entrypoint the
-same way and the agent cannot tell which was used.
+service multi-user without touching a line of agent code. The runtime receives
+one authentication policy, and ``auth_context`` reaches the entrypoint through
+the same contract whichever identity provider is configured.
 """
 
 from __future__ import annotations
@@ -22,13 +22,13 @@ from pathlib import Path
 from fastapi import FastAPI
 from ygo74.agent_runtime.domains.auth.apikey_authenticator import StaticApiKeyUserResolver
 from ygo74.agent_runtime.domains.auth.auth_context import ResolvedUser
+from ygo74.agent_runtime.domains.auth.authentication_policy import AuthenticationPolicy
 from ygo74.agent_runtime.domains.auth.jwt_authenticator import JwksKeyResolver, JwtValidationConfig
 from ygo74.agent_runtime.domains.configuration.environment import EnvironmentFile
 from ygo74.agent_runtime.domains.discovery.agent_descriptor import AgentDescriptor
-from ygo74.agent_runtime.domains.discovery.descriptor_registry import DescriptorRegistry
 from ygo74.agent_runtime.domains.discovery.discovery_configuration import DiscoveryConfiguration
 from ygo74.agent_runtime.domains.discovery.manifest_descriptor import AdvertisedSecurity
-from ygo74.agent_runtime.domains.endpoints.fastapi_endpoints import add_ai_endpoints
+from ygo74.agent_runtime.domains.endpoints.hosting_factory import EndpointSurface, HostingFactory
 from ygo74.agent_runtime.domains.sessions.conversation_cache import ConversationRuntimeCache
 
 from ai_agent_lab.core.config.azure_credentials import AzureIdentityCredentialProvider
@@ -97,60 +97,39 @@ def build_app(*, base_path: Path | None = None) -> FastAPI:
     app = FastAPI(title="Mail Agent", lifespan=_closing(conversations))
     app.state.conversations = conversations
 
-    # Computed once and used twice: the authenticator chain is configured from
-    # these, and the descriptor is derived from them. Discovery therefore cannot
-    # advertise a scheme this service does not accept - including while the JWT
-    # path below is switched off.
-    jwt_validation = None
+    # The same active credential configuration drives both request auth and the
+    # descriptor, so discovery cannot advertise a scheme this service rejects.
+    jwt_validation = _jwt_validation(http)
     api_key_resolver = _api_key_resolver(http, settings)
+    if jwt_validation is not None:
+        authentication = AuthenticationPolicy.jwt(jwt_validation)
+    elif api_key_resolver is not None:
+        authentication = AuthenticationPolicy.api_key(api_key_resolver)
+    else:
+        raise MailServiceConfigurationError("the Mail Agent HTTP service needs a caller")
 
-    add_ai_endpoints(
-        app,
+    HostingFactory(app).add_agent(
         MailAgentEntrypoint(MailConversationEngine(conversations)),
-        default_route_key=AGENT_ID,
-        enable_openai_chat_completions=True,
-        enable_openai_responses=False,
-        enable_anthropic_messages=False,
-        jwt_validation=jwt_validation,
-        # Always on, whichever credential the deployment uses. The runtime's
-        # authenticator chain accepts the API key as well as a bearer token, so
-        # this is not "tokens only": it is "something, always". Without it a
-        # credential-less request is not refused at the door - it reaches the
-        # entrypoint, finds no authenticated caller and dies as a 500, which
-        # reads like a broken service rather than a working gate.
-        require_bearer_token=True,
-        api_key_resolver=api_key_resolver,
-        descriptor_registry=DescriptorRegistry(
-            [_descriptor(composition, jwt_validation=jwt_validation, api_key_resolver=api_key_resolver)]
-        ),
-        # Discovery carries its own authentication flag, defaulting to open.
-        # Listing the agent also lists all fifteen capability descriptions, which
-        # is a map of what the mailbox can be made to do: it is not public.
-        discovery=DiscoveryConfiguration(enable_openai_models=True, require_authentication=True),
-    )
+        _descriptor(composition, jwt_validation=jwt_validation, api_key_resolver=api_key_resolver),
+    ).add_ai_endpoints(
+        EndpointSurface.OPENAI_CHAT_COMPLETIONS
+    ).add_security(authentication).add_discovery(
+        DiscoveryConfiguration(enable_openai_models=True, require_authentication=True)
+    ).register()
     return app
 
 
 def _refuse_an_open_service(http: MailAgentHttpSettings) -> None:
     """Fail loudly, and precisely, when nothing would identify a caller.
 
-    The JWT path below is currently switched off in this build, so an issuer on
-    its own authenticates nobody. Saying that here is the whole value of the
-    guard: without it the service started, accepted every request, and served the
-    configured mailbox to whoever asked - and the only symptom was a descriptor
-    that could not be built.
+    A configured issuer enables the JWT path; without it, the static API key is
+    the only supported caller identity.
     """
-    if http.api_key:
+    if http.oidc_issuer or http.api_key:
         return
-    if http.oidc_issuer:
-        raise MailServiceConfigurationError(
-            "MAIL_AGENT_HTTP_OIDC_ISSUER is set but the JWT path of this build is disabled, "
-            "so no caller can be authenticated. Re-enable `jwt_validation` in build_app, "
-            "or set MAIL_AGENT_HTTP_API_KEY for a single-caller demonstration"
-        )
     raise MailServiceConfigurationError(
         "the Mail Agent HTTP service needs a caller: set MAIL_AGENT_HTTP_API_KEY "
-        "for a single-caller demonstration, or configure and re-enable the JWT path"
+        "for a single-caller demonstration, or set MAIL_AGENT_HTTP_OIDC_ISSUER for OIDC"
     )
 
 
