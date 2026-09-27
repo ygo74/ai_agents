@@ -16,9 +16,9 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 
+from ygo74.agent_runtime.domains.reasoning.ports import UntrustedSection
 from ygo74.agent_runtime.domains.security.untrusted import UntrustedText, untrusted
 
-from ai_agent_lab.core.reasoning.ports import UntrustedSection
 from ai_agent_lab.wiki.domain.models import WikiComment, WikiPage
 from ai_agent_lab.wiki.domain.origins import WikiOrigin
 

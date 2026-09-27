@@ -16,7 +16,7 @@ dialect: gmail
 #
 # Recorded from the live server with:
 #   python -m ai_agent_lab.mail.application.discover --server gmail
-# The recording is kept in docs/mcp-discovery/gmail-tools.json. It exposes 23
+# The recording is kept in data/mcp-discovery/gmail-tools.json. It exposes 23
 # tools, and every one of them returns structured content.
 #
 # Deliberately absent:

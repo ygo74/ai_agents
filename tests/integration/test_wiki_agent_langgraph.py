@@ -137,7 +137,7 @@ class TestCapabilityExposure:
     def test_a_binding_that_omits_a_capability_withdraws_it(self, tmp_path: Path, monkeypatch):
         """`sooperset/mcp-atlassian` cannot list revisions, and says so."""
         self._deliver_binding(tmp_path, capabilities=["search_wiki", "get_page"])
-        monkeypatch.setenv("AI_AGENT_LAB_CONFIG_DIR", str(tmp_path))
+        monkeypatch.setenv("YGO74_AGENT_RUNTIME_CONFIG_DIR", str(tmp_path))
         monkeypatch.setenv("WIKI_MCP_SERVER", "partial")
 
         runtime = build_runtime(settings=WikiAgentSettings(mode=WikiAgentMode.MCP))
@@ -149,7 +149,7 @@ class TestCapabilityExposure:
     def test_an_analysis_capability_needs_the_tools_it_retrieves_with(self, tmp_path: Path, monkeypatch):
         """Summarising is useless against a server that cannot return a page."""
         self._deliver_binding(tmp_path, capabilities=["search_wiki"])
-        monkeypatch.setenv("AI_AGENT_LAB_CONFIG_DIR", str(tmp_path))
+        monkeypatch.setenv("YGO74_AGENT_RUNTIME_CONFIG_DIR", str(tmp_path))
         monkeypatch.setenv("WIKI_MCP_SERVER", "partial")
 
         runtime = build_runtime(settings=WikiAgentSettings(mode=WikiAgentMode.MCP))
@@ -174,7 +174,7 @@ class TestCapabilityExposure:
             capabilities=["search_wiki", "get_page", "update_page", "delete_page"],
             read_only_variable="WIKI_MCP_READ_ONLY",
         )
-        monkeypatch.setenv("AI_AGENT_LAB_CONFIG_DIR", str(tmp_path))
+        monkeypatch.setenv("YGO74_AGENT_RUNTIME_CONFIG_DIR", str(tmp_path))
         monkeypatch.setenv("WIKI_MCP_SERVER", "partial")
         monkeypatch.setenv("WIKI_MCP_READ_ONLY", "true")
 
@@ -193,7 +193,7 @@ class TestCapabilityExposure:
             capabilities=["search_wiki", "get_page", "update_page", "delete_page"],
             read_only_variable="WIKI_MCP_READ_ONLY",
         )
-        monkeypatch.setenv("AI_AGENT_LAB_CONFIG_DIR", str(tmp_path))
+        monkeypatch.setenv("YGO74_AGENT_RUNTIME_CONFIG_DIR", str(tmp_path))
         monkeypatch.setenv("WIKI_MCP_SERVER", "partial")
         monkeypatch.setenv("WIKI_MCP_READ_ONLY", "false")
 
@@ -567,9 +567,9 @@ class TestReasonerWiring:
     """The reasoning port, through the real LangChain path."""
 
     async def test_the_reasoner_asks_for_structured_output(self):
+        from ygo74.agent_runtime.domains.reasoning.ports import ReasoningRequest
         from ygo74.agent_runtime.domains.security.prompt_envelope import PromptEnvelopeBuilder
 
-        from ai_agent_lab.core.reasoning.ports import ReasoningRequest
         from ai_agent_lab.langgraph.reasoner import LangGraphTextReasoner
 
         expected = AnswerOutput(answer="from the model", cited_page_ids=[])
@@ -586,10 +586,10 @@ class TestReasonerWiring:
         assert answer.answer == "from the model"
 
     async def test_a_wrongly_shaped_answer_is_refused(self):
+        from ygo74.agent_runtime.domains.reasoning.errors import ReasoningOutputError
+        from ygo74.agent_runtime.domains.reasoning.ports import ReasoningRequest
         from ygo74.agent_runtime.domains.security.prompt_envelope import PromptEnvelopeBuilder
 
-        from ai_agent_lab.core.reasoning.errors import ReasoningOutputError
-        from ai_agent_lab.core.reasoning.ports import ReasoningRequest
         from ai_agent_lab.langgraph.reasoner import LangGraphTextReasoner
 
         reasoner = LangGraphTextReasoner(

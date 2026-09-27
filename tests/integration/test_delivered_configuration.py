@@ -8,23 +8,27 @@ it refuses matters as much as what it reads.
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import pytest
-from ygo74.agent_runtime.domains.security.floor import SecurityFloorViolationError
-from ygo74.agent_runtime.domains.security.operations import OperationType, RiskLevel
-from ygo74.agent_runtime.domains.security.permissions import PermissionRegistry, UnknownPermissionError
-
-from ai_agent_lab.core.config.directory import (
+import yaml
+from jsonschema import Draft202012Validator
+from ygo74.agent_runtime.domains.configuration.directory import (
     CONFIG_DIR_VARIABLE,
     ConfigurationDirectory,
     ConfigurationNotFoundError,
 )
-from ai_agent_lab.core.config.manifests import (
+from ygo74.agent_runtime.domains.configuration.manifest_schemas import ManifestSchemas
+from ygo74.agent_runtime.domains.configuration.manifests import (
     AgentManifestLoader,
     ConfigurationError,
     SkillManifestLoader,
 )
+from ygo74.agent_runtime.domains.security.floor import SecurityFloorViolationError
+from ygo74.agent_runtime.domains.security.operations import OperationType, RiskLevel
+from ygo74.agent_runtime.domains.security.permissions import PermissionRegistry, UnknownPermissionError
+
 from ai_agent_lab.mail.catalog import MailToolCatalog, MailToolName
 from ai_agent_lab.mail.domain.permissions import MailPermission
 from ai_agent_lab.mail.mcp.binding import McpBindingError, McpServerBindingLoader, McpTransport
@@ -103,6 +107,25 @@ def write_package(folder: Path, **overrides: str) -> Path:
 def delivered() -> ConfigurationDirectory:
     """Return the configuration delivered with the repository."""
     return ConfigurationDirectory.resolve(base_path=REPOSITORY_ROOT)
+
+
+def test_every_delivered_manifest_matches_the_runtime_json_schema() -> None:
+    """The published structural contracts accept every agent and skill we ship."""
+    schemas = {
+        "agent.yaml": json.loads(ManifestSchemas.agent()),
+        "skill.yaml": json.loads(ManifestSchemas.skill()),
+    }
+    validators = {name: Draft202012Validator(schema) for name, schema in schemas.items()}
+    for schema in schemas.values():
+        Draft202012Validator.check_schema(schema)
+
+    manifest_files = (
+        path
+        for path in (REPOSITORY_ROOT / "config").rglob("*.yaml")
+        if path.name in validators
+    )
+    for path in manifest_files:
+        validators[path.name].validate(yaml.safe_load(path.read_text(encoding="utf-8")))
 
 
 def assert_addressable(binding) -> None:

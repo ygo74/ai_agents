@@ -953,8 +953,8 @@ Do not duplicate existing abstractions.
 Create/update:
 
 ```text
-docs/agent-design.md
-docs/mcp-design.md
+spec/architecture/agent-design.md
+spec/integrations/mcp-design.md
 docs/mail-agent.md
 ```
 

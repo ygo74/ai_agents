@@ -12,6 +12,7 @@ from typing import Any
 import pytest
 from pydantic import BaseModel
 from ygo74.agent_runtime.domains.contracts.capability_registry import SkillDescriptor, SkillRegistry
+from ygo74.agent_runtime.domains.errors import DomainError
 from ygo74.agent_runtime.domains.humanapproval.confirmation import (
     ConfiguredConfirmationPolicy,
     InMemoryConfirmationPreferenceStore,
@@ -25,7 +26,6 @@ from ygo74.agent_runtime.domains.security.operations import (
 from ygo74.agent_runtime.domains.security.permissions import Permission
 from ygo74.agent_runtime.domains.security.user_context import UserContext
 
-from ai_agent_lab.core.errors import DomainError
 from ai_agent_lab.langgraph.approval import (
     ALLOWED_DECISIONS,
     LangGraphApprovalTranslator,

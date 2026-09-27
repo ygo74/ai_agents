@@ -18,6 +18,8 @@ from __future__ import annotations
 
 import pytest
 from tests.unit.wiki.conftest import make_page, make_wiki
+from ygo74.agent_runtime.domains.configuration.directory import ConfigurationDirectory
+from ygo74.agent_runtime.domains.configuration.manifests import AgentManifestLoader, SkillManifestLoader
 from ygo74.agent_runtime.domains.contracts.manifests import AgentManifest
 from ygo74.agent_runtime.domains.humanapproval.approval_errors import ConfirmationRequiredError
 from ygo74.agent_runtime.domains.humanapproval.broker import ConfirmationBroker
@@ -33,8 +35,6 @@ from ygo74.agent_runtime.domains.humanapproval.unattended import UnattendedAppro
 from ygo74.agent_runtime.domains.security.audit import InMemoryAuditTrail
 from ygo74.agent_runtime.domains.security.permissions import PermissionRegistry
 
-from ai_agent_lab.core.config.directory import ConfigurationDirectory
-from ai_agent_lab.core.config.manifests import AgentManifestLoader, SkillManifestLoader
 from ai_agent_lab.wiki.application.confirmation_presenter import (
     UnknownGatedWikiToolError,
     WikiConfirmationPresenter,

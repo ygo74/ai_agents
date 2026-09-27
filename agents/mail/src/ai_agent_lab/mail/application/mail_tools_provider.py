@@ -6,8 +6,8 @@ import logging
 from pathlib import Path
 
 import httpx
+from ygo74.agent_runtime.domains.configuration.directory import ConfigurationDirectory
 
-from ai_agent_lab.core.config.directory import ConfigurationDirectory
 from ai_agent_lab.mail.catalog import MailToolName
 from ai_agent_lab.mail.config.settings import (
     MailAgentMode,

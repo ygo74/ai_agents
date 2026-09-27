@@ -199,6 +199,6 @@ answer).
 ## Adding another wiki system
 
 Notion, XWiki, SharePoint: the same three steps as any other server, described in
-[repository-structure.md](./repository-structure.md). Write a dialect, register
-it, deliver a binding. The domain speaks of spaces, pages and comments, and it
-has never heard of Confluence.
+the [repository structure specification](../spec/architecture/repository-structure.md).
+Write a dialect, register it, deliver a binding. The domain speaks of spaces,
+pages and comments, and it has never heard of Confluence.

@@ -2,7 +2,7 @@
 
 Transcribed from the schemas recorded by
 ``python -m ai_agent_lab.mail.application.discover --server gmail`` and kept
-in ``docs/mcp-discovery/gmail-tools.json``. Every field the server declares as
+in ``data/mcp-discovery/gmail-tools.json``. Every field the server declares as
 optional is optional here, so a message missing a subject or a date is data to
 handle rather than a crash.
 

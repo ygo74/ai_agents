@@ -20,11 +20,11 @@ mcp-servers/                auxiliaries
 
 | Distribution | Depends on |
 |---|---|
-| `ai-agent-lab-core` | pydantic, pydantic-settings, pyyaml, python-dotenv, ygo74-agent-runtime |
-| `ai-agent-lab-maf` | core, agent-framework; extra `azure` |
-| `ai-agent-lab-langgraph` | core, langchain, langgraph, langchain-openai; extra `azure` |
-| `ai-agent-lab-mail-agent` | core, mcp; extras `maf`, `native`, `http` |
-| `ai-agent-lab-wiki-agent` | core, mcp; extras `langgraph`, `native`, `http` |
+| `ai-agent-lab-core` | ygo74-agent-runtime-security |
+| `ai-agent-lab-maf` | core, ygo74-agent-runtime-agents, agent-framework; extra `azure` |
+| `ai-agent-lab-langgraph` | core, ygo74-agent-runtime-agents, langchain, langgraph, langchain-openai; extra `azure` |
+| `ai-agent-lab-mail-agent` | core, mcp, runtime agents with `configuration`, runtime security; extras `maf`, `native`, `http` |
+| `ai-agent-lab-wiki-agent` | core, mcp, runtime agents with `configuration`, runtime security; extras `langgraph`, `native`, `http` |
 | `mail-mcp-protocol` | pydantic; extra `serving` adds mcp |
 | `mail-mcp-gmail` | protocol[serving], mcp, httpx |
 | `mail-mcp-reference` | protocol[serving], mcp |
@@ -32,10 +32,11 @@ mcp-servers/                auxiliaries
 | `wiki-mcp-reference` | wiki-protocol[serving], mcp |
 
 `ygo74-agent-runtime` is the odd one out: it is not developed here. It owns the
-security model, the authenticated caller, the conversation port and the capability
-contracts that `ai-agent-lab-core` used to carry, so it is a foundation dependency
-rather than a serving extra. Because it is developed alongside this repository,
-link a working copy instead of resolving the published wheel:
+shared security model, configuration loading and schemas, reasoning port,
+authenticated caller, conversation port and capability contracts. The agents
+depend on the runtime distributions directly. Because the runtime is developed
+alongside this repository, link a working copy instead of resolving the published
+wheel:
 
 ```powershell
 python -m scripts.install --env dev --runtime-source <path-to-checkout>
@@ -127,7 +128,7 @@ gap in a server is a configuration fact rather than a failure on the first call.
 One reservation: a server returning **prose** rather than structured JSON is
 still pluggable, but its dialect has to parse text. That is fragile and exposed
 to injection through the content itself, as documented for the community Gmail
-servers in [mail-mcp-servers.md](./mail-mcp-servers.md). Being able to plug such
+servers in [the mail MCP server guide](../../docs/mail-mcp-servers.md). Being able to plug such
 a server is not a recommendation to do so.
 
 ## Installing

@@ -22,14 +22,14 @@ from pathlib import Path
 from typing import Any
 
 from mcp import ClientSession
+from ygo74.agent_runtime.domains.configuration.directory import ConfigurationDirectory
 
-from ai_agent_lab.core.config.directory import ConfigurationDirectory
 from ai_agent_lab.mail.config.settings import ENV_FILE
 from ai_agent_lab.mail.mcp.binding import McpServerBinding, McpServerBindingLoader, McpTransport
 from ai_agent_lab.mail.mcp.connection import McpConnection
 from ai_agent_lab.mail.mcp.oauth import MailOAuthProvider
 
-DEFAULT_OUTPUT = Path("docs/mcp-discovery")
+DEFAULT_OUTPUT = Path("data/mcp-discovery")
 _logger = logging.getLogger(__name__)
 
 
@@ -127,7 +127,7 @@ def _load_environment() -> None:
     """Make the delivered configuration visible before anything reads it."""
     _logger.info("Loading Mail MCP discovery environment")
     _logger.debug("_load_environment arguments: env_file=%s", ENV_FILE)
-    from ai_agent_lab.core.config.environment import EnvironmentFile
+    from ygo74.agent_runtime.domains.configuration.environment import EnvironmentFile
 
     EnvironmentFile(Path(ENV_FILE)).load()
 

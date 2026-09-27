@@ -35,8 +35,8 @@ from pathlib import Path
 from typing import Any
 
 import yaml
+from ygo74.agent_runtime.domains.configuration.directory import ConfigurationDirectory
 
-from ai_agent_lab.core.config.directory import ConfigurationDirectory
 from ai_agent_lab.wiki.catalog import WikiToolCatalog, WikiToolName
 from ai_agent_lab.wiki.wiki_errors import WikiToolProtocolError
 

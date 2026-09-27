@@ -341,7 +341,7 @@ need it.
    `packages`. Strict typing is not negotiable at the security boundary.
 3. Write `deploy/<name>-agent.Dockerfile`, copying one of the two existing ones.
    Two stages, `python:3.12-slim`, non-root, `config/` bundled and overridable
-   through `AI_AGENT_LAB_CONFIG_DIR`, and a health check.
+   through `YGO74_AGENT_RUNTIME_CONFIG_DIR`, and a health check.
 4. Add it to the matrix in
    [`.github/workflows/images.yml`](../.github/workflows/images.yml). Three lines:
    the name and the Dockerfile.
@@ -369,9 +369,12 @@ need it.
 
 ## Related
 
-- [architecture.md](architecture.md) — the layers and why they are where they are
-- [agent-design.md](agent-design.md) — what an agent is responsible for
-- [mcp-design.md](mcp-design.md) — the integration boundary
+- [System architecture](../spec/architecture/architecture.md) — the layers and
+  why they are where they are
+- [Agent design](../spec/architecture/agent-design.md) — what an agent is
+  responsible for
+- [MCP design](../spec/integrations/mcp-design.md) — the integration boundary
 - [configuration.md](configuration.md) — every setting and where it is read
-- [repository-structure.md](repository-structure.md) — the ten distributions
+- [Repository structure](../spec/architecture/repository-structure.md) — the ten
+  distributions
 - [deployment.md](deployment.md) — running it as a container

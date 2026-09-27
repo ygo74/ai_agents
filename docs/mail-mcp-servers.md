@@ -191,7 +191,7 @@ they are asked for rather than assumed:
 ```
 
 The browser opens for consent once, the token is stored, and the tool schemas
-are written to `docs/mcp-discovery/gmail-tools.json`. That recording is what the
+are written to `data/mcp-discovery/gmail-tools.json`. That recording is what the
 Gmail dialect is written against. The command only lists tools; it reads no
 message.
 

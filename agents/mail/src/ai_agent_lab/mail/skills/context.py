@@ -11,9 +11,9 @@ from __future__ import annotations
 import logging
 from collections.abc import Iterable
 
+from ygo74.agent_runtime.domains.reasoning.ports import UntrustedSection
 from ygo74.agent_runtime.domains.security.untrusted import UntrustedText, untrusted
 
-from ai_agent_lab.core.reasoning.ports import UntrustedSection
 from ai_agent_lab.mail.domain.models import MailMessage, MailParticipant
 from ai_agent_lab.mail.domain.origins import MailOrigin
 

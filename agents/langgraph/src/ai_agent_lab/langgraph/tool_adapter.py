@@ -19,10 +19,9 @@ from typing import Any
 
 from langchain_core.tools import StructuredTool
 from ygo74.agent_runtime.domains.contracts.capability_registry import ResultRenderer, SkillDescriptor, SkillRegistry
+from ygo74.agent_runtime.domains.errors import DomainError
 from ygo74.agent_runtime.domains.security.security_errors import SecurityError
 from ygo74.agent_runtime.domains.security.user_context import UserContext
-
-from ai_agent_lab.core.errors import DomainError
 
 _logger = logging.getLogger(__name__)
 

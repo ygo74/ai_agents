@@ -12,10 +12,9 @@ import logging
 from collections.abc import Mapping, Sequence
 
 from pydantic import BaseModel, ValidationError
+from ygo74.agent_runtime.domains.reasoning.errors import ReasoningOutputError
+from ygo74.agent_runtime.domains.reasoning.ports import ReasoningOutputT, ReasoningRequest
 from ygo74.agent_runtime.domains.security.prompt_envelope import PromptEnvelopeBuilder
-
-from ai_agent_lab.core.reasoning.errors import ReasoningOutputError
-from ai_agent_lab.core.reasoning.ports import ReasoningOutputT, ReasoningRequest
 
 _logger = logging.getLogger(__name__)
 

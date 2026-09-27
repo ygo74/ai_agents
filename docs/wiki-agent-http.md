@@ -32,13 +32,10 @@ key; without an issuer, the configured key is used.
 | JWT / API-key authentication | What happens to a gated operation |
 | Discovery and access policy | Isolation and eviction of conversation state |
 
-Most of what this used to require is now written once in `ygo74-agent-runtime`
-and composed by both agents. What is left in `ai_agent_lab.core.serving` is the
-part that has not moved yet:
-
-| Module | Responsibility |
-|---|---|
-| `serving/runtimes.py` | Keeps one runtime per caller and conversation, bounded and expiring |
+The shared serving foundation is now provided by `ygo74-agent-runtime`,
+including the authenticated caller, endpoint contracts, discovery, approvals
+and leased conversation cache. `ai_agent_lab.core` no longer contains a serving
+layer.
 
 | Provided by the library | Responsibility |
 |---|---|

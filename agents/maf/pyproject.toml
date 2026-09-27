@@ -12,6 +12,8 @@ requires-python = ">=3.12"
 # LangChain or CrewAI adapter means a sibling distribution, not a change here.
 dependencies = [
     "ai-agent-lab-core",
+    "ygo74-agent-runtime-agents>=0.6",
+    "ygo74-agent-runtime-security>=0.6",
     "agent-framework-core>=1.17,<2",
     "agent-framework-openai>=1.14,<2",
 ]

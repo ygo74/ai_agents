@@ -31,13 +31,13 @@ from ygo74.agent_runtime.domains.auth.apikey_authenticator import StaticApiKeyUs
 from ygo74.agent_runtime.domains.auth.auth_context import ResolvedUser
 from ygo74.agent_runtime.domains.auth.authentication_policy import AuthenticationPolicy
 from ygo74.agent_runtime.domains.auth.jwt_authenticator import JwksKeyResolver, JwtValidationConfig
+from ygo74.agent_runtime.domains.configuration.environment import EnvironmentFile
 from ygo74.agent_runtime.domains.discovery.agent_descriptor import AgentDescriptor
 from ygo74.agent_runtime.domains.discovery.discovery_configuration import DiscoveryConfiguration
 from ygo74.agent_runtime.domains.discovery.manifest_descriptor import AdvertisedSecurity
 from ygo74.agent_runtime.domains.endpoints.hosting_factory import EndpointSurface, HostingFactory
 from ygo74.agent_runtime.domains.sessions.conversation_cache import ConversationRuntimeCache
 
-from ai_agent_lab.core.config.environment import EnvironmentFile
 from ai_agent_lab.wiki.application.cli_entrypoint import build_chat_model
 from ai_agent_lab.wiki.application.composition import WikiAgentCompositionRoot
 from ai_agent_lab.wiki.application.entrypoints.conversation import (

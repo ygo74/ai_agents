@@ -31,6 +31,8 @@ from langchain.agents.middleware import HumanInTheLoopMiddleware
 from langchain_core.language_models import BaseChatModel
 from langgraph.checkpoint.memory import InMemorySaver
 from ygo74.agent_runtime.domains.auth.agent_principal import AgentPrincipal
+from ygo74.agent_runtime.domains.configuration.directory import ConfigurationDirectory
+from ygo74.agent_runtime.domains.configuration.manifests import AgentManifestLoader, SkillManifestLoader
 from ygo74.agent_runtime.domains.contracts.capability_registry import SkillDescriptor, SkillRegistry
 from ygo74.agent_runtime.domains.contracts.manifests import AgentManifest
 from ygo74.agent_runtime.domains.humanapproval.broker import ConfirmationBroker
@@ -42,15 +44,13 @@ from ygo74.agent_runtime.domains.humanapproval.confirmation import (
 )
 from ygo74.agent_runtime.domains.humanapproval.ledger import InMemoryConfirmationLedger
 from ygo74.agent_runtime.domains.humanapproval.unattended import UnattendedApprovalAuthority
+from ygo74.agent_runtime.domains.reasoning.ports import TextReasoner
 from ygo74.agent_runtime.domains.security.audit import InMemoryAuditTrail, LoggingAuditTrail
 from ygo74.agent_runtime.domains.security.permissions import PermissionRegistry
 from ygo74.agent_runtime.domains.security.prompt_envelope import PromptEnvelopeBuilder
 from ygo74.agent_runtime.domains.security.user_context import UserContext
+from ygo74.agent_runtime.domains.security.user_context_factory import UserContextFactory
 
-from ai_agent_lab.core.config.directory import ConfigurationDirectory
-from ai_agent_lab.core.config.manifests import AgentManifestLoader, SkillManifestLoader
-from ai_agent_lab.core.reasoning.ports import TextReasoner
-from ai_agent_lab.core.security.user_contexts import UserContextFactory
 from ai_agent_lab.langgraph.approval import LangGraphApprovalTranslator
 from ai_agent_lab.langgraph.reasoner import LangGraphTextReasoner
 from ai_agent_lab.langgraph.tool_adapter import SkillToolAdapter

@@ -14,8 +14,8 @@ is tested here rather than upstream.
 from __future__ import annotations
 
 from ygo74.agent_runtime.domains.auth.agent_principal import AgentPrincipal
+from ygo74.agent_runtime.domains.security.user_context_factory import UserContextFactory
 
-from ai_agent_lab.core.security.user_contexts import UserContextFactory
 from ai_agent_lab.mail.domain.permissions import MailPermission
 
 ADA = AgentPrincipal(subject="3f9a-user", email="ada@example.com", display_name="Ada Lovelace")

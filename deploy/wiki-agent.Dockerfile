@@ -44,7 +44,7 @@ LABEL org.opencontainers.image.title="wiki-agent" \
 ENV PATH="/opt/venv/bin:${PATH}" \
     PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
-    AI_AGENT_LAB_CONFIG_DIR=/app/config
+    YGO74_AGENT_RUNTIME_CONFIG_DIR=/app/config
 
 RUN useradd --create-home --uid 10001 agent
 

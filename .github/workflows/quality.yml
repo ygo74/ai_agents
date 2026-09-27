@@ -52,6 +52,23 @@ jobs:
       - name: Lint
         run: python -m ruff check .
 
+      - name: Check out the runtime API revision used by this migration
+        uses: actions/checkout@v7.0.1
+        with:
+          repository: ygo74/ai-enterprise-agent-runtime
+          # The APIs consumed by this branch are not in the currently published
+          # wheel. Keep CI on the reviewed runtime implementation until a release
+          # containing it is available.
+          ref: 206f11adfa427c1427890f60842b84869276ee23
+          path: .runtime-source
+
+      - name: Install the runtime distributions built from that revision
+        run: >-
+          python -m pip install --force-reinstall --no-deps
+          .runtime-source/packages/python/security
+          .runtime-source/packages/python/agents
+          .runtime-source/packages/python/mcpserver
+
       - name: Type-check
         # No arguments: the packages under strict checking are named in
         # pyproject.toml, so CI and a workstation check the same set.

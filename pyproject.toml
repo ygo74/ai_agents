@@ -6,7 +6,7 @@
 #
 # Install everything for development with:
 #   python -m scripts.install
-# or see docs/repository-structure.md.
+# or see spec/architecture/repository-structure.md.
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

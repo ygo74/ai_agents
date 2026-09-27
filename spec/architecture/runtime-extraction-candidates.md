@@ -1,7 +1,10 @@
 # What could move to `ygo74-agent-runtime`
 
-> **Status, 2026-09-13.** Batches 1 to 11 are delivered, and batch 12 is delivered
-> in the library but not yet adopted by the agents: `ygo74.agent_runtime.domains.mcp`
+> **Status, 2026-09-27.** Batches 1 to 11 are delivered. Issue #5 also moved the
+> remaining reusable core APIs - common errors, configuration loading and schemas,
+> the user-context factory and the reasoning port - into the runtime. Batch 12 is
+> delivered in the library but not yet adopted by the agents:
+> `ygo74.agent_runtime.domains.mcp`
 > ships and is tested, while the Mail and Wiki agents still carry their own copies
 > of the transport lifecycle, the binding schema and the dialect registry.
 > Rebinding them is the one step left, and it was stopped rather than rushed: it
@@ -18,15 +21,16 @@
 > rendered a refusal, and the library's package root pulled a web framework into
 > every import.
 
-This is an **analysis**, not a migration. It records which parts of this repository belong to the
-hosting library rather than to the agent laboratory, and what each one would need before it could move.
+This is an **analysis of the remaining candidates**, not a plan to move every item below. It records
+which parts of this repository belong to the hosting library and what each candidate still needs.
 
 The target is `ygo74-agent-runtime` (Python package `ygo74.agent_runtime`), which already owns the
 OpenAI and Anthropic endpoints (`domains.endpoints`), discovery and the agent descriptor
 (`domains.discovery`), JWT and API-key authentication (`domains.auth`), routing (`routing`), the
 middleware pipeline (`middleware`) and the beginnings of observability (`observability`).
 
-Nothing is decided here. Nothing moves until the sequencing table is agreed.
+The sequencing table records decisions already made. Other candidates below remain analysis until
+their own scope and sequence are agreed.
 
 ## Why the question arises
 
@@ -171,8 +175,10 @@ description, an argument schema, the security posture and the coroutine that run
 three frameworks read this same registry, which is what keeps the capabilities from being ported three
 times.
 
-Only the typed contract is in scope. **Loading** the YAML packages (`core/config/manifests.py`,
-`core/config/directory.py`) is a convention of this repository and stays here.
+The typed contracts remain in `domains/contracts/`. Issue #5 completed the move of
+YAML package loading to `domains/configuration/`, alongside fixed Draft 2020-12
+schemas for `agent.yaml` and `skill.yaml`. Permission resolution and enforcement
+of the code-owned security floor remain runtime checks after schema validation.
 
 It is listed in Tier 1 because nothing has to change for it to move, and it is sequenced early because
 the human-approval domain depends on it.
@@ -304,7 +310,7 @@ stub: the audit trail is the first signal an enterprise library has to produce.
 ### Untrusted content and prompt fencing
 
 *Sources: `core/security/untrusted.py`, `core/security/fencing.py`, `core/reasoning/envelope.py`,
-and `ReasoningRequest` from `core/reasoning/ports.py` · Target: `domains/security/` · portable*
+and `ReasoningRequest` from `ygo74.agent_runtime.domains.security.prompt_envelope` · Target: `domains/security/` · portable*
 
 `UntrustedText` puts "this came from a third party" into the type system. The raw value is reachable
 only through `expose()`, which makes every dereference greppable in review, and its `repr` hides the
@@ -319,9 +325,9 @@ false premise about its own input.
 other business values. As it stands the component fails criterion 1. The origin must be opened - a free
 string, or an enumeration extensible by the calling domain - before anything moves.
 
-**Coupling to watch.** `reasoning/envelope.py` renders a `ReasoningRequest`, which lives in
-`reasoning/ports.py` and itself holds `UntrustedText`. The request and section models must travel with
-the fence; only the `TextReasoner` protocol stays behind, with the framework adapters that implement it.
+**Coupling to watch.** `ReasoningRequest` and `UntrustedSection` travel with the fence. Issue #5 also
+moved the framework-neutral `TextReasoner` protocol; only concrete reasoner implementations stay with
+the framework adapters.
 
 ### Tokens
 
@@ -429,8 +435,9 @@ its release cadence to frameworks that move fast. The repository's `langchain>=1
 because the `when` predicate of the human-in-the-loop middleware only appeared in that release - is
 exactly the coupling to avoid.
 
-The `TextReasoner` protocol in `core/reasoning/ports.py` names no framework and could follow the fencing
-work later, but its implementations stay with the adapters.
+The framework-neutral `TextReasoner` protocol and its error hierarchy moved to
+`domains/reasoning/` in issue #5. Concrete reasoner implementations stay with the
+framework adapters.
 
 ### The session loop
 

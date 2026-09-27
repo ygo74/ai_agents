@@ -86,7 +86,7 @@ class TestPromptInjection:
     ):
         page = await tools.get_page("apollo-onboarding", outsider)
         sections = WikiContextBuilder().build([page])
-        from ai_agent_lab.core.reasoning.ports import ReasoningRequest
+        from ygo74.agent_runtime.domains.reasoning.ports import ReasoningRequest
 
         prompt = PromptEnvelopeBuilder(source=WIKI_UNTRUSTED_SOURCE).build(
             ReasoningRequest(instructions="You are an assistant.", task="Summarise.", context=sections)
@@ -99,7 +99,7 @@ class TestPromptInjection:
     async def test_the_prompt_names_a_wiki_not_a_mailbox(self, tools: InMemoryWikiTools, outsider: UserContext):
         """A model told it is reading a mailbox has a false premise about its input."""
         page = await tools.get_page("apollo-scope", outsider)
-        from ai_agent_lab.core.reasoning.ports import ReasoningRequest
+        from ygo74.agent_runtime.domains.reasoning.ports import ReasoningRequest
 
         prompt = PromptEnvelopeBuilder(source=WIKI_UNTRUSTED_SOURCE).build(
             ReasoningRequest(
@@ -315,10 +315,10 @@ class TestWritesAskedForByAPage:
 
     def test_no_write_is_ungated_by_the_delivered_configuration(self):
         """Every delivered write asks, whatever a skill package declares."""
+        from ygo74.agent_runtime.domains.configuration.directory import ConfigurationDirectory
+        from ygo74.agent_runtime.domains.configuration.manifests import AgentManifestLoader, SkillManifestLoader
         from ygo74.agent_runtime.domains.security.permissions import PermissionRegistry
 
-        from ai_agent_lab.core.config.directory import ConfigurationDirectory
-        from ai_agent_lab.core.config.manifests import AgentManifestLoader, SkillManifestLoader
         from ai_agent_lab.wiki.security_floor import WikiSecurityFloor
 
         manifest = AgentManifestLoader(

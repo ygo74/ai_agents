@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from ai_agent_lab.core.errors import DomainError
+from ygo74.agent_runtime.domains.errors import DomainError
 
 
 class MailDomainError(DomainError):
