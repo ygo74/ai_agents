@@ -1,5 +1,9 @@
 # Agent Design
 
+This page covers agent and framework composition. The repository-wide
+responsibilities and runtime boundary are defined in
+[system-specification.md](./system-specification.md).
+
 ## 1. What an agent is in this repository
 
 An agent is built with the API of its framework, directly. There is no house
@@ -10,8 +14,10 @@ repository would have to document, support and teach.
 What the repository does own is what makes an agent's capabilities reusable
 across frameworks:
 
-- a **manifest**, delivered as configuration: identity, instructions, and for
-  each capability its description, security posture and prompt;
+- an **agent manifest** and a separate `AGENT.md` file for agent identity and
+  instructions;
+- a **skill manifest** and a separate `SKILL.md` file for each capability's
+  description, operation security posture, and instructions;
 - a **skill registry**, built in code: the capabilities bound to the coroutines
   that run them;
 - an **adapter**, per framework: registry entries turned into that framework's
@@ -19,7 +25,12 @@ across frameworks:
 
 An agent contains no business logic, no integration code and no reasoning
 implementation. Business logic belongs to skills; integrations belong to MCP
-servers.
+servers. The shared manifest loaders and `TextReasoner` port are public Python
+APIs from `ai-enterprise-agent-runtime`.
+
+The YAML shapes are fixed contracts published as Draft 2020-12 schemas by the
+runtime. The schemas validate `agent.yaml` and `skill.yaml`; `AGENT.md` and
+`SKILL.md` remain separate Markdown inputs and are not schema-validated.
 
 ## 2. Skill registry
 
@@ -61,6 +72,8 @@ conventions. For Microsoft Agent Framework 1.17:
 
 The adapter must not contain domain rules. It maps types and wires middleware.
 Building the agent is left to the composition root, in plain framework code.
+The port is `ygo74.agent_runtime.domains.reasoning.ports.TextReasoner`;
+framework implementations stay in this repository's adapters.
 
 > API note: this repository targets the GA API of Microsoft Agent Framework
 > (`Agent`, `AgentResponse`, `Message`, `Content`, `@tool`, `AgentSession`).

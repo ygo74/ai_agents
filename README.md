@@ -62,7 +62,7 @@ config/            delivered configuration: agents, skill packages, MCP bindings
 tests/             unit, contract, integration, agent, security, architecture
 data/              deterministic datasets
 scenarios/         reproducible agent scenarios
-docs/              architecture and design documents
+docs/              system specification, architecture and design documents
 ```
 
 No `mail_mcp` or `wiki_mcp` package imports `ai_agent_lab`: a server we write and
@@ -123,6 +123,7 @@ No test needs a network, an API key, a mailbox or a wiki.
 
 | Document | Content |
 |---|---|
+| [docs/system-specification.md](./docs/system-specification.md) | System boundary, component ownership, runtime flow, contracts and security invariants. |
 | [docs/architecture.md](./docs/architecture.md) | Layers, dependency rule, runtime modes. |
 | [docs/repository-structure.md](./docs/repository-structure.md) | The distributions, the per-agent environments, how to plug a server. |
 | [docs/agent-design.md](./docs/agent-design.md) | What an agent is, framework adapters, confirmation model. |
@@ -135,7 +136,7 @@ No test needs a network, an API key, a mailbox or a wiki.
 | [docs/wiki-agent.md](./docs/wiki-agent.md) | The Wiki Agent: capabilities, grounding, confirmation on LangGraph. |
 | [docs/wiki-agent-running.md](./docs/wiki-agent-running.md) | **How to run it, and how to configure the MCP server.** |
 | [docs/wiki-mcp-servers.md](./docs/wiki-mcp-servers.md) | Which wiki MCP servers are supported, Cloud versus Data Center. |
-| [docs/runtime-extraction-candidates.md](./docs/runtime-extraction-candidates.md) | What could move to `ygo74-agent-runtime`, and what must stay here. |
+| [docs/runtime-extraction-candidates.md](./docs/runtime-extraction-candidates.md) | Runtime ownership boundaries and the remaining agent-specific code. |
 
 ## Continuous integration and images
 

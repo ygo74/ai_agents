@@ -1,13 +1,17 @@
 # Architecture
 
+This page describes the repository's layers and dependency rules. The broader
+system boundary, runtime flow, ownership, and security invariants are specified
+in [system-specification.md](./system-specification.md).
+
 ## 1. Purpose
 
 This repository is an enterprise AI agent laboratory. It evaluates agentic AI
 frameworks (Microsoft Agent Framework, LangChain, CrewAI) against the same
 business scenarios, the same domain logic and the same MCP tools.
 
-The architecture exists to make that comparison fair: only the framework
-adapter changes between two evaluations, never the business logic.
+The architecture exists to make that comparison fair: the framework adapter
+and composition change between evaluations, never the business logic.
 
 ## 2. Layered architecture
 
@@ -15,9 +19,9 @@ adapter changes between two evaluations, never the business logic.
                          USER (CLI, later Teams / API)
                                      |
   ---------------------------------- v -------------------------------------
-  frameworks/          Framework adapters          <-- ONLY layer aware of a
-    microsoft_agent_framework/                         specific agent framework
-    (later: langchain/, crewai/)
+  frameworks/          Framework adapters          <-- framework-aware code is
+    microsoft_agent_framework/                         kept to adapters and the
+    (later: langchain/, crewai/)                        composition root
   ---------------------------------- | -------------------------------------
   agents/              Skill registry and capability bindings
                        (manifest + code, framework independent)
@@ -30,11 +34,11 @@ adapter changes between two evaluations, never the business logic.
   infrastructure/      Concrete implementations
                        mcp/       -> real MCP client       -> MCP server -> system
                        inmemory/  -> deterministic dataset -> tests / mock mode
-                       config/    -> manifest and binding loaders
+                       config/    -> MCP binding loaders; agent manifests use runtime APIs
                        observability/
   ---------------------------------------------------------------------------
-  domain/              Typed models, manifests, security primitives,
-                       reasoning ports (no outgoing dependency at all)
+  domain/              Agent-specific typed models and policies
+                       (shared contracts and security APIs come from the runtime)
 
   application/         Composition root, dependency injection, CLI
                        (builds the framework agent with its own public API)
@@ -43,8 +47,8 @@ adapter changes between two evaluations, never the business logic.
 Delivered configuration sits beside the code, not inside it:
 
 ```text
-config/                Agent manifest, skill packages, MCP bindings
-                       -> loaded by infrastructure/config
+config/                Agent and skill YAML/Markdown, MCP bindings
+                       -> manifests loaded by the runtime; bindings loaded by application code
                        -> see docs/configuration.md
 ```
 
@@ -54,7 +58,11 @@ config/                Agent manifest, skill packages, MCP bindings
 domain  <-  mcp  <-  skills  <-  agents  <-  frameworks  <-  application
 ```
 
-Dependencies point inwards only. This is enforced by
+Dependencies point inwards only within the application. Framework-independent
+agent code also consumes the public Python APIs from `ai-enterprise-agent-runtime`
+for shared configuration, contracts, identity, security, and reasoning. This
+repository owns neither duplicate implementations nor old-path aliases for those
+APIs. The internal dependency rule is enforced by
 `tests/architecture/test_distribution_boundaries.py`, which fails the build when:
 
 - `domain`, `mcp`, `skills` or `agents` import an agent framework;
@@ -103,7 +111,7 @@ Consequences:
 
 Skills that genuinely need an LLM (summarisation, classification, action
 extraction, reply drafting) depend on the `TextReasoner` port defined in
-`domain/reasoning`. Implementations:
+`ygo74.agent_runtime.domains.reasoning`. Implementations:
 
 - `MafTextReasoner` (frameworks/microsoft_agent_framework) for runtime;
 - `ScriptedTextReasoner` (tests) for deterministic unit tests.
@@ -134,8 +142,9 @@ root wires a different implementation.
 
 ```text
 agents/
-  core/      src/ai_agent_lab/core/   security/  reasoning/  config/  observability/
+  core/      src/ai_agent_lab/core/   chat-provider choices and Azure credentials
   maf/       src/ai_agent_lab/maf/    Microsoft Agent Framework adapter
+  langgraph/ src/ai_agent_lab/langgraph/ LangChain / LangGraph adapter
   mail/      src/ai_agent_lab/mail/   domain/  skills/  capabilities/  mcp/  application/
 mcp-servers/
   protocol/  src/mail_mcp/protocol/   wire payloads, tool names, error codes
