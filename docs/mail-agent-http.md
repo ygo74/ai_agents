@@ -12,6 +12,14 @@ Routes, OpenAI request shapes, JWT validation and discovery come from
 [`ygo74-agent-runtime`](https://github.com/ygo74/ai-enterprise-agent-runtime). We
 do not reimplement them.
 
+The composition root uses the runtime's fluent `HostingFactory`: it registers
+the Mail entrypoint and descriptor, exposes Chat Completions, applies exactly
+one authentication policy, then enables authenticated model discovery. An
+OIDC issuer selects JWT validation and takes precedence over the demonstration
+API key; set `MAIL_AGENT_HTTP_JWKS_URL` when the issuer's JWKS endpoint is not
+discoverable or to avoid discovery during startup. OIDC clients send
+`Authorization: Bearer <token>`.
+
 What this repository owns is what that library deliberately leaves to the
 application - the same split Microsoft describes for its own hosting helpers:
 
@@ -76,6 +84,7 @@ installed library and skip, with a reason, whatever it cannot do yet.
 | `MAIL_AGENT_HTTP_API_KEY` | One key, one caller. For demonstrations only. |
 | `MAIL_AGENT_HTTP_OIDC_ISSUER` | Keycloak realm URL. Once set, the API key is ignored. |
 | `MAIL_AGENT_HTTP_OIDC_AUDIENCE` | Audience the token must carry. Default `mail-agent`. |
+| `MAIL_AGENT_HTTP_JWKS_URL` | Optional explicit JWKS endpoint; otherwise resolved from OIDC discovery. |
 | `MAIL_AGENT_HTTP_ROLES_CLAIM_PATH` | Where roles live in the token. Default `realm_access.roles`. |
 | `MAIL_AGENT_HTTP_MAX_CONVERSATIONS` | Ceiling on live conversations. Default 200. |
 | `MAIL_AGENT_HTTP_IDLE_MINUTES` | How long an untouched conversation is kept. Default 30. |

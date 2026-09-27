@@ -97,6 +97,30 @@
         "PYTHONUTF8": "1"
       }
     },
+    {
+      "name": "Mail Agent — HTTP (Gmail API, Linux)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "uvicorn",
+      "python": "${workspaceFolder}/.venvs/mail-agent-maf/bin/python",
+      "console": "integratedTerminal",
+      "justMyCode": false,
+      "cwd": "${workspaceFolder}",
+      "envFile": "${workspaceFolder}/.env",
+      "args": [
+        "ai_agent_lab.mail.application.entrypoints.service:build_app",
+        "--factory",
+        "--port",
+        "8002",
+        "--reload"
+      ],
+      "env": {
+        "MAIL_AGENT_MODE": "mcp",
+        "MAIL_MCP_SERVER": "gmail-api",
+        "MAIL_AGENT_LOG_LEVEL": "DEBUG",
+        "PYTHONUTF8": "1"
+      }
+    },
 
     // =========================================================================
     // Wiki Agent (LangChain / LangGraph)

@@ -29,12 +29,12 @@ from fastapi import FastAPI
 from langchain_core.language_models import BaseChatModel
 from ygo74.agent_runtime.domains.auth.apikey_authenticator import StaticApiKeyUserResolver
 from ygo74.agent_runtime.domains.auth.auth_context import ResolvedUser
+from ygo74.agent_runtime.domains.auth.authentication_policy import AuthenticationPolicy
 from ygo74.agent_runtime.domains.auth.jwt_authenticator import JwksKeyResolver, JwtValidationConfig
 from ygo74.agent_runtime.domains.discovery.agent_descriptor import AgentDescriptor
-from ygo74.agent_runtime.domains.discovery.descriptor_registry import DescriptorRegistry
 from ygo74.agent_runtime.domains.discovery.discovery_configuration import DiscoveryConfiguration
 from ygo74.agent_runtime.domains.discovery.manifest_descriptor import AdvertisedSecurity
-from ygo74.agent_runtime.domains.endpoints.fastapi_endpoints import add_ai_endpoints
+from ygo74.agent_runtime.domains.endpoints.hosting_factory import EndpointSurface, HostingFactory
 from ygo74.agent_runtime.domains.sessions.conversation_cache import ConversationRuntimeCache
 
 from ai_agent_lab.core.config.environment import EnvironmentFile
@@ -102,29 +102,21 @@ def build_app(
     jwt_validation = _jwt_validation(http)
     api_key_resolver = _api_key_resolver(http, settings)
 
-    add_ai_endpoints(
-        app,
+    if jwt_validation is not None:
+        authentication = AuthenticationPolicy.jwt(jwt_validation)
+    elif api_key_resolver is not None:
+        authentication = AuthenticationPolicy.api_key(api_key_resolver)
+    else:
+        raise WikiServiceConfigurationError("the Wiki Agent HTTP service needs a caller")
+
+    HostingFactory(app).add_agent(
         WikiAgentEntrypoint(WikiConversationEngine(conversations)),
-        default_route_key=AGENT_ID,
-        enable_openai_chat_completions=True,
-        enable_openai_responses=False,
-        enable_anthropic_messages=False,
-        jwt_validation=jwt_validation,
-        # Always on, whichever credential the deployment uses. The runtime's
-        # authenticator chain accepts the API key as well as a bearer token, so
-        # this is not "tokens only": it is "something, always". Without a
-        # subject there is nothing to partition state by, and the model must
-        # never be reached - and paid for - by an unidentified caller.
-        require_bearer_token=True,
-        api_key_resolver=api_key_resolver,
-        descriptor_registry=DescriptorRegistry(
-            [_descriptor(composition, jwt_validation=jwt_validation, api_key_resolver=api_key_resolver)]
-        ),
-        # Discovery carries its own authentication flag, defaulting to open.
-        # Listing the agent also lists every capability description, which is a
-        # map of what the wiki can be made to do: it is not public.
-        discovery=DiscoveryConfiguration(enable_openai_models=True, require_authentication=True),
-    )
+        _descriptor(composition, jwt_validation=jwt_validation, api_key_resolver=api_key_resolver),
+    ).add_ai_endpoints(
+        EndpointSurface.OPENAI_CHAT_COMPLETIONS
+    ).add_security(authentication).add_discovery(
+        DiscoveryConfiguration(enable_openai_models=True, require_authentication=True)
+    ).register()
     return app
 
 
