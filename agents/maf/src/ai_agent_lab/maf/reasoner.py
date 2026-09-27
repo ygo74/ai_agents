@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import cast
-
 from agent_framework import ChatOptions, ChatResponse, Message, SupportsChatGetResponse
 from ygo74.agent_runtime.domains.reasoning.errors import ReasoningOutputError, ReasoningUnavailableError
 from ygo74.agent_runtime.domains.reasoning.ports import ReasoningOutputT, ReasoningRequest
@@ -50,10 +48,7 @@ class MafTextReasoner:
         """Call the chat client, translating transport failures."""
         options = self._options(response_model)
         try:
-            return cast(
-                ChatResponse[ReasoningOutputT],
-                await self._client.get_response([Message(role="user", contents=[prompt])], options=options),
-            )
+            return await self._client.get_response([Message(role="user", contents=[prompt])], options=options)
         except Exception as error:
             raise ReasoningUnavailableError(f"the reasoning backend failed: {type(error).__name__}") from error
 
