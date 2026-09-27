@@ -29,7 +29,7 @@ from ai_agent_lab.mail.mcp.binding import McpServerBinding, McpServerBindingLoad
 from ai_agent_lab.mail.mcp.connection import McpConnection
 from ai_agent_lab.mail.mcp.oauth import MailOAuthProvider
 
-DEFAULT_OUTPUT = Path("docs/mcp-discovery")
+DEFAULT_OUTPUT = Path("data/mcp-discovery")
 _logger = logging.getLogger(__name__)
 
 

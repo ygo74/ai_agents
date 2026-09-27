@@ -357,9 +357,12 @@ need it.
 
 ## Related
 
-- [architecture.md](architecture.md) — the layers and why they are where they are
-- [agent-design.md](agent-design.md) — what an agent is responsible for
-- [mcp-design.md](mcp-design.md) — the integration boundary
+- [System architecture](../spec/architecture/architecture.md) — the layers and
+  why they are where they are
+- [Agent design](../spec/architecture/agent-design.md) — what an agent is
+  responsible for
+- [MCP design](../spec/integrations/mcp-design.md) — the integration boundary
 - [configuration.md](configuration.md) — every setting and where it is read
-- [repository-structure.md](repository-structure.md) — the ten distributions
+- [Repository structure](../spec/architecture/repository-structure.md) — the ten
+  distributions
 - [deployment.md](deployment.md) — running it as a container

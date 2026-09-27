@@ -43,7 +43,7 @@ frameworks, not to build the same business logic three times.
 ## Layout
 
 The repository ships ten distributions, each buildable and deployable on its
-own. See [docs/repository-structure.md](./docs/repository-structure.md).
+own. See [the system specification](./spec/README.md).
 
 ```text
 agents/                          the products
@@ -60,10 +60,10 @@ mcp-servers/                     auxiliaries, shipped separately
   wiki-reference/ wiki_mcp.reference  wiki MCP server on a dataset
 config/            delivered configuration: agents, skill packages, MCP bindings
 tests/             unit, contract, integration, agent, security, architecture
-data/              deterministic datasets
+data/              deterministic datasets and MCP discovery records
 scenarios/         reproducible agent scenarios
 spec/              system-level specification
-docs/              architecture and design documents
+docs/              user guides for configuration, operation and deployment
 ```
 
 No `mail_mcp` or `wiki_mcp` package imports `ai_agent_lab`: a server we write and
@@ -120,15 +120,15 @@ Run the checks, in the development environment:
 
 No test needs a network, an API key, a mailbox or a wiki.
 
-## Documentation
+## System specification
+
+See the [system specification](./spec/README.md) for architecture, component
+responsibilities, contracts and security invariants.
+
+## User guides
 
 | Document | Content |
 |---|---|
-| [spec/README.md](./spec/README.md) | System boundary, component ownership, runtime flow, contracts and security invariants. |
-| [docs/architecture.md](./docs/architecture.md) | Layers, dependency rule, runtime modes. |
-| [docs/repository-structure.md](./docs/repository-structure.md) | The distributions, the per-agent environments, how to plug a server. |
-| [docs/agent-design.md](./docs/agent-design.md) | What an agent is, framework adapters, confirmation model. |
-| [docs/mcp-design.md](./docs/mcp-design.md) | Tool contracts, tool surface, error translation. |
 | [docs/configuration.md](./docs/configuration.md) | What is delivered as configuration, and what stays in code. |
 | [docs/implementing-an-agent.md](./docs/implementing-an-agent.md) | **Step by step: adding a new agent, from its permissions to its image.** |
 | [docs/deployment.md](./docs/deployment.md) | **Running the containers: images, compose, and the posture of each port.** |
@@ -137,7 +137,6 @@ No test needs a network, an API key, a mailbox or a wiki.
 | [docs/wiki-agent.md](./docs/wiki-agent.md) | The Wiki Agent: capabilities, grounding, confirmation on LangGraph. |
 | [docs/wiki-agent-running.md](./docs/wiki-agent-running.md) | **How to run it, and how to configure the MCP server.** |
 | [docs/wiki-mcp-servers.md](./docs/wiki-mcp-servers.md) | Which wiki MCP servers are supported, Cloud versus Data Center. |
-| [docs/runtime-extraction-candidates.md](./docs/runtime-extraction-candidates.md) | Runtime ownership boundaries and the remaining agent-specific code. |
 
 ## Continuous integration and images
 

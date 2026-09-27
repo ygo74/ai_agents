@@ -3,7 +3,8 @@
 This document is the system-level specification for the Python applications in
 this repository. It describes the current system boundary, component ownership,
 runtime flow, configuration contracts, and security behavior. Framework- and
-agent-specific detail remains in the linked design documents.
+agent-specific detail lives in the architecture and integration specifications
+under this directory.
 
 ## Purpose and scope
 
@@ -128,9 +129,19 @@ runtime APIs.
 
 ## Detailed specifications
 
-- [Architecture and dependency boundaries](../docs/architecture.md)
-- [Agent and framework design](../docs/agent-design.md)
+- [Architecture and dependency boundaries](architecture/architecture.md)
+- [Agent and framework design](architecture/agent-design.md)
 - [Configuration and manifest contracts](../docs/configuration.md)
-- [MCP tool and server boundaries](../docs/mcp-design.md)
-- [Repository distributions and installation](../docs/repository-structure.md)
+- [MCP tool and server boundaries](integrations/mcp-design.md)
+- [Repository distributions and installation](architecture/repository-structure.md)
+- [Runtime extraction decisions](architecture/runtime-extraction-candidates.md)
 - [Adding a new agent](../docs/implementing-an-agent.md)
+
+## Task records
+
+The approved design and implementation plan for issue #5 are preserved as
+historical task records. The current system specification above describes the
+resulting system.
+
+- [Issue #5 specification](tasks/issue-5/SPEC.md)
+- [Issue #5 implementation plan](tasks/issue-5/PLAN.md)

@@ -128,7 +128,7 @@ gap in a server is a configuration fact rather than a failure on the first call.
 One reservation: a server returning **prose** rather than structured JSON is
 still pluggable, but its dialect has to parse text. That is fragile and exposed
 to injection through the content itself, as documented for the community Gmail
-servers in [mail-mcp-servers.md](./mail-mcp-servers.md). Being able to plug such
+servers in [the mail MCP server guide](../../docs/mail-mcp-servers.md). Being able to plug such
 a server is not a recommendation to do so.
 
 ## Installing

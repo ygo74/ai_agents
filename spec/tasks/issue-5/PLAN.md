@@ -24,7 +24,7 @@ configuration variable.
   - `ai-enterprise-agent-runtime`: `refactor/5-finish-core-migration`
 - The current `ai_agents` checkout has unrelated local modifications. Preserve
   it untouched and use an isolated worktree from the updated `origin/main` for
-  this issue. Carry only `docs/tasks/issue-5/SPEC.md` and `PLAN.md` into that
+  this issue. Carry only `spec/tasks/issue-5/SPEC.md` and `PLAN.md` into that
   worktree. Create an independent worktree for the runtime repository as well;
   its current feature branch is not the base for this work.
 - Fetch and verify each remote `main` before creating the worktrees. Do not
@@ -148,7 +148,8 @@ Do not retain the old variable or old import aliases.
 Update the developer guide, repository structure, configuration guide, agent
 guides, deployment docs, and examples that describe the source of the migrated
 APIs. Remove obsolete references to the deliberate-retention decision in
-`runtime-extraction-candidates.md` and `architecture.md`, and describe the
+`spec/architecture/runtime-extraction-candidates.md` and
+`spec/architecture/architecture.md`, and describe the
 remaining two core modules accurately.
 
 **Validation:** First add/update architecture and behavior tests for runtime
