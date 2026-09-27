@@ -373,8 +373,10 @@ modifications locales initiales n’y figurent pas.
   budgets de performance de la SPEC ne peuvent donc pas être déclarés validés.
 - Les builds de distributions et les vérifications CI distantes restent à
   effectuer : la commande `build` et les backends `setuptools`/`hatchling` ne
-  sont pas installés dans les environnements disponibles. Aucune branche n’a
-  été poussée et aucune pull request n’a été créée.
+  sont pas installés dans les environnements disponibles. Les deux branches ont
+  été poussées sur `origin`. La création de PR a été refusée par l’intégration
+  GitHub (403, permission de création absente) ; le jeton local `gh` est
+  invalide. Aucune pull request n’a été créée.
 
 ## Décisions techniques
 
