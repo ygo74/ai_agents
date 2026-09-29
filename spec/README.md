@@ -57,6 +57,47 @@ Agents do not integrate with enterprise systems directly. A system is reached
 through an MCP server, whether that server is maintained here or supplied by a
 third party. The agent-side dialect is the compatibility boundary.
 
+## HTTP conversation lifecycle
+
+Mail and Wiki use the runtime's generic conversation flow while keeping their
+framework runtimes distinct. `MailConversation` and `WikiConversation` are
+typed specializations of `AgentConversation` for their respective application
+runtime and session types; neither application runtime inherits from a shared
+Mail/Wiki base class. Each local conversation factory composes the runtime,
+framework session adapter, pending-confirmation store, confirmed-operation
+runner, and renderer for its domain.
+
+An HTTP turn follows this sequence:
+
+1. The agent entrypoint converts the authenticated request payload into a
+   `ConversationTurn` containing the caller, conversation ID, and user message.
+   The caller comes from the endpoint authentication context, not from a body
+   field. Mail additionally requires an email address to select a mailbox.
+2. `HttpConversationEngine` leases the conversation from
+   `ConversationRuntimeCache`, partitioned by authenticated caller and
+   conversation ID. The lease keeps an active turn's resources open; expiry or
+   eviction closes idle conversations, and service shutdown closes the cache.
+3. The engine recognizes exact confirmation commands before calling the agent.
+   It asks the application runner to claim and execute the saved operation
+   within its user and conversation scope. An ordinary message instead goes to
+   the framework session's `ask` method.
+4. The Mail and Wiki session adapters use the runtime's bounded `ApprovalLoop`
+   to process framework-suspended tool calls. It centralizes approval-question
+   and total-turn limits and clears recorded grants before bounded decline
+   cleanup. The adapters retain framework-specific state handling: Mail
+   resumes a Microsoft Agent Framework `AgentSession`; Wiki resumes LangGraph
+   state through its thread ID and resume command. Pending-confirmation policy
+   and the person-facing approval resolver remain application-owned.
+5. The engine returns an `AgentReply` with the answer, rendered pending-action
+   details, and pending ticket identifiers. The HTTP entrypoint maps that
+   result back to the configured provider response shape.
+
+This division keeps caller scoping, ticket handling, turn cleanup, and reply
+assembly consistent while allowing each application to choose its framework,
+agent runtime, confirmation policy, and presentation. The generic conversation
+and approval APIs are Python-first; they do not make the framework sessions or
+the Mail and Wiki composition roots interchangeable.
+
 ## Components and ownership
 
 | Component | Responsibility | Owner |
@@ -142,6 +183,8 @@ runtime APIs.
 
 - [Architecture and dependency boundaries](architecture/architecture.md)
 - [Agent and framework design](architecture/agent-design.md)
+- [Mail HTTP and conversation integration](../docs/mail-agent-http.md)
+- [Wiki HTTP and conversation integration](../docs/wiki-agent-http.md)
 - [Configuration and manifest contracts](../docs/configuration.md)
 - [MCP tool and server boundaries](integrations/mcp-design.md)
 - [Repository distributions and installation](architecture/repository-structure.md)
