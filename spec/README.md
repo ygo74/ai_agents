@@ -46,8 +46,12 @@ runtime user context from the authenticated principal and application-supplied
 permissions, binds manifests to implemented skills, and builds an agent using
 the selected framework's public API. The framework adapter translates calls to
 and from skill descriptors; it does not own domain rules. Skills orchestrate
-deterministic business logic and MCP tool contracts. MCP clients translate
-between those contracts and the selected server's dialect.
+deterministic business logic and MCP tool contracts. The runtime supplies the
+generic HTTP conversation container and turn engine, bounded approval-loop
+orchestration, and MCP binding, connection, and dialect-registry mechanics.
+Each application composes those APIs with its own tools, policies, and framework
+session adapter. The concrete agent-side dialect translates between the
+application's tool contract and the selected MCP server.
 
 Agents do not integrate with enterprise systems directly. A system is reached
 through an MCP server, whether that server is maintained here or supplied by a
@@ -57,17 +61,24 @@ third party. The agent-side dialect is the compatibility boundary.
 
 | Component | Responsibility | Owner |
 |---|---|---|
-| `ai_agent_lab.mail`, `ai_agent_lab.wiki` | Agent-specific models, skills, permissions, tool ports, and composition | This repository |
-| `ai_agent_lab.maf`, `ai_agent_lab.langgraph` | Framework adapters and framework-specific orchestration | This repository |
+| `ai_agent_lab.mail`, `ai_agent_lab.wiki` | Agent-specific models, skills, capability policies, tool ports, composition roots, and conversation factories | This repository |
+| `ai_agent_lab.maf`, `ai_agent_lab.langgraph` | Framework adapters and framework-specific session-state handling | This repository |
 | `ai_agent_lab.core` | Shared chat-provider choices and Azure credential provider only | This repository |
-| `mail_mcp.*`, `wiki_mcp.*` | MCP wire contracts, server implementations, and dialect-specific integration | This repository |
-| Runtime configuration, contracts, errors, reasoning, identity, and security APIs | Reusable technical foundations | `ai-enterprise-agent-runtime` |
+| `mail_mcp.*`, `wiki_mcp.*` | Concrete MCP tool contracts and dialect adapters, plus MCP server implementations | This repository |
+| Runtime configuration, contracts, errors, reasoning, identity, security, generic conversation and approval APIs, and MCP client mechanics | Reusable technical foundations | `ai-enterprise-agent-runtime` |
 | Prompts and agent/skill YAML, Markdown, and MCP bindings | Deployment-delivered behavior and integration selection | `config/` in this repository |
 
 The application owns which permissions a principal receives. The runtime's
 `UserContextFactory` copies that identity and those permissions into an immutable
 context; it does not infer a role policy. `azure_credentials.py` and `chat.py`
 remain in core because they describe the current agents' model configuration.
+Mail and Wiki retain their runtime composition roots and factories, concrete
+MAF/LangGraph session adapters, capability catalogs and filters, credential and
+secret handling, and domain-specific dialect behavior. They pass application
+capability enums, resolved transport settings, and any caller-specific HTTP
+headers to the generic runtime APIs; the runtime does not own those policies or
+secrets. These newly adopted conversation and MCP APIs are Python-first and do
+not imply .NET or Java parity.
 
 ## Configuration contracts
 
@@ -139,9 +150,11 @@ runtime APIs.
 
 ## Task records
 
-The approved design and implementation plan for issue #5 are preserved as
-historical task records. The current system specification above describes the
-resulting system.
+The design and implementation plans for issues #5 and #6 are preserved as task
+records. The current system specification above describes the resulting
+system.
 
 - [Issue #5 specification](tasks/issue-5/SPEC.md)
 - [Issue #5 implementation plan](tasks/issue-5/PLAN.md)
+- [Issue #6 specification](../docs/tasks/issue-6/SPEC.md)
+- [Issue #6 implementation plan](../docs/tasks/issue-6/PLAN.md)
