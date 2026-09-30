@@ -5,7 +5,6 @@ from __future__ import annotations
 import argparse
 import asyncio
 import logging
-import os
 import sys
 import uuid
 from collections.abc import Sequence
@@ -18,6 +17,7 @@ from ygo74.agent_runtime.domains.errors import DomainError
 from ygo74.agent_runtime.domains.security.security_errors import SecurityError
 
 from ai_agent_lab.core.config.azure_credentials import AzureIdentityCredentialProvider
+from ai_agent_lab.core.observability.logging_config import setup_logging
 from ai_agent_lab.langgraph.approval import LangGraphApprovalTranslator
 from ai_agent_lab.langgraph.chat_model import AzureOpenAIRoute, LangGraphChatModelFactory
 from ai_agent_lab.wiki.application.composition import WikiAgentCompositionRoot, WikiAgentRuntime
@@ -102,19 +102,11 @@ class WikiAgentCli:
 
 
 def _configure_logging(level_name: str | None = None) -> None:
-    """Configure the root logging level and format from CLI or environment."""
+    """Configure logging from CLI or agent and shared environment settings."""
     EnvironmentFile().load()
-    raw_level = (
-        level_name
-        or os.environ.get("WIKI_AGENT_LOG_LEVEL")
-        or os.environ.get("LOG_LEVEL")
-        or WikiAgentSettings().log_level
-    )
-    level = getattr(logging, raw_level.upper(), logging.INFO)
-    logging.basicConfig(
-        level=level,
-        format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-        force=True,
+    setup_logging(
+        default_level=WikiAgentSettings().log_level,
+        level_name=level_name,
     )
 
 

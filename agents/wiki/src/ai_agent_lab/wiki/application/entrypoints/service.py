@@ -38,6 +38,7 @@ from ygo74.agent_runtime.domains.discovery.manifest_descriptor import Advertised
 from ygo74.agent_runtime.domains.endpoints.hosting_factory import EndpointSurface, HostingFactory
 from ygo74.agent_runtime.domains.sessions.conversation_cache import ConversationRuntimeCache
 
+from ai_agent_lab.core.observability.logging_config import setup_logging
 from ai_agent_lab.wiki.application.cli_entrypoint import build_chat_model
 from ai_agent_lab.wiki.application.composition import WikiAgentCompositionRoot
 from ai_agent_lab.wiki.application.entrypoints.conversation import (
@@ -76,7 +77,7 @@ def build_app(
     EnvironmentFile().load()
     settings = WikiAgentSettings()
     http = WikiAgentHttpSettings.load()
-    logging.basicConfig(level=settings.log_level.upper())
+    setup_logging(default_level=settings.log_level)
 
     _refuse_an_open_service(http)
 

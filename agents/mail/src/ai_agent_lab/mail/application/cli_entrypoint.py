@@ -14,6 +14,7 @@ from ygo74.agent_runtime.domains.errors import DomainError
 from ygo74.agent_runtime.domains.security.security_errors import SecurityError
 
 from ai_agent_lab.core.config.azure_credentials import AzureIdentityCredentialProvider
+from ai_agent_lab.core.observability.logging_config import setup_logging
 from ai_agent_lab.maf.approval import MafApprovalTranslator
 from ai_agent_lab.maf.chat_client import MafChatClientFactory
 from ai_agent_lab.mail.application.approval.console import ConsoleApprovalResolver
@@ -111,15 +112,15 @@ def build_cli(
     The chat client is chosen by ``AGENT_CHAT_PROVIDER``. A client can also be
     injected by another host or by a test.
     """
+    EnvironmentFile().load()
+    settings = MailAgentSettings()
+    setup_logging(default_level=settings.log_level)
     _logger.info("Building Mail Agent CLI")
     _logger.debug(
         "build_cli arguments: base_path=%s, injected_chat_client=%s",
         base_path,
         chat_client is not None,
     )
-    EnvironmentFile().load()
-    settings = MailAgentSettings()
-    logging.basicConfig(level=settings.log_level.upper())
 
     runtime = MailAgentCompositionRoot(
         settings,
@@ -154,6 +155,8 @@ def build_chat_client() -> SupportsChatGetResponse:
 
 def main() -> None:
     """Entry point of the ``mail-agent`` console script."""
+    EnvironmentFile().load()
+    setup_logging(default_level=MailAgentSettings().log_level)
     _logger.info("Starting Mail Agent command-line entry point")
     _logger.debug("main arguments: none")
     _prefer_utf8()
