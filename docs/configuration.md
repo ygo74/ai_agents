@@ -20,6 +20,17 @@ config/
   mcp/mail.yaml         logical tool name -> deployed MCP server tool name
 ```
 
+## Application logging
+
+Mail Agent and Wiki Agent use the shared Python logging configuration. Set
+`LOG_LEVEL` to `DEBUG`, `INFO`, `WARNING`, `ERROR` or `CRITICAL`; it defaults to
+`INFO`. The agent-specific `MAIL_AGENT_LOG_LEVEL` and `WIKI_AGENT_LOG_LEVEL`
+remain available as fallbacks. The Wiki CLI's `--log-level` option takes
+precedence over both environment settings. A newly configured root logger writes
+timestamped records to stdout; when the host already configured handlers, they
+are retained and their levels are updated. In `DEBUG` mode, `httpx` and
+`httpcore` stay at `INFO` to limit transport noise.
+
 ## What is configuration, and what is not
 
 | Delivered as configuration | Stays in code |

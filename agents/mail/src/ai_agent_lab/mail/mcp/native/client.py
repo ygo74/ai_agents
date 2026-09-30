@@ -20,6 +20,7 @@ from typing import Any
 from mcp.types import CallToolResult, TextContent
 from ygo74.agent_runtime.domains.security.user_context import UserContext
 
+from ai_agent_lab.mail.catalog import MailToolName as MailCapability
 from ai_agent_lab.mail.domain.models import (
     MailDraft,
     MailLabel,
@@ -55,7 +56,7 @@ class McpMailTools:
     def __init__(
         self,
         connection: McpConnection,
-        binding: McpServerBinding,
+        binding: McpServerBinding[MailCapability],
         *,
         owner_id: str,
         mapper: MailWireMapper | None = None,

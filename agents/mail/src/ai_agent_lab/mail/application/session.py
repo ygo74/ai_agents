@@ -19,6 +19,7 @@ import logging
 from typing import Any
 
 from agent_framework import AgentResponse, AgentSession
+from ygo74.agent_runtime.domains.humanapproval.approval_loop import ApprovalLoop
 
 from ai_agent_lab.maf.approval import (
     MafApprovalTranslator,
@@ -73,9 +74,15 @@ class MailAgentSession:
         self._runtime = runtime
         self._resolver = resolver
         self._translator = translator
-        self._max_asked_rounds = max_approval_rounds
-        self._max_total_rounds = max_total_rounds
         self._session: AgentSession = runtime.agent.create_session(session_id=runtime.user.session_id)
+        self._approval_loop = ApprovalLoop(
+            self,
+            max_approval_rounds=max_approval_rounds,
+            max_total_rounds=max_total_rounds,
+            max_decline_rounds=_MAX_DECLINE_ROUNDS,
+            interrupted_message=_INTERRUPTED,
+            exhausted_message=_EXHAUSTED,
+        )
 
     async def ask(self, message: str) -> str:
         """Run one user turn, resolving any approval the framework requests.
@@ -98,110 +105,36 @@ class MailAgentSession:
             len(message),
         )
         response = await self._runtime.agent.run(message, session=self._session)
-        asked = 0
-        for round_index in range(self._max_total_rounds):
-            pending = self._translator.pending_approvals(response)
-            if not pending:
-                _logger.info("Mail Agent turn completed")
-                _logger.debug(
-                    "MailAgentSession.ask result: round=%d, response_length=%d, approval_rounds=%d",
-                    round_index + 1,
-                    len(response.text),
-                    asked,
-                )
-                return response.text
-            _logger.debug(
-                "Mail approval loop iteration: round=%d, pending=%d, tool_names=%s",
-                round_index + 1,
-                len(pending),
-                tuple(approval.tool_name for approval in pending),
-            )
-            if self._resolver.will_question(pending):
-                asked += 1
-                if asked > self._max_asked_rounds:
-                    _logger.warning(
-                        "Mail Agent approval question budget exceeded: asked=%d, maximum=%d",
-                        asked,
-                        self._max_asked_rounds,
-                    )
-                    return await self._abandon(response, _INTERRUPTED)
-            response = await self._resume(pending)
-        _logger.warning("Mail Agent total round budget exceeded: maximum=%d", self._max_total_rounds)
-        return await self._abandon(response, _EXHAUSTED)
+        return await self._approval_loop.run(response)
 
-    async def _abandon(self, response: AgentResponse[Any], reason: str) -> str:
-        """Leave a turn without letting anything pending execute."""
-        _logger.debug(
-            "MailAgentSession._abandon arguments: response_type=%s, reason_length=%d",
-            type(response).__name__,
-            len(reason),
-        )
-        await self._decline_everything(response)
-        return reason
+    def pending(self, response: AgentResponse[Any]) -> tuple[PendingToolApproval, ...]:
+        """Inspect Microsoft Agent Framework state for suspended calls."""
+        return self._translator.pending_approvals(response)
 
-    async def _resume(self, pending: tuple[PendingToolApproval, ...]) -> AgentResponse[Any]:
-        """Collect the user's answers and let the framework continue."""
-        _logger.debug(
-            "MailAgentSession._resume arguments: pending=%d, tool_names=%s",
-            len(pending),
-            tuple(approval.tool_name for approval in pending),
-        )
+    def will_question(self, pending: tuple[PendingToolApproval, ...]) -> bool:
+        """Delegate question classification to the application resolver."""
+        return self._resolver.will_question(pending)
+
+    async def resume(self, pending: tuple[PendingToolApproval, ...]) -> AgentResponse[Any]:
+        """Resolve approvals and resume the framework session."""
         round_ = await self._resolver.resolve(pending)
         return await self._runtime.agent.run(
             self._translator.answer_message(round_.answers),
             session=self._session,
         )
 
-    async def _decline_everything(self, response: AgentResponse[Any]) -> None:
-        """Abandon a turn without leaving anything executable behind.
-
-        The framework does not run a batch of gated calls until every one of
-        them has been answered, and it keeps the answers already given in the
-        session. Simply refusing what is left would complete the batch and run
-        the calls approved earlier, during a turn the user was told had been
-        interrupted.
-
-        So the recorded answers are dropped first. When the batch does complete,
-        the skills find no decision, the domain gate refuses, and every call
-        fails closed and is audited as blocked.
-
-        The model provider may itself fail while this unwinds - a long, partly
-        answered batch is exactly the conversation state it is least happy with.
-        That failure is survivable and must not propagate: the ledger is already
-        empty, so nothing pending can execute whether or not the batch ever
-        completes. Insisting would turn a safe abandonment into a crash.
-        """
-        _logger.info("Declining all operations left by an abandoned Mail Agent turn")
-        _logger.debug(
-            "MailAgentSession._decline_everything arguments: response_type=%s, "
-            "user_id=%s, session_id=%s, max_rounds=%d",
-            type(response).__name__,
-            self._runtime.user.user_id,
-            self._runtime.user.session_id,
-            _MAX_DECLINE_ROUNDS,
+    async def decline(self, pending: tuple[PendingToolApproval, ...]) -> AgentResponse[Any]:
+        """Refuse a batch of remaining calls in framework-native form."""
+        answers = [approval.answer(approved=False) for approval in pending]
+        return await self._runtime.agent.run(
+            self._translator.answer_message(answers),
+            session=self._session,
         )
+
+    def discard_authorizations(self) -> None:
+        """Purge recorded grants before or during abandonment cleanup."""
         self._runtime.confirmation_ledger.discard(self._runtime.user)
 
-        current = response
-        for round_index in range(_MAX_DECLINE_ROUNDS):
-            pending = self._translator.pending_approvals(current)
-            if not pending:
-                _logger.debug("Decline loop completed after %d round(s)", round_index)
-                return
-            _logger.debug(
-                "Decline loop iteration: round=%d, pending=%d, tool_names=%s",
-                round_index + 1,
-                len(pending),
-                tuple(approval.tool_name for approval in pending),
-            )
-            answers = [approval.answer(approved=False) for approval in pending]
-            try:
-                current = await self._runtime.agent.run(
-                    self._translator.answer_message(answers),
-                    session=self._session,
-                )
-            except Exception as error:  # noqa: BLE001 - see the docstring: nothing can execute now
-                _logger.warning("could not finish declining an abandoned turn: %s", type(error).__name__)
-                return
-            finally:
-                self._runtime.confirmation_ledger.discard(self._runtime.user)
+    def final_text(self, response: AgentResponse[Any]) -> str:
+        """Extract the final response text from Microsoft Agent Framework."""
+        return response.text

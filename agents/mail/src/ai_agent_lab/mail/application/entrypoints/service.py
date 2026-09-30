@@ -32,6 +32,7 @@ from ygo74.agent_runtime.domains.endpoints.hosting_factory import EndpointSurfac
 from ygo74.agent_runtime.domains.sessions.conversation_cache import ConversationRuntimeCache
 
 from ai_agent_lab.core.config.azure_credentials import AzureIdentityCredentialProvider
+from ai_agent_lab.core.observability.logging_config import setup_logging
 from ai_agent_lab.maf.chat_client import MafChatClientFactory
 from ai_agent_lab.mail.application.chat_client import ConfiguredChatClientFactory
 from ai_agent_lab.mail.application.composition import MailAgentCompositionRoot
@@ -68,12 +69,12 @@ class MailServiceConfigurationError(RuntimeError):
 
 def build_app(*, base_path: Path | None = None) -> FastAPI:
     """Assemble the HTTP service from the environment."""
-    _logger.info("Building Mail Agent HTTP service")
-    _logger.debug("build_app arguments: base_path=%s", base_path)
     EnvironmentFile().load()
     settings = MailAgentSettings()
     http = MailAgentHttpSettings.load()
-    logging.basicConfig(level=settings.log_level.upper())
+    setup_logging(default_level=settings.log_level)
+    _logger.info("Building Mail Agent HTTP service")
+    _logger.debug("build_app arguments: base_path=%s", base_path)
 
     _refuse_an_open_service(http)
 

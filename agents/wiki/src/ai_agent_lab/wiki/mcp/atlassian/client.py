@@ -101,7 +101,7 @@ class AtlassianWikiTools:
     def __init__(
         self,
         connection: McpConnection,
-        binding: McpServerBinding,
+        binding: McpServerBinding[WikiToolName],
         *,
         account_id: str = "",
         is_per_user: bool = False,
@@ -113,7 +113,7 @@ class AtlassianWikiTools:
         self._is_per_user = is_per_user
 
     @staticmethod
-    def _needed_aliases(binding: McpServerBinding) -> tuple[str, ...]:
+    def _needed_aliases(binding: McpServerBinding[WikiToolName]) -> tuple[str, ...]:
         """Return the tool names this dialect must be able to call.
 
         The tools of the declared capabilities, plus the search tool whenever

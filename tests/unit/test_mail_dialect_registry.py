@@ -89,7 +89,7 @@ class BluebirdMailTools:
         raise NotImplementedError
 
 
-def _bluebird(connection: McpConnection, binding: McpServerBinding, owner_id: str) -> MailTools:
+def _bluebird(binding: McpServerBinding, connection: McpConnection, owner_id: str) -> MailTools:
     """Build the client of the Bluebird server."""
     return BluebirdMailTools(connection, binding, owner_id=owner_id)
 
@@ -127,7 +127,7 @@ class TestAThirdPartyServerPlugsIn:
         registry = MailDialectRegistry()
         registry.register(BLUEBIRD, _bluebird)
 
-        built = registry.build(_connection(), BLUEBIRD_BINDING, "local-user")
+        built = registry.build(BLUEBIRD_BINDING, _connection(), "local-user")
 
         assert isinstance(built, BluebirdMailTools)
         assert built.owner_id == "local-user"
@@ -165,7 +165,7 @@ class TestTheRegistryIsExplicit:
         registry = MailDialectRegistry()
 
         with pytest.raises(MailToolUnavailableError) as failure:
-            registry.build(_connection(), BLUEBIRD_BINDING, "local-user")
+            registry.build(BLUEBIRD_BINDING, _connection(), "local-user")
 
         message = str(failure.value)
         assert BLUEBIRD in message

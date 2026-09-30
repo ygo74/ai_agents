@@ -194,9 +194,12 @@ copy per agent being one copy away from a weaker security path.
 | Security floor and audit trail | `ygo74.agent_runtime.domains.security` |
 | Authenticated caller | `ygo74.agent_runtime.domains.auth.agent_principal` |
 | Conversation port, manifests, capability registry | `ygo74.agent_runtime.domains.contracts` |
+| Generic conversation container and HTTP turn engine | `ygo74.agent_runtime.domains.sessions` |
 | Token ports (`AccessToken`, `TokenVerifier`, `DelegatedTokenSource`) | `ygo74.agent_runtime.domains.auth.tokens` |
 | Manifest-derived discovery descriptor | `ygo74.agent_runtime.domains.discovery.manifest_descriptor` |
 | Confirmation policy, tickets, approval parser, gated runner | `ygo74.agent_runtime.domains.humanapproval` |
+| Bounded approval loop shared by Mail and Wiki | `ygo74.agent_runtime.domains.humanapproval.approval_loop` |
+| MCP bindings, connection lifecycle and dialect registry | `ygo74.agent_runtime.domains.mcp` (optional `mcp` extra) |
 | Untrusted content, prompt fence, reasoning request | `ygo74.agent_runtime.domains.security` |
 | Text reasoning port and its error hierarchy | `ygo74.agent_runtime.domains.reasoning` |
 | Configuration discovery, `.env` and manifest loading | `ygo74.agent_runtime.domains.configuration` |
@@ -252,10 +255,12 @@ Two changes worth knowing about when reading the agents:
   MCP session a turn is still using. The previous `acquire` is gone rather than
   deprecated, so a missed call site is an import error.
 
-The MCP plumbing - transport lifecycle, binding schema, dialect registry and the
-generic OAuth pieces - is available in `ygo74.agent_runtime.domains.mcp` but the
-two agents still carry their own copies. Rebinding them is the last step of the
-extraction and has not been taken yet.
+Mail and Wiki use the runtime's generic conversation engine and MCP client
+plumbing. Their factories and composition roots remain local, as do the MAF and
+LangGraph session adapters, capability enums and filters, concrete dialects,
+and credential policies. Wiki resolves stdio environment references and
+constructs caller-specific HTTP headers before passing values to the shared MCP
+connection.
 
 What stays here, and why, is recorded in
 [runtime-extraction-candidates.md](./runtime-extraction-candidates.md).

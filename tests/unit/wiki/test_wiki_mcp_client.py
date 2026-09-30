@@ -22,6 +22,8 @@ from ai_agent_lab.wiki.mcp.binding import (
     McpServerBinding,
     McpServerBindingLoader,
     McpTransport,
+    capabilities_in,
+    with_resolved_stdio_environment,
 )
 from ai_agent_lab.wiki.mcp.connection import McpConnection
 from ai_agent_lab.wiki.mcp.dialects import DialectContext, WikiDialectRegistry
@@ -147,7 +149,7 @@ class TestReadOnlyDeployments:
 
     @pytest.mark.security
     def test_writes_are_withdrawn_when_the_server_is_read_only(self):
-        served = self.build().capabilities_in({"WIKI_MCP_READ_ONLY": "true"})
+        served = capabilities_in(self.build(), {"WIKI_MCP_READ_ONLY": "true"})
 
         assert WikiToolName.SEARCH_WIKI in served
         assert WikiToolName.GET_PAGE in served
@@ -160,7 +162,7 @@ class TestReadOnlyDeployments:
             assert write not in served
 
     def test_writes_are_served_when_the_server_accepts_them(self):
-        served = self.build().capabilities_in({"WIKI_MCP_READ_ONLY": "false"})
+        served = capabilities_in(self.build(), {"WIKI_MCP_READ_ONLY": "false"})
 
         assert WikiToolName.UPDATE_PAGE in served
         assert WikiToolName.DELETE_PAGE in served
@@ -168,30 +170,24 @@ class TestReadOnlyDeployments:
     @pytest.mark.security
     def test_an_absent_variable_is_read_as_read_only(self):
         """The safe reading, since the delivered default is read-only."""
-        assert WikiToolName.UPDATE_PAGE not in self.build().capabilities_in({})
+        assert WikiToolName.UPDATE_PAGE not in capabilities_in(self.build(), {})
 
     @pytest.mark.security
     def test_an_unrecognised_value_is_read_as_read_only(self):
         """A misspelled value gets the safe answer, not an unintended write."""
-        assert WikiToolName.UPDATE_PAGE not in self.build().capabilities_in(
-            {"WIKI_MCP_READ_ONLY": "tru"}
-        )
+        assert WikiToolName.UPDATE_PAGE not in capabilities_in(self.build(), {"WIKI_MCP_READ_ONLY": "tru"})
 
     def test_yes_and_on_are_accepted(self):
         for value in ("yes", "ON", "1", "True"):
-            assert WikiToolName.UPDATE_PAGE not in self.build().capabilities_in(
-                {"WIKI_MCP_READ_ONLY": value}
-            )
+            assert WikiToolName.UPDATE_PAGE not in capabilities_in(self.build(), {"WIKI_MCP_READ_ONLY": value})
 
     def test_the_ways_of_saying_writable_are_accepted(self):
         for value in ("false", "FALSE", "0", "no", "off"):
-            assert WikiToolName.UPDATE_PAGE in self.build().capabilities_in(
-                {"WIKI_MCP_READ_ONLY": value}
-            )
+            assert WikiToolName.UPDATE_PAGE in capabilities_in(self.build(), {"WIKI_MCP_READ_ONLY": value})
 
     def test_a_binding_naming_no_variable_is_unaffected(self):
         """The reference server has no read-only mode to speak of."""
-        served = self.build(read_only_variable="").capabilities_in({"WIKI_MCP_READ_ONLY": "true"})
+        served = capabilities_in(self.build(read_only_variable=""), {"WIKI_MCP_READ_ONLY": "true"})
 
         assert WikiToolName.UPDATE_PAGE in served
 
@@ -218,10 +214,8 @@ class TestEnvironmentResolution:
             command="python",
             env={"CONFLUENCE_API_TOKEN": "CONFLUENCE_API_TOKEN"},
         )
-        connection = McpConnection(binding, environment={})
-
         with pytest.raises(WikiToolUnavailableError, match="CONFLUENCE_API_TOKEN"):
-            connection._stdio_parameters()
+            with_resolved_stdio_environment(binding, {})
 
     @pytest.mark.security
     def test_a_declared_credential_reaches_the_server_process_only(self):
@@ -233,12 +227,13 @@ class TestEnvironmentResolution:
             command="python",
             env={"CONFLUENCE_API_TOKEN": "SOURCE_VARIABLE"},
         )
-        connection = McpConnection(binding, environment={"SOURCE_VARIABLE": "s3cret"})
+        resolved = with_resolved_stdio_environment(binding, {"SOURCE_VARIABLE": "s3cret"})
+        connection = McpConnection(resolved)
 
         parameters = connection._stdio_parameters()
 
         assert parameters.env == {"CONFLUENCE_API_TOKEN": "s3cret"}
-        assert "s3cret" not in repr(binding.env)
+        assert "s3cret" not in repr(resolved.env)
 
 
 class TestDialectRegistry:
@@ -259,13 +254,13 @@ class TestDialectRegistry:
         )
 
         with pytest.raises(WikiToolUnavailableError, match="Known dialects"):
-            WikiDialectRegistry().build(McpConnection(binding), binding)
+            WikiDialectRegistry().build(binding, McpConnection(binding), DialectContext())
 
     def test_a_dialect_is_never_silently_replaced(self):
         registry = WikiDialectRegistry()
 
         with pytest.raises(WikiToolUnavailableError, match="already registered"):
-            registry.register("native", lambda connection, binding, context: None)  # type: ignore[arg-type,return-value]
+            registry.register("native", lambda binding, connection, context: None)  # type: ignore[arg-type,return-value]
 
     @pytest.mark.security
     def test_the_atlassian_dialect_is_told_which_account_it_serves(self):
@@ -279,7 +274,7 @@ class TestDialectRegistry:
             command="docker",
         )
 
-        tools = WikiDialectRegistry().build(McpConnection(binding), binding, DialectContext(account_id="diana"))
+        tools = WikiDialectRegistry().build(binding, McpConnection(binding), DialectContext(account_id="diana"))
 
         assert tools._account_id == "diana"
         assert not tools._is_per_user
@@ -296,7 +291,7 @@ class TestDialectRegistry:
             url="https://wiki-mcp.internal/mcp",
         )
 
-        tools = WikiDialectRegistry().build(McpConnection(binding), binding, DialectContext(is_per_user=True))
+        tools = WikiDialectRegistry().build(binding, McpConnection(binding), DialectContext(is_per_user=True))
 
         assert tools._is_per_user
 

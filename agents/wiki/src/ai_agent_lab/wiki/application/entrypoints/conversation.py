@@ -18,20 +18,14 @@ controls is only ever half.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-
 from ygo74.agent_runtime.domains.auth.agent_principal import AgentPrincipal
-from ygo74.agent_runtime.domains.contracts.conversation import AgentReply, ConversationTurn
-from ygo74.agent_runtime.domains.humanapproval.commands import ConfirmationCommand, ConfirmationCommandParser
 from ygo74.agent_runtime.domains.humanapproval.confirmed_operations import ConfirmedOperationRunner
 from ygo74.agent_runtime.domains.humanapproval.pending_renderer import PendingConfirmationRenderer
-from ygo74.agent_runtime.domains.humanapproval.tickets import (
-    ConfirmationTicket,
-    InMemoryPendingConfirmationStore,
-    PendingConfirmationStore,
-    UnknownTicketError,
+from ygo74.agent_runtime.domains.humanapproval.tickets import InMemoryPendingConfirmationStore
+from ygo74.agent_runtime.domains.sessions.agent_conversation import (
+    AgentConversation,
+    HttpConversationEngine,
 )
-from ygo74.agent_runtime.domains.sessions.conversation_cache import ConversationRuntimeCache
 
 from ai_agent_lab.langgraph.approval import LangGraphApprovalTranslator
 from ai_agent_lab.wiki.application.approval.tickets import WikiTicketApprovalResolver
@@ -39,45 +33,8 @@ from ai_agent_lab.wiki.application.composition import WikiAgentCompositionRoot, 
 from ai_agent_lab.wiki.application.session import WikiAgentSession
 from ai_agent_lab.wiki.capabilities.results import WikiToolResultRenderer
 
-_UNKNOWN_TICKET = (
-    "That confirmation is not awaiting an answer. It may have been answered "
-    "already, or it may have expired. Ask again and a new one will be offered."
-)
-
-
-@dataclass(frozen=True, slots=True)
-class WikiConversation:
-    """Everything one conversation needs, for one authenticated caller."""
-
-    runtime: WikiAgentRuntime
-    session: WikiAgentSession
-    store: PendingConfirmationStore
-    runner: ConfirmedOperationRunner
-    conversation_id: str
-    renderer: PendingConfirmationRenderer
-
-    async def aclose(self) -> None:
-        """Release the MCP session this conversation holds."""
-        await self.runtime.aclose()
-
-    def waiting(self) -> tuple[str, ...]:
-        """Identifiers of the operations described but not performed."""
-        return tuple(ticket.ticket_id for ticket in self._pending())
-
-    def describe_pending(self) -> str:
-        """Render what is waiting, so the answer can be given by name.
-
-        Written by the application rather than by the model: what is pending is
-        a fact about the ledger, and a model paraphrasing it could drop one.
-        """
-        return self.renderer.render(self._pending())
-
-    def _pending(self) -> tuple[ConfirmationTicket, ...]:
-        """The tickets of this conversation, for its own caller."""
-        return self.store.pending(
-            subject=self.runtime.user.user_id,
-            conversation_id=self.conversation_id,
-        )
+WikiConversation = AgentConversation[WikiAgentRuntime, WikiAgentSession]
+WikiConversationEngine = HttpConversationEngine[WikiConversation]
 
 
 class WikiConversationFactory:
@@ -133,46 +90,3 @@ class WikiConversationFactory:
     async def close(conversation: WikiConversation) -> None:
         """Release a conversation the cache is evicting."""
         await conversation.aclose()
-
-
-class WikiConversationEngine:
-    """Answers one turn of a Wiki Agent conversation."""
-
-    def __init__(
-        self,
-        conversations: ConversationRuntimeCache[WikiConversation],
-        parser: ConfirmationCommandParser | None = None,
-    ) -> None:
-        self._conversations = conversations
-        self._parser = parser or ConfirmationCommandParser()
-
-    async def respond(self, turn: ConversationTurn) -> AgentReply:
-        """Return the agent's answer, honouring a confirmation if that is what it is."""
-        # A lease rather than a lookup: while this block runs the conversation
-        # cannot be evicted or expired, so nothing closes the MCP session the
-        # turn is still using.
-        async with self._conversations.lease(turn.principal, turn.conversation_id) as conversation:
-            command = self._parser.parse(turn.message)
-            if command is not None:
-                return await self._honour(conversation, command)
-
-            text = await conversation.session.ask(turn.message)
-            return self._reply(conversation, text)
-
-    async def _honour(self, conversation: WikiConversation, command: ConfirmationCommand) -> AgentReply:
-        """Run what a claimed ticket describes, or report that there is none."""
-        try:
-            text = await conversation.runner.run(command)
-        except UnknownTicketError:
-            # Deliberately not an error response: the caller did nothing wrong,
-            # and the conversation should carry on rather than fail.
-            return self._reply(conversation, _UNKNOWN_TICKET)
-        return self._reply(conversation, text)
-
-    @staticmethod
-    def _reply(conversation: WikiConversation, text: str) -> AgentReply:
-        """Attach what is still waiting to whatever was answered."""
-        return AgentReply(
-            text=text + conversation.describe_pending(),
-            pending_confirmations=conversation.waiting(),
-        )

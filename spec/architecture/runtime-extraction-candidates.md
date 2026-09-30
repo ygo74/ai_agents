@@ -1,15 +1,12 @@
 # What could move to `ygo74-agent-runtime`
 
-> **Status, 2026-09-27.** Batches 1 to 11 are delivered. Issue #5 also moved the
-> remaining reusable core APIs - common errors, configuration loading and schemas,
-> the user-context factory and the reasoning port - into the runtime. Batch 12 is
-> delivered in the library but not yet adopted by the agents:
-> `ygo74.agent_runtime.domains.mcp`
-> ships and is tested, while the Mail and Wiki agents still carry their own copies
-> of the transport lifecycle, the binding schema and the dialect registry.
-> Rebinding them is the one step left, and it was stopped rather than rushed: it
-> touches around forty call sites and the live Gmail and Atlassian paths, whose
-> tests run on doubles.
+> **Status, 2026-09-27.** Batches 1 to 11 and issue #5 are delivered. Issue #6
+> now implements adoption of the generic conversation container and HTTP turn
+> engine, bounded approval loop, and MCP bindings/connections/dialect registry
+> in the Mail and Wiki agents. Application composition roots, MAF/LangGraph
+> session adapters, credentials, capability policy and concrete dialects stay
+> here. Implementation and documentation are in the worktrees; test suites and
+> quality checks are still pending.
 >
 > See [architecture.md](./architecture.md#10-what-this-repository-no-longer-owns)
 > for what the move changed here, and `docs/parity-status.md` in the runtime for
@@ -56,9 +53,10 @@ counts lines that are byte-for-byte identical between the two copies of one modu
 | `mcp/dialects.py` | 104 | 123 | 49 | 43 % |
 | `application/composition.py` | 394 | 414 | 169 | 42 % |
 
-The measure **understates** the kinship. It compares literal lines, and the Mail Agent has just been
-instrumented with logging calls the Wiki Agent does not have yet. The classes, their methods and the
-order of their steps are the same; only the domain name and the error type differ.
+The measure **understates** the kinship. It compares literal lines in the
+pre-extraction snapshot, and the Mail Agent had been instrumented with logging
+calls the Wiki Agent did not have. The classes, their methods and the order of
+their steps were the same; only the domain name and error type differed.
 
 Drift has already started, which is the strongest argument in the table.
 
@@ -166,6 +164,12 @@ say that something was described without being executed. Empty means "nothing is
 The runtime already has `UseCaseHandler`, but its signature is synchronous and untyped (`input: Any`).
 This port is the next step up.
 
+Issue #6 also moved the reusable HTTP conversation behavior into
+`domains.sessions.agent_conversation`: `AgentConversation` holds application
+resources and `HttpConversationEngine` leases it, parses confirmation commands
+before invoking the session, and builds `AgentReply`. Mail and Wiki retain typed
+aliases and local factories; their runtimes do not inherit from a common base.
+
 ### Capability registry contract
 
 *Sources: `core/registry.py`, `core/manifests.py` · Target: `domains/contracts/` · portable*
@@ -196,8 +200,9 @@ their own. Entries expire, the cache is bounded, and eviction closes the MCP ses
 The design is right and the three risks it names - identity confusion, unbounded growth, dangling
 resources - are the right three. Its docstring already aims at the library.
 
-**It is not ready to move as is.** Two defects are invisible at this repository's settings and would
-surface immediately under a library's:
+**The original candidate was not ready to move as is.** The defects below were
+fixed before extraction; they are recorded as historical rationale, not as
+current runtime behavior:
 
 - **No lease.** `acquire` returns a runtime and forgets about it. A later `acquire` runs `_expire` and
   `_enforce_bound`, either of which may close an entry that an in-flight request is still using -
@@ -208,13 +213,12 @@ surface immediately under a library's:
   awaits `self._closer`, which closes an MCP session over the network. One unresponsive server stalls
   every conversation in the process.
 
-Fix before extraction: reference-count or lease entries and never close one in use; remove entries
-under the lock but await builds and closers outside it; add tests covering eviction and expiry racing
-with an in-flight request.
+Batch 10 fixed this: `lease` protects in-use entries, and builds/closers run
+outside the global lock. The tests cover eviction and expiry racing with an
+in-flight request.
 
-Separate blocker: the class uses PEP 695 generic syntax (`class ConversationRuntimeCache[RuntimeT]`),
-available from Python 3.12, while the runtime declares `requires-python >= 3.11`. Rewrite with
-`TypeVar` or raise the floor.
+The cache now uses `TypeVar`/`Generic`, compatible with the runtime's Python
+3.11+ floor.
 
 ### Human approval over a stateless API
 
@@ -222,8 +226,9 @@ available from Python 3.12, while the runtime declares `requires-python >= 3.11`
 `core/security/broker.py`, `core/security/ledger.py`, `core/security/unattended.py`,
 `core/serving/confirmations.py`, `core/serving/pending.py` · Target: a new `domains/humanapproval/` · portable*
 
-**This is the most reusable asset in the repository.** The runtime has an *example* called
-`04-human-in-the-loop`; it has no human-approval *domain*.
+The ticket, policy and gated-runner primitives already live in
+`domains/humanapproval/`. Issue #6 adds the duplicated, framework-neutral
+bounded-turn coordination to that domain as `ApprovalLoop`.
 
 The problem solved is not business-specific: an OpenAI-compatible API answers every request, so a turn
 cannot hold while a person decides.
@@ -254,7 +259,7 @@ cannot hold while a person decides.
   **redaction of any ticket reference found in third-party content**. A retrieved page therefore cannot
   imitate the application asking for an approval.
 
-Two things must be settled before extraction.
+The two earlier extraction concerns are addressed by the existing domain APIs:
 
 - **Decouple the runner.** `ConfirmedOperationRunner` depends on `SkillRegistry` and `ResultRenderer`.
   Two ports - "find the capability by name" and "render its result" - would free it from this
@@ -387,10 +392,11 @@ descriptor is derived from the deployment rather than asserted alongside it. The
 ### MCP client plumbing
 
 *Sources: `*/mcp/connection.py`, `*/mcp/binding.py`, `*/mcp/dialects.py`, `mail/mcp/oauth.py` ·
-Target: a new `domains/mcp/` · **Python-first** (depends on the `mcp` SDK)*
+Target: `domains/mcp/` · **Python-first** (depends on the `mcp` SDK)*
 
-This is the candidate whose boundary needs the most care, because the four modules are **not** uniformly
-domain-free. What moves is the mechanism; what stays is every place a domain is named.
+This is the candidate whose boundary needs the most care, because the modules are
+**not** uniformly domain-free. Issue #6 adopts the runtime mechanism in Mail and
+Wiki; what stays is every place a domain is named.
 
 **Moves.**
 
@@ -405,6 +411,10 @@ domain-free. What moves is the mechanism; what stays is every place a domain is 
   than failing on the first call.
 - **Registry mechanics.** Explicit registration, refusal to silently replace, and naming the
   alternatives when a dialect is unknown.
+- **HTTP headers and error factories.** The transport accepts application-built
+  headers without logging or exposing their values in representations. Error
+  factories let local dialect boundaries preserve their established exception
+  categories.
 
 **Stays.**
 
@@ -444,10 +454,11 @@ framework adapters.
 `mail/application/session.py` and `wiki/application/session.py` import `agent_framework` and LangGraph
 respectively. The implementation must stay per framework.
 
-The **policy** they apply, however, is shared and duplicated: bound the number of approval rounds, bound
-the total number of rounds, and **explicitly decline whatever is still pending** rather than abandoning
-a turn. Abandoning would let a later, unrelated turn replay answers given under a different premise.
-Those bounds deserve a shared contract even though the code enforcing them stays here.
+The **policy** they apply is shared: bound the number of approval rounds, bound
+the total number of rounds, clear recorded grants and **explicitly decline
+whatever is still pending** rather than abandoning a turn. Issue #6 implements
+this as `ApprovalLoop` in the runtime. Framework-specific state inspection,
+resumption and result extraction stay in each agent session adapter.
 
 ### Everything else
 
@@ -460,13 +471,13 @@ Independent of what moves, and to be handled first.
 
 | Subject | State | Effect |
 |---|---|---|
-| `py.typed` | absent from the runtime's Python package | This repository carries a mypy waiver, `module = "ygo74.*"`, documented in `pyproject.toml`. Widening the boundary widens the blind spot. |
-| Python version | runtime `>= 3.11`, this repository `>= 3.12` | `ConversationRuntimeCache` uses PEP 695 generic syntax. Rewrite with `TypeVar`, or raise the floor. |
-| Optional extras | none in `packages/python/pyproject.toml` | `fastapi` is imported defensively in `fastapi_endpoints.py`. Hosting the MCP client or more HTTP code requires an extras policy (`http`, `mcp`). |
+| `py.typed` | shipped by the runtime's Python agents distribution | The agents consume the runtime's strict public annotations. |
+| Python version | runtime `>= 3.11`, this repository `>= 3.12` | `ConversationRuntimeCache` uses `TypeVar`/`Generic`; the shared cache does not require Python 3.12 syntax. |
+| Optional extras | `configuration`, `http`, and `mcp` are declared by `ygo74-agent-runtime-agents` | MCP imports are optional at runtime-package installation; agents that use the client request `[mcp]`. |
 | Settings library | runtime depends on `pydantic`, `typing-extensions`, `PyJWT` only | Moving the HTTP settings adds `pydantic-settings` to every host. Decide whether the runtime imposes a settings library or accepts plain values. |
-| Conversation header | defined on both sides | `x-conversation-id` appears in `core/serving/payloads.py` and in `domains/endpoints/header_forwarding.py`. Exactly one definition should be authoritative. |
+| Conversation header | runtime-owned | The OpenAI request adapter promotes the configured header to `ConversationTurn`; application engines receive the typed turn. |
 | Observability | `observability/otel.py` returns a dictionary | It is a stub. This repository's audit trail and logging conventions are a possible contribution, not only an extraction. |
-| Authentication context | handed over as a `dict` | As long as the entrypoint receives a dictionary, every application re-parses the context. Fixing the contract removes the need to extract `Principal` at all. |
+| Authentication context | typed principal at the endpoint boundary | Applications project the authenticated principal into their own `UserContext`; identity and domain permissions remain separate. |
 
 ## Proposed sequencing
 
@@ -487,7 +498,8 @@ listed here imports nothing that a later batch owns.
 | 9 | Untrusted content, fencing and `ReasoningRequest`, after opening `UntrustedOrigin` | portable | 4 | **done**; the origin became a value object on the `Permission` pattern, and each agent declares its own in `domain/origins.py` |
 | 10 | `ConversationRuntimeCache`, after the lease and lock-scope repair | Python-first | 1, 2 | **done**; `acquire` became a lease, and closers moved off the global lock |
 | 11 | Generic HTTP settings, with issuer discovery instead of the Keycloak path | portable | 0 | **done**; plain `pydantic` with `from_env(prefix)`, so no settings library is imposed |
-| 12 | MCP transport lifecycle, binding schema and registry mechanics | Python-first | 0 | **in the library, not yet adopted**; `domains.mcp` ships and is tested, the two agents still carry their own copies |
+| 12 | MCP transport lifecycle, binding schema and registry mechanics | Python-first | 0 | **adopted by Mail and Wiki in issue #6**; the runtime adds generic HTTP headers and typed error/factory hooks |
+| 13 | Generic conversation container/HTTP engine, bounded approval loop and cross-repository adoption | Python-first | 2, 7, 10, 12 | **implemented in issue #6 worktrees; targeted tests, Ruff and strict mypy pass, with broader validation still pending** |
 
 ### What the delivered batches actually cost
 
@@ -547,14 +559,9 @@ them without their test suites would amount to rewriting them.
 
 ## Recommendation
 
-Start with the prerequisites, then batches 1 and 2. They are the least risky, they fix a real gap in the
-library's contract, and they make the rest mechanical.
-
-Treat batches 7 and 8 as one decision, taken explicitly. Together they are the contribution with the
-most value for the library - a complete, deterministic human-approval path over a stateless API - and
-they are the ones where a careless move would weaken a control rather than relocate it.
-
-Repair `ConversationRuntimeCache` before publishing it, not after. Its defects are invisible at this
-repository's settings and immediate at a library's.
-
-Leave the framework adapters alone until the comparison study concludes.
+The approved scope of issue #6 is implemented in the two worktrees. Targeted
+tests, Ruff and strict mypy have passed; the Wiki conversation test shutdown and
+broader package/CI checks remain to be resolved. Before publishing, capture
+comparable performance measurements, review the full diffs, and prepare the
+runtime pull request before the `ai_agents` pull request. Keep the framework
+adapters, composition roots, credentials and domain policies in this repository.

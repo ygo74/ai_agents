@@ -24,6 +24,7 @@ from typing import Any
 from mcp import ClientSession
 from ygo74.agent_runtime.domains.configuration.directory import ConfigurationDirectory
 
+from ai_agent_lab.mail.catalog import MailToolName
 from ai_agent_lab.mail.config.settings import ENV_FILE
 from ai_agent_lab.mail.mcp.binding import McpServerBinding, McpServerBindingLoader, McpTransport
 from ai_agent_lab.mail.mcp.connection import McpConnection
@@ -36,7 +37,7 @@ _logger = logging.getLogger(__name__)
 class ToolDiscovery:
     """Lists the tools a server exposes and records their schemas."""
 
-    def __init__(self, binding: McpServerBinding) -> None:
+    def __init__(self, binding: McpServerBinding[MailToolName]) -> None:
         _logger.info("Initializing Mail MCP tool discovery")
         _logger.debug(
             "ToolDiscovery.__init__ arguments: server=%s, transport=%s",

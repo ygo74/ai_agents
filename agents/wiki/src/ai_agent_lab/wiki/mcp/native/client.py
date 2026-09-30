@@ -26,6 +26,7 @@ from typing import Any
 from mcp.types import CallToolResult, TextContent
 from ygo74.agent_runtime.domains.security.user_context import UserContext
 
+from ai_agent_lab.wiki.catalog import WikiToolName as WikiCapability
 from ai_agent_lab.wiki.domain.models import (
     WikiComment,
     WikiPage,
@@ -61,7 +62,7 @@ class McpWikiTools:
     def __init__(
         self,
         connection: McpConnection,
-        binding: McpServerBinding,
+        binding: McpServerBinding[WikiCapability],
         *,
         mapper: WikiWireMapper | None = None,
     ) -> None:

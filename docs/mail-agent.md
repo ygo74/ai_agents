@@ -186,6 +186,9 @@ complete it and execute calls the user approved under a different premise.
 When a turn exceeds its budget, the session therefore drops the recorded answers
 first and only then refuses what is left. The batch completes with no decision
 available, the domain gate refuses every call, and nothing further is executed.
+The runtime's shared `ApprovalLoop` owns the budget and cleanup sequence; the
+Mail session adapter translates suspended Microsoft Agent Framework calls into
+the adapter protocol.
 This is covered by `tests/agent/test_mail_scenarios.py`.
 
 There are two budgets, and they guard different things:

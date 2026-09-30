@@ -26,6 +26,7 @@ from mcp.types import CallToolResult, TextContent
 from ygo74.agent_runtime.domains.security.untrusted import untrusted
 from ygo74.agent_runtime.domains.security.user_context import UserContext
 
+from ai_agent_lab.mail.catalog import MailToolName as MailCapability
 from ai_agent_lab.mail.domain.enums import MailSortOrder
 from ai_agent_lab.mail.domain.models import (
     MailDraft,
@@ -82,7 +83,7 @@ class GmailMailTools:
     def __init__(
         self,
         connection: McpConnection,
-        binding: McpServerBinding,
+        binding: McpServerBinding[MailCapability],
         *,
         owner_id: str,
         query_builder: GmailQueryBuilder | None = None,
