@@ -1,46 +1,40 @@
-"""Wiki configuration policies around the runtime's generic MCP binding."""
+"""Wiki-specific policy applied around generic MCP bindings."""
 
 from __future__ import annotations
 
 from collections.abc import Mapping
 
 from ygo74.agent_runtime.domains.configuration.directory import ConfigurationDirectory
-from ygo74.agent_runtime.domains.mcp.binding import (
-    McpServerBinding as McpServerBinding,
-)
-from ygo74.agent_runtime.domains.mcp.binding import (
-    McpServerBindingLoader as RuntimeMcpServerBindingLoader,
-)
-from ygo74.agent_runtime.domains.mcp.binding import McpTransport as McpTransport
+from ygo74.agent_runtime.domains.mcp.binding import McpServerBinding, McpServerBindingLoader, McpTransport
 
 from ai_agent_lab.wiki.catalog import WikiToolCatalog, WikiToolName
-from ai_agent_lab.wiki.wiki_errors import WikiToolProtocolError, WikiToolUnavailableError
+from ai_agent_lab.wiki.mcp.errors import McpBindingError
+from ai_agent_lab.wiki.wiki_errors import WikiToolUnavailableError
 
 MCP_DIRECTORY = "mcp"
 _WRITABLE = frozenset({"0", "false", "no", "off"})
 
 
-class McpBindingError(WikiToolProtocolError):
-    """A delivered wiki MCP binding cannot be used as declared."""
+def load_binding(directory: ConfigurationDirectory, name: str) -> McpServerBinding[WikiToolName]:
+    """Load one Wiki binding with the runtime parser and Wiki error category.
 
-
-class McpServerBindingLoader:
-    """Resolve the Wiki configuration directory, then delegate validation."""
-
-    def __init__(self, directory: ConfigurationDirectory) -> None:
-        self._directory = directory
-        self._loader = RuntimeMcpServerBindingLoader(WikiToolName, error_factory=McpBindingError)
-
-    def load(self, name: str) -> McpServerBinding[WikiToolName]:
-        """Load one binding using the shared runtime parser and validator."""
-        path = self._directory.require(MCP_DIRECTORY, f"{name}.yaml")
-        binding = self._loader.load(path, name=name)
-        binding.require_declared_capabilities()
-        return binding
+    Args:
+        directory: Application-selected root that contains the delivered MCP files.
+        name: Binding filename without its ``.yaml`` suffix.
+    """
+    path = directory.require(MCP_DIRECTORY, f"{name}.yaml")
+    loader = McpServerBindingLoader(WikiToolName, error_factory=McpBindingError)
+    binding = loader.load(path, name=name)
+    binding.require_declared_capabilities()
+    return binding
 
 
 def is_read_only(value: str) -> bool:
-    """Treat absent or unrecognised deployment values as read-only."""
+    """Treat absent or unrecognised deployment values as read-only.
+
+    Args:
+        value: Raw value of the deployment's read-only environment variable.
+    """
     return value.strip().casefold() not in _WRITABLE
 
 
@@ -48,7 +42,12 @@ def capabilities_in(
     binding: McpServerBinding[WikiToolName],
     environment: Mapping[str, str],
 ) -> frozenset[WikiToolName]:
-    """Apply the Wiki deployment's read-only policy to declared capabilities."""
+    """Apply the Wiki deployment's read-only policy to declared capabilities.
+
+    Args:
+        binding: Validated server capabilities and transport configuration.
+        environment: Environment values used to evaluate the deployment policy.
+    """
     variable = binding.read_only_variable
     if not variable or not is_read_only(environment.get(variable, "")):
         return binding.capabilities
@@ -60,7 +59,15 @@ def with_resolved_stdio_environment(
     binding: McpServerBinding[WikiToolName],
     environment: Mapping[str, str],
 ) -> McpServerBinding[WikiToolName]:
-    """Resolve Wiki's source-variable references before handing the binding to the runtime."""
+    """Resolve Wiki source-variable references before passing a binding to the runtime.
+
+    Args:
+        binding: Validated Wiki server binding containing environment references.
+        environment: Runtime environment from which configured values are read.
+
+    Raises:
+        WikiToolUnavailableError: A referenced environment value is missing.
+    """
     if binding.transport is not McpTransport.STDIO or not binding.env:
         return binding
 

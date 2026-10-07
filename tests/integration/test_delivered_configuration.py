@@ -25,15 +25,17 @@ from ygo74.agent_runtime.domains.configuration.manifests import (
     ConfigurationError,
     SkillManifestLoader,
 )
+from ygo74.agent_runtime.domains.mcp.binding import McpTransport
 from ygo74.agent_runtime.domains.security.floor import SecurityFloorViolationError
 from ygo74.agent_runtime.domains.security.operations import OperationType, RiskLevel
 from ygo74.agent_runtime.domains.security.permissions import PermissionRegistry, UnknownPermissionError
 
 from ai_agent_lab.mail.catalog import MailToolCatalog, MailToolName
 from ai_agent_lab.mail.domain.permissions import MailPermission
-from ai_agent_lab.mail.mcp.binding import McpBindingError, McpServerBindingLoader, McpTransport
+from ai_agent_lab.mail.mcp.configuration import load_binding as load_mail_binding
+from ai_agent_lab.mail.mcp.errors import McpBindingError
 from ai_agent_lab.mail.security_floor import MailSecurityFloor
-from ai_agent_lab.wiki.mcp.binding import McpServerBindingLoader as WikiMcpServerBindingLoader
+from ai_agent_lab.wiki.mcp.configuration import load_binding as load_wiki_binding
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 
@@ -279,13 +281,13 @@ class TestMcpBinding:
     """A server declares what it can serve and how it names its tools."""
 
     def test_the_official_gmail_binding_loads(self):
-        binding = McpServerBindingLoader(delivered()).load("gmail")
+        binding = load_mail_binding(delivered(), "gmail")
 
         assert binding.transport is McpTransport.HTTP
         assert binding.url.startswith("https://")
 
     def test_the_local_binding_covers_the_whole_contract(self):
-        binding = McpServerBindingLoader(delivered()).load("local")
+        binding = load_mail_binding(delivered(), "local")
 
         assert binding.capabilities == set(MailToolCatalog().names())
 
@@ -297,26 +299,26 @@ class TestMcpBinding:
         honour, and the failure would surface as a refusal mid-conversation.
         Recorded from the live server: 23 tools, none of which sends.
         """
-        binding = McpServerBindingLoader(delivered()).load("gmail")
+        binding = load_mail_binding(delivered(), "gmail")
 
         assert not binding.supports(MailToolName.SEND_MAIL)
         assert binding.supports(MailToolName.GET_THREAD)
         assert binding.supports(MailToolName.GET_MAIL)
 
     def test_it_resolves_the_remote_name_of_a_tool(self):
-        binding = McpServerBindingLoader(delivered()).load("gmail")
+        binding = load_mail_binding(delivered(), "gmail")
 
         assert binding.remote("update_message_labels") == "update_message_labels"
         assert binding.remote("search_threads") == "search_threads"
 
     def test_an_alias_the_server_never_named_is_refused(self):
-        binding = McpServerBindingLoader(delivered()).load("gmail")
+        binding = load_mail_binding(delivered(), "gmail")
 
         with pytest.raises(McpBindingError, match="send_gmail"):
             binding.remote("send_gmail")
 
     def test_a_dialect_needing_an_undeclared_tool_fails_early(self):
-        binding = McpServerBindingLoader(delivered()).load("gmail")
+        binding = load_mail_binding(delivered(), "gmail")
 
         with pytest.raises(McpBindingError, match="missing tool names"):
             binding.require_aliases(("get_thread", "send_everything"))
@@ -329,7 +331,7 @@ class TestMcpBinding:
         )
 
         with pytest.raises(McpBindingError, match="unknown capabilities"):
-            McpServerBindingLoader(ConfigurationDirectory(tmp_path)).load("x")
+            load_mail_binding(ConfigurationDirectory(tmp_path), "x")
 
     def test_an_http_server_without_an_endpoint_is_refused(self, tmp_path):
         (tmp_path / "mcp").mkdir()
@@ -339,7 +341,7 @@ class TestMcpBinding:
         )
 
         with pytest.raises(McpBindingError, match="requires 'url'"):
-            McpServerBindingLoader(ConfigurationDirectory(tmp_path)).load("x")
+            load_mail_binding(ConfigurationDirectory(tmp_path), "x")
 
 
 class TestEveryDeliveredBindingLoads:
@@ -361,14 +363,14 @@ class TestEveryDeliveredBindingLoads:
 
     @pytest.mark.parametrize("name", MAIL_BINDINGS)
     def test_a_delivered_mail_binding_loads(self, name):
-        binding = McpServerBindingLoader(delivered()).load(name)
+        binding = load_mail_binding(delivered(), name)
 
         assert binding.capabilities
         assert_addressable(binding)
 
     @pytest.mark.parametrize("name", WIKI_BINDINGS)
     def test_a_delivered_wiki_binding_loads(self, name):
-        binding = WikiMcpServerBindingLoader(delivered()).load(name)
+        binding = load_wiki_binding(delivered(), name)
 
         assert binding.capabilities
         assert_addressable(binding)
@@ -376,10 +378,10 @@ class TestEveryDeliveredBindingLoads:
     def test_a_container_binding_names_a_service_rather_than_localhost(self):
         """`localhost` inside a container means that container, not its neighbour."""
         for loader, name in (
-            (McpServerBindingLoader(delivered()), "gmail-http"),
-            (WikiMcpServerBindingLoader(delivered()), "mcp-atlassian-service"),
+            (load_mail_binding, "gmail-http"),
+            (load_wiki_binding, "mcp-atlassian-service"),
         ):
-            url = loader.load(name).url
+            url = loader(delivered(), name).url
 
             assert "localhost" not in url
             assert "127.0.0.1" not in url

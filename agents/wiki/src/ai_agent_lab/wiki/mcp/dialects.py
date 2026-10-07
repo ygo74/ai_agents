@@ -5,12 +5,11 @@ from __future__ import annotations
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 
+from ygo74.agent_runtime.domains.mcp.binding import McpConnection, McpServerBinding
 from ygo74.agent_runtime.domains.mcp.dialects import DialectRegistry
 
 from ai_agent_lab.wiki.catalog import WikiToolName
 from ai_agent_lab.wiki.mcp.atlassian.client import AtlassianWikiTools
-from ai_agent_lab.wiki.mcp.binding import McpServerBinding
-from ai_agent_lab.wiki.mcp.connection import McpConnection
 from ai_agent_lab.wiki.mcp.native.client import McpWikiTools
 from ai_agent_lab.wiki.tools_port import WikiTools
 from ai_agent_lab.wiki.wiki_errors import WikiToolUnavailableError
@@ -49,8 +48,15 @@ def _atlassian(
     )
 
 
-class WikiDialectRegistry(DialectRegistry[WikiTools, [McpConnection, DialectContext]]):
-    """Supply Wiki's dialect choices to the shared registry mechanics."""
+def create_dialect_registry(
+    dialects: Mapping[str, DialectFactory] | None = None,
+) -> DialectRegistry[WikiTools, [McpConnection, DialectContext]]:
+    """Create the runtime registry populated with Wiki's concrete dialects.
 
-    def __init__(self, dialects: Mapping[str, DialectFactory] | None = None) -> None:
-        super().__init__(dialects or {NATIVE: _native, ATLASSIAN: _atlassian}, unavailable=WikiToolUnavailableError)
+    Args:
+        dialects: Optional application dialect factories used in place of the defaults.
+    """
+    return DialectRegistry(
+        dialects or {NATIVE: _native, ATLASSIAN: _atlassian},
+        unavailable=WikiToolUnavailableError,
+    )

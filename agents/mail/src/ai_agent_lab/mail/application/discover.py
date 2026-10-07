@@ -23,11 +23,12 @@ from typing import Any
 
 from mcp import ClientSession
 from ygo74.agent_runtime.domains.configuration.directory import ConfigurationDirectory
+from ygo74.agent_runtime.domains.mcp.binding import McpConnection, McpServerBinding, McpTransport
 
 from ai_agent_lab.mail.catalog import MailToolName
 from ai_agent_lab.mail.config.settings import ENV_FILE
-from ai_agent_lab.mail.mcp.binding import McpServerBinding, McpServerBindingLoader, McpTransport
-from ai_agent_lab.mail.mcp.connection import McpConnection
+from ai_agent_lab.mail.mail_errors import MailToolUnavailableError
+from ai_agent_lab.mail.mcp.configuration import load_binding
 from ai_agent_lab.mail.mcp.oauth import MailOAuthProvider
 
 DEFAULT_OUTPUT = Path("data/mcp-discovery")
@@ -54,7 +55,7 @@ class ToolDiscovery:
             self._binding.server,
             self._binding.transport.value,
         )
-        connection = McpConnection(self._binding, auth=self._auth())
+        connection = McpConnection(self._binding, auth=self._auth(), unavailable=MailToolUnavailableError)
         try:
             session = await connection.session()
             return await self._describe(session)
@@ -110,7 +111,7 @@ def main() -> None:
     arguments = parser.parse_args()
 
     _load_environment()
-    binding = McpServerBindingLoader(ConfigurationDirectory.resolve()).load(arguments.server)
+    binding = load_binding(ConfigurationDirectory.resolve(), arguments.server)
     discovered = asyncio.run(ToolDiscovery(binding).run())
 
     arguments.output.mkdir(parents=True, exist_ok=True)

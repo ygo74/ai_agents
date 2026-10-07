@@ -13,10 +13,10 @@ from __future__ import annotations
 import asyncio
 
 import pytest
+from ygo74.agent_runtime.domains.mcp.binding import McpConnection, McpServerBinding, McpTransport
 
 from ai_agent_lab.mail.catalog import MailToolName
-from ai_agent_lab.mail.mcp.binding import McpServerBinding, McpTransport
-from ai_agent_lab.mail.mcp.connection import McpConnection
+from ai_agent_lab.mail.mail_errors import MailToolUnavailableError
 
 DATASET = "data/mail/sample_mailbox.json"
 
@@ -80,8 +80,6 @@ class TestAnUnreachableServerIsReported:
     """A server that cannot be started is a mail failure, not a traceback."""
 
     async def test_a_missing_server_module_is_reported_as_unavailable(self):
-        from ai_agent_lab.mail.mail_errors import MailToolUnavailableError
-
         binding = McpServerBinding(
             server="absent",
             transport=McpTransport.STDIO,
@@ -91,7 +89,7 @@ class TestAnUnreachableServerIsReported:
             command="python",
             args=("-m", "mail_mcp.no_such_server"),
         )
-        connection = McpConnection(binding, timeout_seconds=10)
+        connection = McpConnection(binding, timeout_seconds=10, unavailable=MailToolUnavailableError)
 
         with pytest.raises(MailToolUnavailableError):
             await connection.session()

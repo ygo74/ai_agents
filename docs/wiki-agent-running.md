@@ -351,7 +351,8 @@ skills or the agent.
 
 1. Write a class implementing `WikiTools`, translating that server's shapes into
    domain models. Fence every piece of third-party free text as `UntrustedText`.
-2. Register it in `ai_agent_lab.wiki.mcp.dialects.WikiDialectRegistry`.
+2. Register it in the runtime `DialectRegistry` supplied by
+   `ai_agent_lab.wiki.mcp.dialects.create_dialect_registry()`.
 3. Deliver `config/mcp/<server>.yaml` declaring the transport, the dialect, the
    capabilities the server really has, and the name it gives to each tool.
 

@@ -12,21 +12,19 @@ from pathlib import Path
 
 import pytest
 from ygo74.agent_runtime.domains.configuration.directory import ConfigurationDirectory
+from ygo74.agent_runtime.domains.mcp.binding import McpConnection, McpServerBinding, McpTransport
 from ygo74.agent_runtime.domains.security.untrusted import UntrustedText
 from ygo74.agent_runtime.domains.security.user_context import UserContext
 
 from ai_agent_lab.wiki.catalog import WikiToolName
 from ai_agent_lab.wiki.domain.models import WikiSearchRequest
-from ai_agent_lab.wiki.mcp.binding import (
-    McpBindingError,
-    McpServerBinding,
-    McpServerBindingLoader,
-    McpTransport,
+from ai_agent_lab.wiki.mcp.configuration import (
     capabilities_in,
+    load_binding,
     with_resolved_stdio_environment,
 )
-from ai_agent_lab.wiki.mcp.connection import McpConnection
-from ai_agent_lab.wiki.mcp.dialects import DialectContext, WikiDialectRegistry
+from ai_agent_lab.wiki.mcp.dialects import DialectContext, create_dialect_registry
+from ai_agent_lab.wiki.mcp.errors import McpBindingError
 from ai_agent_lab.wiki.mcp.native.client import McpWikiTools
 from ai_agent_lab.wiki.tools_port import WikiTools
 from ai_agent_lab.wiki.wiki_errors import (
@@ -49,7 +47,7 @@ def configuration() -> ConfigurationDirectory:
 @pytest.fixture
 async def native_tools() -> AsyncIterator[McpWikiTools]:
     """A client bound to the reference server, over a real stdio transport."""
-    binding = McpServerBindingLoader(ConfigurationDirectory(REPOSITORY_ROOT / "config")).load("wiki-local")
+    binding = load_binding(ConfigurationDirectory(REPOSITORY_ROOT / "config"), "wiki-local")
     connection = McpConnection(binding)
     try:
         yield McpWikiTools(connection, binding)
@@ -61,7 +59,7 @@ class TestBindingLoading:
     """What a delivered binding must say before it is usable."""
 
     def test_the_delivered_local_binding_loads(self, configuration: ConfigurationDirectory):
-        binding = McpServerBindingLoader(configuration).load("wiki-local")
+        binding = load_binding(configuration, "wiki-local")
 
         assert binding.server == "wiki-local"
         assert binding.dialect == "native"
@@ -82,7 +80,7 @@ class TestBindingLoading:
         )
 
         with pytest.raises(McpBindingError, match="names no tool"):
-            McpServerBindingLoader(ConfigurationDirectory(tmp_path)).load("broken")
+            load_binding(ConfigurationDirectory(tmp_path), "broken")
 
     def test_an_unknown_capability_is_refused(self, tmp_path: Path):
         (tmp_path / "mcp").mkdir()
@@ -93,7 +91,7 @@ class TestBindingLoading:
         )
 
         with pytest.raises(McpBindingError, match="unknown capabilities"):
-            McpServerBindingLoader(ConfigurationDirectory(tmp_path)).load("broken")
+            load_binding(ConfigurationDirectory(tmp_path), "broken")
 
     def test_an_http_binding_without_a_url_is_refused(self, tmp_path: Path):
         (tmp_path / "mcp").mkdir()
@@ -103,7 +101,7 @@ class TestBindingLoading:
         )
 
         with pytest.raises(McpBindingError, match="requires 'url'"):
-            McpServerBindingLoader(ConfigurationDirectory(tmp_path)).load("broken")
+            load_binding(ConfigurationDirectory(tmp_path), "broken")
 
     def test_a_capability_the_binding_omits_is_never_offered(self):
         """A server that simply cannot write says so by declaring nothing."""
@@ -196,7 +194,7 @@ class TestReadOnlyDeployments:
     ):
         """Otherwise the safeguard is code nothing reaches."""
         for name in ("mcp-atlassian", "mcp-atlassian-http"):
-            binding = McpServerBindingLoader(configuration).load(name)
+            binding = load_binding(configuration, name)
             assert binding.read_only_variable == "WIKI_MCP_READ_ONLY", name
 
 
@@ -240,7 +238,7 @@ class TestDialectRegistry:
     """Which servers this build can reach."""
 
     def test_the_known_dialects_are_named(self):
-        assert WikiDialectRegistry().known == ("atlassian", "native")
+        assert create_dialect_registry().known == ("atlassian", "native")
 
     def test_an_unimplemented_dialect_names_the_alternatives(self):
         """A typo in a binding must not fail deep inside a session."""
@@ -254,10 +252,10 @@ class TestDialectRegistry:
         )
 
         with pytest.raises(WikiToolUnavailableError, match="Known dialects"):
-            WikiDialectRegistry().build(binding, McpConnection(binding), DialectContext())
+            create_dialect_registry().build(binding, McpConnection(binding), DialectContext())
 
     def test_a_dialect_is_never_silently_replaced(self):
-        registry = WikiDialectRegistry()
+        registry = create_dialect_registry()
 
         with pytest.raises(WikiToolUnavailableError, match="already registered"):
             registry.register("native", lambda binding, connection, context: None)  # type: ignore[arg-type,return-value]
@@ -274,7 +272,7 @@ class TestDialectRegistry:
             command="docker",
         )
 
-        tools = WikiDialectRegistry().build(binding, McpConnection(binding), DialectContext(account_id="diana"))
+        tools = create_dialect_registry().build(binding, McpConnection(binding), DialectContext(account_id="diana"))
 
         assert tools._account_id == "diana"
         assert not tools._is_per_user
@@ -291,7 +289,7 @@ class TestDialectRegistry:
             url="https://wiki-mcp.internal/mcp",
         )
 
-        tools = WikiDialectRegistry().build(binding, McpConnection(binding), DialectContext(is_per_user=True))
+        tools = create_dialect_registry().build(binding, McpConnection(binding), DialectContext(is_per_user=True))
 
         assert tools._is_per_user
 
