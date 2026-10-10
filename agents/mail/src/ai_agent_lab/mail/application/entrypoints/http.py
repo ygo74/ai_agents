@@ -15,25 +15,17 @@ pick a victim.
 from __future__ import annotations
 
 import logging
-from collections.abc import AsyncIterator, Mapping
 from datetime import UTC, datetime
-from typing import Any
 
 from ygo74.agent_runtime.domains.contracts.contract_errors import EmptyRequestError
-from ygo74.agent_runtime.domains.contracts.conversation import AgentReply, ConversationTurn
-from ygo74.agent_runtime.domains.contracts.exchange_models import StandardExchangeResponse
 from ygo74.agent_runtime.domains.contracts.manifests import AgentManifest
-from ygo74.agent_runtime.domains.contracts.stream_events import AgentStreamEvent
 from ygo74.agent_runtime.domains.discovery.agent_descriptor import AgentDescriptor
 from ygo74.agent_runtime.domains.discovery.manifest_descriptor import (
     AdvertisedSecurity,
     AgentDescriptorFactory,
 )
-from ygo74.agent_runtime.domains.endpoints.conversation_payloads import (
-    DEFAULT_CONVERSATION,
-    AgentReplyRenderer,
-    ConversationPayloadReader,
-)
+from ygo74.agent_runtime.domains.endpoints.conversation_entrypoint import ConversationEntrypoint
+from ygo74.agent_runtime.domains.endpoints.conversation_payloads import DEFAULT_CONVERSATION
 from ygo74.agent_runtime.domains.endpoints.header_forwarding import DEFAULT_CONVERSATION_HEADER
 
 from ai_agent_lab.mail.application.entrypoints.conversation import MailConversationEngine
@@ -54,8 +46,8 @@ OWNER = "ai-agent-lab"
 _logger = logging.getLogger(__name__)
 
 
-class MailAgentEntrypoint:
-    """Turns one runtime payload into a turn, and a reply into a payload."""
+class MailAgentEntrypoint(ConversationEntrypoint):
+    """Declare Mail's email requirement on the shared transport binding."""
 
     def __init__(
         self,
@@ -63,57 +55,7 @@ class MailAgentEntrypoint:
         *,
         default_conversation: str = DEFAULT_CONVERSATION,
     ) -> None:
-        _logger.info("Initializing Mail Agent HTTP entry point")
-        _logger.debug(
-            "MailAgentEntrypoint.__init__ arguments: engine_type=%s, default_conversation=%s",
-            type(engine).__name__,
-            default_conversation,
-        )
-        self._engine = engine
-        # A mailbox is addressed by e-mail, so a caller without one is refused
-        # rather than served somebody else's mail.
-        self._reader = ConversationPayloadReader(
-            require_email=True,
-            default_conversation=default_conversation,
-        )
-        self._renderer = AgentReplyRenderer()
-
-    async def __call__(
-        self,
-        payload: Mapping[str, Any],
-    ) -> StandardExchangeResponse | AsyncIterator[AgentStreamEvent]:
-        """Answer one request in the response mode requested by the runtime."""
-        _logger.info("Handling Mail Agent HTTP request")
-        _logger.debug(
-            "MailAgentEntrypoint.__call__ arguments: payload_keys=%s, stream=%s",
-            tuple(sorted(str(key) for key in payload)),
-            payload.get("stream") is True,
-        )
-        turn = self.to_turn(payload)
-        if payload.get("stream") is True:
-            return self._engine.stream(turn)
-        reply = await self._engine.respond(turn)
-        return self.to_payload(payload, reply)
-
-    def to_turn(self, payload: Mapping[str, Any]) -> ConversationTurn:
-        """Read a request into the typed model the agent works with."""
-        _logger.info("Reading Mail Agent HTTP conversation turn")
-        _logger.debug(
-            "MailAgentEntrypoint.to_turn arguments: payload_keys=%s",
-            tuple(sorted(str(key) for key in payload)),
-        )
-        return self._reader.to_turn(payload)
-
-    def to_payload(self, payload: Mapping[str, Any], reply: AgentReply) -> StandardExchangeResponse:
-        """Render a reply in the exchange shape the runtime maps to OpenAI."""
-        _logger.info("Rendering Mail Agent HTTP response payload")
-        _logger.debug(
-            "MailAgentEntrypoint.to_payload arguments: payload_keys=%s, reply_length=%d, pending_confirmations=%d",
-            tuple(sorted(str(key) for key in payload)),
-            len(reply.text),
-            len(reply.pending_confirmations),
-        )
-        return self._renderer.to_payload(payload, reply)
+        super().__init__(engine, require_email=True, default_conversation=default_conversation)
 
 
 class MailAgentDescriptorFactory:

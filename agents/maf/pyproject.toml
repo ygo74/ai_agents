@@ -14,8 +14,9 @@ dependencies = [
     "ai-agent-lab-core",
     "ygo74-agent-runtime-agents>=0.6",
     "ygo74-agent-runtime-security>=0.6",
-    "agent-framework-core>=1.17,<2",
-    "agent-framework-openai>=1.14,<2",
+    "ygo74-agent-runtime-agentframework>=1.0,<2",
+    "agent-framework-core>=1.18,<1.19",
+    "agent-framework-openai>=1.14.2,<1.15",
 ]
 
 [project.optional-dependencies]

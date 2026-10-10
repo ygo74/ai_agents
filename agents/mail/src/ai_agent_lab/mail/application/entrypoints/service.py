@@ -15,8 +15,6 @@ the same contract whichever identity provider is configured.
 from __future__ import annotations
 
 import logging
-from collections.abc import AsyncIterator, Callable
-from contextlib import AbstractAsyncContextManager, asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI
@@ -25,11 +23,12 @@ from ygo74.agent_runtime.domains.auth.auth_context import ResolvedUser
 from ygo74.agent_runtime.domains.auth.authentication_policy import AuthenticationPolicy
 from ygo74.agent_runtime.domains.auth.jwt_authenticator import JwksKeyResolver, JwtValidationConfig
 from ygo74.agent_runtime.domains.configuration.environment import EnvironmentFile
+from ygo74.agent_runtime.domains.contracts.agent_definition import AgentDefinition
 from ygo74.agent_runtime.domains.discovery.agent_descriptor import AgentDescriptor
 from ygo74.agent_runtime.domains.discovery.discovery_configuration import DiscoveryConfiguration
 from ygo74.agent_runtime.domains.discovery.manifest_descriptor import AdvertisedSecurity
-from ygo74.agent_runtime.domains.endpoints.hosting_factory import EndpointSurface, HostingFactory
-from ygo74.agent_runtime.domains.sessions.conversation_cache import ConversationRuntimeCache
+from ygo74.agent_runtime.domains.endpoints.hosting_factory import EndpointSurface
+from ygo74.agent_runtime.domains.endpoints.managed_worker import ManagedAgentWorker, WorkerSettings
 
 from ai_agent_lab.core.config.azure_credentials import AzureIdentityCredentialProvider
 from ai_agent_lab.core.observability.logging_config import setup_logging
@@ -37,13 +36,10 @@ from ai_agent_lab.maf.chat_client import MafChatClientFactory
 from ai_agent_lab.mail.application.chat_client import ConfiguredChatClientFactory
 from ai_agent_lab.mail.application.composition import MailAgentCompositionRoot
 from ai_agent_lab.mail.application.entrypoints.conversation import (
-    MailConversation,
-    MailConversationEngine,
     MailConversationFactory,
 )
 from ai_agent_lab.mail.application.entrypoints.http import (
     MailAgentDescriptorFactory,
-    MailAgentEntrypoint,
 )
 from ai_agent_lab.mail.config.http_settings import MailAgentHttpSettings
 from ai_agent_lab.mail.config.settings import ChatClientSettings, MailAgentSettings
@@ -88,16 +84,6 @@ def build_app(*, base_path: Path | None = None) -> FastAPI:
         base_path=base_path or Path.cwd(),
     )
     factory = MailConversationFactory(composition)
-    conversations: ConversationRuntimeCache[MailConversation] = ConversationRuntimeCache(
-        factory.build,
-        MailConversationFactory.close,
-        max_conversations=http.max_conversations,
-        idle_lifetime=http.idle_lifetime(),
-    )
-
-    app = FastAPI(title="Mail Agent", lifespan=_closing(conversations))
-    app.state.conversations = conversations
-
     # The same active credential configuration drives both request auth and the
     # descriptor, so discovery cannot advertise a scheme this service rejects.
     jwt_validation = _jwt_validation(http)
@@ -109,15 +95,27 @@ def build_app(*, base_path: Path | None = None) -> FastAPI:
     else:
         raise MailServiceConfigurationError("the Mail Agent HTTP service needs a caller")
 
-    HostingFactory(app).add_agent(
-        MailAgentEntrypoint(MailConversationEngine(conversations)),
+    definition = AgentDefinition(
         _descriptor(composition, jwt_validation=jwt_validation, api_key_resolver=api_key_resolver),
-    ).add_ai_endpoints(
-        EndpointSurface.OPENAI_CHAT_COMPLETIONS, EndpointSurface.OPENAI_RESPONSES
-    ).add_security(authentication).add_discovery(
-        DiscoveryConfiguration(enable_openai_models=True, require_authentication=True)
-    ).register()
-    return app
+        "ai_agent_lab.mail.application.native:create_agent",
+        require_email=True,
+        tools=tuple(skill.operation for skill in composition.manifest().skills),
+        control_point="mail-deterministic-skill-gates",
+    )
+    worker = ManagedAgentWorker(
+        definition,
+        WorkerSettings(
+            deployment_id=AGENT_ID,
+            identity_namespace=http.oidc_issuer or "local-static-key",
+            authentication=authentication,
+            surfaces=(EndpointSurface.OPENAI_CHAT_COMPLETIONS, EndpointSurface.OPENAI_RESPONSES),
+            discovery=DiscoveryConfiguration(enable_openai_models=True, require_authentication=True),
+            max_conversations=http.max_conversations,
+            idle_lifetime=http.idle_lifetime(),
+        ),
+        factory.build,
+    )
+    return worker.build_app(title="Mail Agent")
 
 
 def _refuse_an_open_service(http: MailAgentHttpSettings) -> None:
@@ -132,35 +130,6 @@ def _refuse_an_open_service(http: MailAgentHttpSettings) -> None:
         "the Mail Agent HTTP service needs a caller: set MAIL_AGENT_HTTP_API_KEY "
         "for a single-caller demonstration, or set MAIL_AGENT_HTTP_OIDC_ISSUER for OIDC"
     )
-
-
-def _closing(
-    conversations: ConversationRuntimeCache[MailConversation],
-) -> Callable[[FastAPI], AbstractAsyncContextManager[None]]:
-    """Release every open MCP session when the service stops.
-
-    Conversations hold live connections, so a process that exits without
-    closing them leaves sockets to be reaped by the operating system and,
-    against a real server, sessions that look active long after they are not.
-    """
-
-    _logger.info("Configuring Mail Agent HTTP service shutdown")
-    _logger.debug(
-        "_closing arguments: conversations_type=%s",
-        type(conversations).__name__,
-    )
-
-    @asynccontextmanager
-    async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
-        _logger.info("Starting Mail Agent HTTP service lifespan")
-        _logger.debug("lifespan arguments: app_title=%s", _app.title)
-        try:
-            yield
-        finally:
-            _logger.info("Closing Mail Agent HTTP conversations")
-            await conversations.aclose()
-
-    return lifespan
 
 
 def _descriptor(

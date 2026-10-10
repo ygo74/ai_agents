@@ -152,6 +152,136 @@ comes first deliberately: a conversation identifier is a routing handle supplied
 by the caller, so on its own it selects nothing. Two people quoting the same
 identifier get their own conversation.
 
+The actual key also includes the operator identity namespace and verified email,
+display name and roles. Refreshed claims, expiration, eviction or an invalidated
+run select fresh resources even if `X-Conversation-Id` is unchanged. Do not remove
+claim partitioning to preserve stale authorization.
+
+### Mail provider continuity and controlled LibreChat replay
+
+Mail's `MailAgentSession` HTTP/console adapter deliberately requires provider
+continuation for its real `OpenAIChatClient` (direct OpenAI or Azure route).
+It retains the provider's storage defaults: no
+`store=False`, duplicated local memory or client-history replay is introduced.
+Scripted/local BYOA clients retain their existing profile. Runtime routing ID and
+provider `service_session_id` are distinct; the installed adapter 1.14.2/core
+1.18 uses Responses and maps provider `resp_`/`conv_` IDs to `previous_response_id`/
+`conversation`. Missing/stale continuation fails explicitly, not silently as an
+apparently context-free successful turn.
+
+See the runtime's `docs/python/native-agents.md` for the three safe INFO events,
+their structural fields and process-local fingerprints. Export only those added
+records/fields through your configured standard logging sink. A plain console
+formatter may omit the extra fields. Never turn on global DEBUG: older application
+debug logs and third-party SDK logs are not this diagnostic allowlist.
+
+**Proven deterministic regression:** FastAPI's normal streamed completion closed
+`HttpConversationEngine.stream` while it was still inside `cache.turn`.
+`GeneratorExit` invalidated a successful session; the same header's next request
+created fresh state. The runtime now releases the completed turn before emitting
+the terminal. Actual HTTP plus installed SDK mocked-transport tests verify
+normal/stream/mixed continuation, tools and approval/refusal, without live mail.
+This does **not** establish the original live exchange's cause or prove that a
+real model will interpret the follow-up correctly.
+
+**Completed safe functional replay (2026-10-10):**
+`test_title_free_sdk_http_followup_reuses_bounded_table_and_exact_tickets` drives
+the real authenticated FastAPI routes and JSON/SSE projectors with two complete
+LibreChat-shaped message arrays and a stable `X-Conversation-Id`. The installed
+MAF/OpenAI SDK uses a mocked HTTP Responses provider with a continuation store.
+Its deterministic decision logic reads retrieved fixture results, produces a
+table, then derives follow-up tool arguments **from that stored table**; a
+negative control without prior scope asks for a selection and emits no calls.
+This is not a canned second reply and is not live inference.
+
+The fixture re-dates copies of the existing synthetic sample mailbox: 15 messages
+across all seven UTC days, 04/10/2026 through 10/10/2026, plus two out-of-period
+sentinels. One bounded search and one existing-category listing produce 10
+applicable proposals and five uncertain messages. All four stream/non-stream
+combinations verify the same 10 exact message/category tickets, no modified
+messages, no widening/retrieval on follow-up, no duplicated client history, and
+the four actual provider calls' chain `resp_scope_1` → `resp_scope_2` →
+`resp_scope_3` → `resp_scope_4`. Only the two business HTTP requests are submitted;
+no title request or real LibreChat process participates.
+
+This replay also exposed a second, independently proven defect: SDK middleware
+dispatches parallel approval requests one by one, with no provider call or token
+usage on intermediate approval-only rounds. The binding previously rejected
+these as missing provider usage. It now excludes only instrumented, provider-free
+approval-only dispatch from accounting; actual provider usage gaps still fail.
+Runtime tests cover three parallel approvals, approval/refusal, bounded cleanup and both modes,
+checking exact genuine token totals and the next turn's continuation.
+
+**Safe availability observation (2026-10-10):** LibreChat responds on localhost
+3080. Its container mounts
+`C:\devel\searchbot\research\librechat\librechat.yaml`, not `deploy\librechat.yaml`.
+The mounted Mail entry already has `titleConvo: false`, a conversation header and
+port 8002; Mail readiness on localhost 8002 returns 200. No active configuration
+was modified, credentials read or mailbox operation invoked. Mounted-file
+metadata does not prove when the running LibreChat process loaded that setting.
+No authenticated two-turn live reproduction was performed.
+
+Controlled test procedure (operator/user action, not an automatic mailbox test):
+
+1. Confirm the **effective mounted configuration** and loaded settings of the
+   LibreChat instance under test. Use a dedicated test deployment, copying
+   `deploy\librechat-mail-continuity-test.yaml` as its configuration. It deliberately
+   disables titles only for the test endpoint, targets a host mock-mail worker on
+   8123, and uses a key placeholder. Do not overwrite the active deployment.
+   Set the key through your normal test environment, not in source.
+2. Link the runtime checkout as above, then start the mock-mail worker with the
+   existing run command and your normal provider configuration. Restart **before**
+   the scenario to load changes, never between its two turns. Ensure controlled
+   test data contain 15 authorized messages dated 04/10/2026 through 10/10/2026
+   and known existing categories; otherwise record the actual fixture count.
+   Do not switch to a real mailbox just to make the fixture count match.
+3. In a new LibreChat discussion, send:
+   `Nous sommes le 10/10/2026. Analyse les mails du 04/10/2026 au 10/10/2026
+   inclus et propose leur classement dans les catégories existantes, en tableaux.
+   N'effectue aucune modification.`
+   Then, without restarting/changing caller/conversation, send:
+   `peux tu classer les mails dans les categories existantes`.
+   Do not submit any confirmation commands during this diagnostic pass.
+4. Compare safe logs: same identity/conversation fingerprint, cache create then
+   hit, same binding instance, turn 1 then 2; last completed provider fingerprint
+   must equal the next provider-request fingerprint. Include all tool/approval
+   subcalls and any extra HTTP requests. A failed/expired/recreated chain must
+   have an explicit diagnostic, not silent context reset.
+5. Check the answer/tickets only reference the first turn's selection and known
+   category IDs. No widened scope or unnecessary fresh-scope question; messages
+   with no suitable existing category stay unclassified; no write before normal
+   confirmation/authorization. A scripted model is not semantic evidence.
+6. If isolating titles remains necessary, repeat in a separate fresh test
+   conversation with `titleConvo: true` on that **test endpoint only**, reload
+   LibreChat before replay, and compare request/subcall ordering. Restore the
+   isolated test setting afterwards. Never infer title interference from the
+   response text or heuristically classify title prompts by their content.
+
+Safe implementation/functional validation is complete without accessing a live
+mailbox, credentials or shared services. An authenticated real LibreChat/model
+replay remains an **optional, out-of-environment acceptance check**, not a claimed
+result of these tests. Original historic cause, real-model interpretation and
+title interference remain unproven without corresponding live evidence; the
+historic exchange cannot be retroactively attributed to either reproduced defect.
+
+Targeted verification uses the existing `.venvs\mail-agent-maf\Scripts\python.exe`:
+`-m pytest` on the runtime's `test_provider_continuity.py`,
+`test_agentframework_binding.py`, `test_native_worker.py`,
+`test_conversation_cache.py`, `test_serialized_conversation_lifecycle.py`,
+`test_agent_conversation.py`, `test_conversation_payloads.py` (all under
+`tests\integration\python`) and the lab's `tests\contract\test_openai_http_surface.py`
+and `tests\integration\test_conversation_engine.py`: **177 passed** (including the
+five new lab functional/negative controls and eight runtime parallel-approval cases).
+The provider double lives in `tests\support\mail_continuity_provider.py` and uses
+only controlled fixtures; no worker/listener was started and no live endpoint
+was called for this replay.
+Targeted `-m ruff check` passes under each repository's existing rules.
+`-m mypy --strict --explicit-package-bases --follow-imports=silent` passes on the
+six changed runtime production modules; the lab's existing mypy configuration
+passes on `MailAgentSession`. For editable namespace resolution, set `MYPYPATH`
+to the runtime checkout's `packages\python\agents`, `packages\python\agentframework`
+and `packages\python\security` directories, separated by `;` on Windows.
+
 LibreChat sends the identifier as a header, because the OpenAI schema has no
 field for one. The runtime carries an allowlist of headers into
 `metadata["headers"]` and promotes the conversation one to
