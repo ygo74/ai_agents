@@ -22,7 +22,6 @@ from tests.support.langgraph_fakes import (
 from ygo74.agent_runtime.domains.auth.agent_principal import AgentPrincipal
 from ygo74.agent_runtime.domains.security.audit import AuditOutcome
 
-from ai_agent_lab.langgraph.approval import LangGraphApprovalTranslator
 from ai_agent_lab.wiki.application.composition import (
     WikiAgentCompositionRoot,
     WikiAgentRuntime,
@@ -394,7 +393,6 @@ def build_session(runtime: WikiAgentRuntime, console: RecordingConsole) -> WikiA
     return WikiAgentSession(
         runtime,
         ConsoleApprovalResolver(console, runtime.presenter, runtime.confirmation_ledger, runtime.user),
-        LangGraphApprovalTranslator(),
     )
 
 

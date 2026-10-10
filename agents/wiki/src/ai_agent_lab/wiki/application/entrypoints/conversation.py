@@ -27,7 +27,6 @@ from ygo74.agent_runtime.domains.sessions.agent_conversation import (
     HttpConversationEngine,
 )
 
-from ai_agent_lab.langgraph.approval import LangGraphApprovalTranslator
 from ai_agent_lab.wiki.application.approval.tickets import WikiTicketApprovalResolver
 from ai_agent_lab.wiki.application.composition import WikiAgentCompositionRoot, WikiAgentRuntime
 from ai_agent_lab.wiki.application.session import WikiAgentSession
@@ -67,7 +66,6 @@ class WikiConversationFactory:
                 runtime.user,
                 conversation_id=conversation_id,
             ),
-            LangGraphApprovalTranslator(),
         )
         runner = ConfirmedOperationRunner(
             runtime.registry,

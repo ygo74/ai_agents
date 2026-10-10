@@ -18,7 +18,6 @@ from ygo74.agent_runtime.domains.security.security_errors import SecurityError
 
 from ai_agent_lab.core.config.azure_credentials import AzureIdentityCredentialProvider
 from ai_agent_lab.core.observability.logging_config import setup_logging
-from ai_agent_lab.langgraph.approval import LangGraphApprovalTranslator
 from ai_agent_lab.langgraph.chat_model import AzureOpenAIRoute, LangGraphChatModelFactory
 from ai_agent_lab.wiki.application.composition import WikiAgentCompositionRoot, WikiAgentRuntime
 from ai_agent_lab.wiki.application.console import Console, ConsoleApprovalResolver
@@ -156,7 +155,6 @@ def build_cli(
                 runtime.confirmation_ledger,
                 runtime.user,
             ),
-            LangGraphApprovalTranslator(),
         ),
         console,
         runtime,

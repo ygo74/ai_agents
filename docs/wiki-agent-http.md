@@ -19,11 +19,12 @@ Routes, OpenAI request shapes, JWT validation and discovery come from
 [`ygo74-agent-runtime`](https://github.com/ygo74/ai-enterprise-agent-runtime). We
 do not reimplement them.
 
-The service composes these through the runtime's fluent `HostingFactory`: it
-registers the Wiki entrypoint and descriptor, exposes Chat Completions, applies
-one authentication policy, then enables authenticated model discovery. An OIDC
-issuer selects JWT validation and takes precedence over the demonstration API
-key; without an issuer, the configured key is used.
+The service uses the runtime LangGraph worker facade over its existing managed
+worker: it registers the Wiki descriptor, exposes Chat Completions, applies one
+authentication policy, and enables authenticated model discovery. The worker
+owns route registration, the identity-scoped cache, readiness and shutdown. An
+OIDC issuer selects JWT validation and takes precedence over the demonstration
+API key; without an issuer, the configured key is used.
 
 | Owned by the runtime library | Owned here |
 |---|---|
@@ -36,6 +37,13 @@ The shared serving foundation is now provided by `ygo74-agent-runtime`,
 including the authenticated caller, endpoint contracts, discovery, approvals
 and leased conversation cache. `ai_agent_lab.core` no longer contains a serving
 layer.
+
+`WikiAgentSession` delegates invocation, streaming and bounded LangGraph
+interrupt cleanup to `ygo74-agent-runtime-langchain`. The advanced conversation
+factory keeps the Wiki `thread_id_of` identity partition, ticket resolver,
+confirmation ledger, renderer, authorization policy and MCP resources in the
+application. The runtime worker does not create a second cache or move those
+domain decisions into a generic binding.
 
 | Provided by the library | Responsibility |
 |---|---|

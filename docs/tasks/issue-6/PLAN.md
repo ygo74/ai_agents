@@ -10,408 +10,388 @@
 
 ## Objectif
 
-Extraire les mécanismes communs de gestion d’une conversation HTTP et de boucle
-d’approbation vers le runtime, puis faire adopter par Mail et Wiki les contrats
-conversationnels et MCP génériques du runtime. Les objets de composition, les
-sessions framework et les décisions métier restent propres aux agents.
+Compléter la migration générique de l’issue #6 déjà présente dans les branches
+retenues par une intégration native LangChain/LangGraph dans le runtime, puis
+faire adopter ce binding et l’hébergement managé par l’agent Wiki. Réutiliser
+les contrats d’agent, l’orchestrateur d’approbation, le cache, les endpoints et
+les adaptateurs de sortie existants ; garder la composition, les autorisations
+et les tickets Wiki dans `ai_agents`.
+
+## Rôle des dépôts
+
+- **Dépôt principal — `ai_agents`**, issue #6. La branche
+  `refactor/6-generic-conversation-and-mcp` contient déjà les abstractions
+  conversationnelles/MCP de l’issue et porte l’adoption Wiki.
+- **Dépôt secondaire — `ai-enterprise-agent-runtime`**. La branche
+  `fix/25-openai-responses-python` contient le runtime générique, les adaptateurs
+  LangChain de sortie et le précédent MAF. Elle porte le binding LangGraph et
+  les tests/publications de la distribution d’intégration.
+- Les dépôts gardent leurs historiques et validations séparés. La PR `ai_agents`
+  dépend de l’API runtime correspondante.
+
+## État déjà livré à réutiliser
+
+- Le runtime possède `AgentDefinition`, `AgentFactoryContext`, `WorkerSettings`,
+  `ManagedAgentWorker`, le cache conversationnel, le moteur HTTP, le protocole
+  commun d’approbation et les adaptateurs de sortie LangChain.
+- La distribution `agentframework` fournit déjà l’exemple de binding natif,
+  de worker, d’admission et de cycle de vie framework-spécifiques.
+- `ai_agents` a déjà migré Mail et Wiki vers les conversations et primitives
+  MCP génériques de l’issue #6. Wiki conserve un moteur partagé, une factory de
+  conversation et une session LangGraph locale.
+- Ne pas réimplémenter ni réécrire ces éléments. Les compléter uniquement si
+  l’intégration LangGraph révèle un manque générique démontré par les tests.
 
 ## Préconditions
 
-- La SPEC révisée est approuvée.
-- Après l’approbation de ce PLAN, récupérer et vérifier le `main` distant des
-  deux dépôts, puis créer des branches et worktrees indépendants :
-  - `ai_agents` : `refactor/6-generic-conversation-and-mcp` ;
-  - `ai-enterprise-agent-runtime` : `refactor/6-generic-conversation-and-mcp`.
-- Le checkout courant de `ai_agents` contient une modification locale non liée
-  dans `.vscode/launch.json`. La garder intacte. Reporter uniquement la SPEC et
-  le PLAN approuvés dans le worktree `ai_agents` ; le worktree runtime part de
-  son propre `origin/main`.
-- Ne créer aucune branche et ne modifier aucun code avant approbation de ce
-  PLAN. Ne travailler sur `main` ou sur l’un des checkouts courants.
-- Mesurer les coûts locaux de référence des deux moteurs de conversation et du
-  chargement des bindings avant les changements, sur des sessions simulées et
-  les fichiers de configuration livrés. Réutiliser le même environnement et
-  les mêmes fixtures après migration.
-- Les deux dépôts ciblent Python 3.12. Le runtime MCP et les abstractions de
-  conversation concernés sont Python-first ; aucune parité .NET/Java ne sera
-  revendiquée pour ces APIs.
-- Valider l’intégration de `ai_agents` contre le worktree runtime. Les
-  workflows distants de `ai_agents` installent le runtime publié ; ne pas
-  publier de version PyPI dans le cadre de cette issue.
+- La SPEC révisée est approuvée explicitement.
+- Le PLAN ci-dessous doit être approuvé avant tout changement de code.
+- Continuer sur les branches explicitement retenues : runtime
+  `fix/25-openai-responses-python` et `ai_agents`
+  `refactor/6-generic-conversation-and-mcp`. Vérifier leurs remotes et statuts
+  avant implémentation ; ne pas écraser, réinitialiser ou rebaser leurs commits.
+- Les deux branches sont actuellement des descendants de leurs `origin/main`
+  locaux. Le runtime est propre ; le worktree `ai_agents-issue-6` contient la
+  SPEC et le PLAN révisés de cette tâche. Préserver ces modifications
+  documentaires.
+- Ne pas pousser, publier de version PyPI, fusionner ou créer une PR avant que
+  le code et les validations aient été revus localement.
+- Mesurer le coût local du binding et du dispatch sur des graphes/sessions
+  simulés, sans modèle ni MCP distant. Comparer les mêmes fixtures avant/après
+  pour appliquer les budgets de la SPEC.
 
 ## Vérification de la constitution
 
-- **Parité :** consigner dans les documents de compatibilité que les transports
-  MCP Python, le cache loué et les nouveaux moteurs de conversation Python
-  restent Python-first. Conserver les contrats neutres déjà partagés et ne pas
-  annoncer de parité .NET/Java inexistante.
-- **Réutilisation :** étendre `domains/contracts/conversation.py`,
-  `domains/sessions/`, `domains/humanapproval/` et `domains/mcp/`. Ne pas créer
-  de nouveaux types avant d’avoir couvert les contrats et utilitaires existants.
-- **Simplicité et frontières :** confier la gestion commune à des classes
-  génériques et Protocols explicites. Garder les résultats de composition Mail
-  et Wiki distincts ; ne pas créer une classe de base à champs optionnels.
-  Garder les appels MAF et LangGraph dans leurs adaptateurs.
-- **Typage :** utiliser des Protocols et génériques paramétrés pour les runtimes,
-  sessions, états de framework et factories de dialectes. Passer mypy strict,
-  éviter `Any` dans les nouvelles API publiques et conserver `py.typed`.
-- **Test-first :** commencer chaque étape de comportement par des tests
-  hermétiques qui échouent avant l’implémentation ; couvrir les contrats
-  runtime, les deux intégrations et les frontières des distributions.
-- **UX et erreurs :** garder le même ordre de traitement, le même texte de
-  ticket inconnu, les mêmes identifiants de confirmations et les mêmes
-  refus métier dans Mail et Wiki. Ne jamais convertir une erreur en succès.
-- **Performance :** respecter les plafonds de régression de 10 % de la SPEC,
-  sans nouvel aller-retour réseau, reconnexion ou état après la réponse.
-- **Observabilité et secrets :** utiliser le logger standard du runtime ; ne
-  jamais journaliser les en-têtes d’autorisation, valeurs de variables
-  d’environnement, payloads ou décisions d’approbation.
-- **Exemples :** actualiser les guides Mail/Wiki et le guide MCP Python pour que
-  leurs parcours exécutables illustrent les imports génériques du runtime.
+- **Réutilisation :** étendre la distribution `langchain` et les services
+  génériques existants. Réutiliser les types neutres d’output, le moteur de
+  conversation, `ManagedAgentWorker` et l’approbation bornée. Justifier chaque
+  nouveau type par une lacune observée.
+- **Frontières :** le package `agents` reste sans dépendance LangChain,
+  LangGraph ou MAF. La distribution `langchain` dépend du core et des APIs
+  framework nécessaires ; elle ne dépend pas du package MAF. Wiki dépend de
+  l’intégration LangChain côté application.
+- **Contrats et sécurité :** les appels LangGraph, états d’interruption,
+  extraction de résultat et événements natifs restent dans l’intégration.
+  Identité, gates, ticket store, renderer et admission du domaine restent dans
+  l’application Wiki.
+- **Typage :** exposer des Protocols/dataclasses annotés et les marqueurs
+  `py.typed`. Limiter `Any` aux payloads bruts du SDK aux frontières.
+- **Test-first :** couvrir les nouveaux contrats LangChain avec des faux
+  graphes et données locales avant de les implémenter. Couvrir ensuite
+  l’adoption Wiki et les frontières de packages.
+- **Cycle de vie :** chaque flux, portée de factory, conversation mise en cache
+  et connexion MCP doit être fermée sur succès, erreur, annulation, éviction et
+  arrêt du worker.
+- **Observabilité :** journaliser les catégories et identifiants nécessaires
+  sans prompts, arguments/résultats d’outils, credentials ou états bruts.
+- **Exemples :** inclure un exemple natif minimal avec au plus 30 lignes
+  non blanches de glue d’intégration, hors composition métier et configuration
+  opérateur.
 
 ## Étapes
 
-### Étape 1 — Préparer les worktrees isolés et relever les références
+### Étape 1 — Vérifier les APIs, versions et références existantes
 
-**Objectif :** établir deux espaces de travail propres et relever les mesures
-de référence avant de toucher au comportement.
+**Objectif :** figer les contrats publics LangChain/LangGraph utilisés et
+confirmer les points de réutilisation avant de coder.
 
-**Fichiers/composants :** métadonnées Git de `ai_agents` et
-`ai-enterprise-agent-runtime`, SPEC/PLAN de l’issue, tests de conversation et
-de bindings existants.
+**Fichiers/composants :** distribution `packages/python/langchain`, ses
+adaptateurs `results.py`/`streaming.py`, `AgentDefinition`,
+`ManagedAgentWorker`, `ApprovalLoop`, la composition/session/service Wiki et
+leurs tests.
 
-**Modifications :** après approbation du PLAN, synchroniser chaque `origin/main`,
-créer les branches nommées dans des worktrees indépendants et y copier les
-documents approuvés. Capturer les mesures locales de la SPEC avec les mêmes
-faux runtimes/sessions avant et après.
+**Modifications :** utiliser les API publiques LangChain/LangGraph déjà
+employées par `ai_agents`: `ainvoke`, `astream_events(version="v2")`,
+`Command`/interruptions et `thread_id`. La distribution d’agent LangGraph
+actuelle déclare `langchain>=1.3.3,<2` et `langgraph>=1.2,<2` ; le package
+runtime LangChain déclare actuellement `langchain-core>=1.6.3,<1.7`. Garder
+ces bornes compatibles et faire dépendre le binding natif du SDK LangGraph
+seulement dans l’extra/distribution d’intégration approprié. Ne pas ajouter
+`langchain-openai` au runtime : le choix fournisseur reste à l’application.
+Confirmer la forme typée du hook d’admission et la factory de conversation
+avancée à partir des call sites existants. Ne pas choisir d’API privée par
+analogie avec le hook SDK propre à MAF.
 
-**Validation :** vérifier branche, commit de base et arbre de travail propre de
-chaque worktree. Vérifier que le checkout courant et son `.vscode/launch.json`
-restent intacts. Enregistrer les médianes initiales, commandes et fixtures.
+**Validation :** confirmer par inspection des distributions et des tests
+existants que les imports LangChain ne contaminent pas `agents`, que les
+adaptateurs actuels couvrent les résultats SDK visés et que les branches sont
+propres hors SPEC/PLAN approuvés. Vérifier les bornes déclarées par
+`agents/langgraph/pyproject.toml`, `agents/wiki/pyproject.toml` et le package
+runtime `langchain`. Capturer les timings locaux de référence avec des fixtures
+déterministes.
 
-### Étape 2 — Ajouter les contrats et tests du conteneur et du moteur de conversation
+### Étape 2 — Écrire les tests de contrat pour l’exécution LangGraph
 
-**Objectif :** transformer le protocole et le cache existants en un chemin
-générique réutilisable, sans connaître le framework de l’agent.
+**Objectif :** définir le comportement du binding natif à partir des sorties
+et événements que `create_agent` produit réellement.
 
-**Fichiers/composants :**
-`packages/python/agents/ygo74/agent_runtime/domains/contracts/conversation.py`,
-`domains/sessions/`, nouveaux tests sous
-`tests/integration/python/`.
+**Fichiers/composants :** nouveaux tests runtime d’intégration LangChain,
+tests de packaging/public surface et fixtures de graphe LangGraph.
 
-**Modifications :** définir les Protocols minimaux d’un runtime qui expose son
-`UserContext` et ferme ses ressources, et d’une session qui répond à
-`ask(message)`. Ajouter un conteneur générique portant runtime, session, store
-de confirmations, runner, identifiant de conversation et renderer. Ajouter un
-moteur concret conforme au protocole `ConversationEngine` existant : il loue
-une conversation via `ConversationRuntimeCache`, traite le parseur de
-confirmation avant `session.ask`, exécute le runner pour une commande reconnue,
-puis construit `AgentReply` avec le texte et les confirmations en attente.
-Centraliser le traitement du ticket inconnu. Ne pas modifier le protocole
-public `ConversationTurn`/`AgentReply` sans nécessité démontrée par les tests.
+**Modifications :** écrire d’abord les tests pour : extraction du dernier
+message assistant d’un état de graphe ; invocation avec le seul dernier texte
+utilisateur et config `thread_id`; conversion d’usage/terminaison ; stream
+`astream_events` public avec événements de contenu/outil ; filtrage des
+événements d’entrée/chaîne ; diagnostics de conversion ; erreurs,
+annulation, fermeture et une terminaison unique. Ajouter les tests des états
+d’interruption, reprise/refus et du hook d’admission. Utiliser uniquement de
+fausses sorties SDK et aucun appel réseau.
 
-**Validation :** écrire d’abord des tests runtime avec faux runtime et session
-typés : isolation par principal, partage d’un seul build concurrent, lease
-maintenue pendant le tour, commande reconnue avant `ask`, ticket inconnu,
-rendu/identifiants des confirmations et fermeture sur éviction. Passer les
-tests ciblés et le typage strict du package.
+**Validation :** les tests doivent échouer sur l’absence du binding sans
+modifier le package neutre ni les tests MAF existants.
 
-### Étape 3 — Centraliser la politique bornée de boucle d’approbation
+### Étape 3 — Ajouter le binding natif à l’intégration LangChain
 
-**Objectif :** faire porter au runtime les budgets et garanties d’abandon
-communs, en laissant chaque adaptateur traduire son état de framework.
-
-**Fichiers/composants :**
-`packages/python/agents/ygo74/agent_runtime/domains/humanapproval/`, nouveaux
-tests d’intégration Python du runtime, puis
-`agents/maf/`, `agents/langgraph/` et les deux `application/session.py` dans
-`ai_agents`.
-
-**Modifications :** définir un Protocol générique d’adaptateur de tour qui sait
-extraire les approbations en attente d’un résultat, déterminer si la résolution
-pose une question, produire les décisions, reprendre le framework et lire son
-texte final. Ajouter un coordinateur du runtime qui gère les limites de
-questions/tours, demande à l’adaptateur de refuser les opérations restantes et
-purge le ledger avant et pendant l’abandon. L’abandon reste borné ; une erreur
-du framework pendant le nettoyage est journalisée sans révéler le contenu et
-ne réactive jamais une décision abandonnée.
-
-Réduire `MailAgentSession` et `WikiAgentSession` à leurs adaptateurs MAF et
-LangGraph : état/session ou `thread_id`, appels initiaux/reprise, extraction des
-interruptions et conversion des réponses propres au framework. Conserver les
-limites par défaut actuelles et les éventuels paramètres configurables.
-
-**Validation :** tests runtime couvrant chemin sans approbation, compteur
-d’approbations, limite totale, succès de reprise, abandon et refus de tous les
-appels suspendus, purge du ledger, arrêt borné et erreur de nettoyage. Adapter
-les tests d’intégration MAF/LangGraph pour vérifier les deux adaptateurs et
-l’absence de changement visible.
-
-### Étape 4 — Compléter les primitives MCP génériques du runtime
-
-**Objectif :** couvrir les besoins de connexion observés dans les agents tout
-en gardant les secrets et politiques applicatives hors du runtime.
+**Objectif :** exposer une session LangGraph native qui implémente les ports
+neutres du runtime et réutilise les adaptateurs de sortie existants.
 
 **Fichiers/composants :**
-`packages/python/agents/ygo74/agent_runtime/domains/mcp/binding.py`,
-`domains/mcp/dialects.py`, `domains/mcp/mcp_errors.py`,
-`tests/integration/python/test_mcp_plumbing.py`,
-`spec/mcp/client-and-server.md`, `docs/python/mcp.md`.
+`packages/python/langchain/ygo74/agent_runtime/integrations/langchain/`,
+`packages/python/langchain/pyproject.toml`, tests d’intégration et exports
+publics.
 
-**Modifications :** ajouter à `McpConnection` une entrée générique d’en-têtes
-HTTP, transmise uniquement au transport HTTP et jamais journalisée. Renforcer
-les annotations de `DialectRegistry` avec `ParamSpec`/Protocol plutôt qu’une
-factory `Callable[..., Any]`, en gardant son ordre de dispatch documenté.
-Accepter des factories d’erreur génériques pour permettre à une application de
-conserver ses erreurs `MailToolUnavailableError`/`WikiToolUnavailableError`
-sans multiple héritage ; garder les erreurs de binding runtime explicites.
-Ne pas déplacer dans cette étape la construction des headers Wiki, le choix
-OAuth Mail, la résolution Wiki des sources de variables d’environnement ou
-son filtre lecture seule.
+**Modifications :** ajouter une classe de binding/scope LangGraph typée qui :
 
-**Validation :** écrire d’abord les tests de propagation d’en-têtes HTTP sans
-fuite dans logs/représentations, de factory de dialecte typée, d’erreur
-personnalisée, et de session paresseuse, concurrente et refermée. Vérifier
-l’extra `[mcp]` facultatif et les imports sans framework agentique.
+- accepte un graphe LangChain/LangGraph déjà construit et un identifiant de
+  conversation ; ne reconstruit pas l’agent ;
+- exécute le mode non-streaming par l’API publique et extrait le résultat
+  assistant final de l’état sans traiter l’état entier comme une sortie ;
+- exécute le vrai mode streaming via l’API publique, convertit les événements
+  au moyen de `LangChainStreamAdapter` et conserve leur corrélation ;
+- utilise `LangChainResultAdapter` pour résultat, usage, contenu et
+  terminaison ; émet des diagnostics explicites pour les éléments non
+  représentables ;
+- ferme les producteurs et ne publie jamais de succès après erreur ou
+  annulation ; n’expose pas les arguments ou résultats d’outils comme activité
+  publique ;
+- implémente les opérations de l’orchestrateur d’approbation commun en
+  traduisant l’interruption LangGraph en objet typé puis en commande de reprise
+  ou refus ; garde le nettoyage fail-closed et l’invalidation après état
+  irrécupérable.
 
-### Étape 5 — Faire adopter les abstractions de conversation par Mail et Wiki
+Déclarer une plage de versions cohérente avec les dépendances Wiki. Garder
+FastAPI facultatif pour le binding seul, exporter les nouveaux symboles
+documentés et inclure les marqueurs de typage.
 
-**Objectif :** supprimer les deux implémentations locales du conteneur et du
-moteur de requêtes HTTP tout en gardant les runtimes de composition distincts.
+**Validation :** faire passer les tests de l’étape 2, le typage strict, Ruff et
+les imports/public surface de la seule distribution LangChain. Vérifier que les
+imports/installations MAF et core seul restent indépendants.
 
-**Fichiers/composants :**
-`agents/mail/.../application/entrypoints/conversation.py`,
-`agents/wiki/.../application/entrypoints/conversation.py`, les deux
-`application/composition.py`, les factories, services HTTP, et tests
-`tests/integration/test_conversation_engine.py`,
-`tests/integration/test_wiki_conversation_engine.py`,
-`tests/contract/test_openai_http_surface.py`.
+### Étape 4 — Ajouter la façade worker avec composition avancée
 
-**Modifications :** importer le conteneur et le moteur communs du runtime,
-faire construire le conteneur par les factories locales, et supprimer les
-classes `MailConversation`/`WikiConversation` et moteurs redondants. Faire
-satisfaire à `MailAgentRuntime` et `WikiAgentRuntime` le petit Protocol
-structurel sans leur faire hériter d’une base commune. Garder les factories
-locales, les renderers et les résolveurs de tickets dans chaque application.
-Adapter entrypoints, services et tests aux imports et types génériques.
+**Objectif :** réduire la plomberie de démarrage tout en laissant Wiki injecter
+sa conversation et son approval bridge de domaine.
 
-**Validation :** préserver les scénarios HTTP des deux agents : continuité
-isolée par principal, session réutilisée, confirmations traitées avant le
-framework, rendu de réponses et de confirmations, arrêt/éviction et libération
-des ressources. Exécuter les tests runtime du moteur et les tests HTTP des deux
-agents.
+**Fichiers/composants :** module worker optionnel de l’intégration LangChain,
+`ManagedAgentWorker`, `AgentDefinition`/`AgentFactoryContext`, worker MAF de
+référence, nouveaux tests de worker.
 
-### Étape 6 — Faire adopter le client MCP runtime par Mail et Wiki
+**Modifications :** composer les APIs neutres `WorkerSettings` et
+`ManagedAgentWorker` plutôt que réécrire endpoints, auth, discovery, cache et
+lifespan. Fournir une voie simple utilisant factory/definition de confiance
+et une voie avancée acceptant une factory typée de conversation pour les
+applications avec tickets/runners propres. Accepter les factories sync,
+awaitable ou gestionnaires de contexte asynchrones suivant le contrat retenu.
+Exiger une authentification opérateur et ne jamais lire la sélection de factory
+depuis la requête. Valider la surface d’outils réelle ; si le graphe ne peut pas
+être inspecté statiquement, exiger un hook d’admission de confiance.
 
-**Objectif :** remplacer les copies de plomberie MCP dans les deux agents tout
-en gardant les dialectes et les politiques locales.
+**Validation :** tester factory et fermeture, auth obligatoire, descriptor et
+surfaces, readiness, cache/éviction, fermeture à l’arrêt, factory avancée,
+admission outil déclaré/non déclaré, et absence de fuite dans logs. Vérifier
+qu’aucun nouvel endpoint ni cache concurrent n’est implémenté hors du runtime
+générique.
 
-**Fichiers/composants :** modules `mcp/binding.py` et `mcp/connection.py` des
-agents Mail/Wiki, leurs fournisseurs, discover/authorise, dialectes, clients
-`native`, `gmail` et `atlassian`, tests MCP, pyprojects et test
-`tests/architecture/test_distribution_boundaries.py`.
+### Étape 5 — Faire adopter le binding et le worker par Wiki
 
-**Modifications :** faire utiliser `McpServerBinding[MailToolName]` et
-`McpServerBinding[WikiToolName]`, les loaders, `McpConnection` et
-`DialectRegistry` génériques du runtime. Supprimer les copies locales de
-binding, loader, connexion et registre ; conserver dans les modules locaux les
-factories concrètes et `DialectContext`. Adapter l’ordre et les annotations
-des factories au contrat du registre runtime.
+**Objectif :** conserver `create_agent` et la composition métier existants en
+retirant l’exécution et la plomberie HTTP génériques de la session/service.
 
-Dans Wiki, résoudre les références d’environnement vers des valeurs au moment
-de construire le binding transmis à la connexion générique ; refuser une
-variable absente et ne jamais la journaliser. Passer les en-têtes Wiki par
-utilisateur dans le paramètre HTTP générique. Dans Mail, préserver les modes
-OAuth/bearer et les contrats de dialecte Gmail/native. Les catalogues,
-énumérations, filtres read-only, traductions de payload et erreurs métier
-restent locaux.
+**Fichiers/composants :** `agents/wiki/.../application/composition.py`,
+`session.py`, `entrypoints/conversation.py`, `entrypoints/service.py`,
+`wiki_tools_provider.py` uniquement si la portée de ressources l’exige,
+`agents/wiki/pyproject.toml`, tests Wiki conversation/LangGraph/service.
 
-Mettre à jour les dépendances pour demander explicitement l’extra MCP du
-runtime. Garder les dépendances SDK directes de Mail/Wiki là où leurs propres
-clients et adaptateurs importent encore `mcp.types` ou le SDK OAuth. Mettre à
-jour la règle d’architecture qui autorise les imports runtime dans les couches
-concernées, sans ouvrir de dépendance vers les frameworks dans le runtime.
+**Modifications :** faire utiliser à `WikiAgentSession` le binding natif pour
+invocation, streaming neutre, adaptation d’interruption et cycle générique
+d’approbation. Garder `WikiTicketApprovalResolver`, `WikiAgentRuntime`, le
+ledger, le `WikiToolResultRenderer`, l’autorisation, les confirmations et les
+gates dans l’application. Construire le graphe par principal dans la
+composition Wiki et préserver `thread_id_of(principal, conversation_id)`.
 
-**Validation :** exécuter les tests de bindings livrés, transports, erreurs,
-dialects Mail/Wiki, auth HTTP, résolutions de variables, capacités read-only,
-discovery/authorise et clients simulés. Ajouter les tests de frontières qui
-garantissent que les catalogues et adaptateurs concrets restent dans
-`ai_agents`.
+Faire construire le service par le worker managé et la factory de conversation
+avancée Wiki. Construire la définition/descripteur à partir des métadonnées
+Wiki existantes, sans introduire une deuxième source de vérité. Conserver le
+profil latest-user-text : ne jamais rejouer l’historique client. Activer les
+surfaces HTTP déjà prises en charge par Wiki ; le streaming est exposé sur une
+surface seulement si le binding et le contrat HTTP existants le supportent.
+Préserver l’authentification, la découverte, les réglages opérateur, la
+connexion MCP par conversation, l’admission des outils et la politique
+read-only.
 
-### Étape 7 — Mettre à jour les contrats, exemples et documentation
+**Validation :** tests Wiki démontrant même identité/conversation → même état,
+isolation entre principals, ticket traité avant invocation modèle, interruption
+repris/refusée, sorties normales/stream correctes, aucune répétition de
+l’historique client, fermeture MCP à éviction et arrêt, et erreurs d’autorisation
+inchangées. Utiliser des graphes/modèles simulés et les fixtures MCP existantes.
 
-**Objectif :** documenter l’API commune et l’emplacement des responsabilités
-après migration.
+### Étape 6 — Mettre à jour dépendances, documentation et exemple natif
 
-**Fichiers/composants :** runtime `docs/python/agent-runtime.md`,
-`docs/python/human-in-the-loop.md`, `docs/python/mcp.md`, `spec/mcp/` et
-`docs/parity-status.md` ; `ai_agents/spec/architecture/architecture.md`,
-`runtime-extraction-candidates.md`, guides Mail/Wiki, guide d’ajout d’agent,
-docs MCP et docstrings publiques.
+**Objectif :** rendre l’intégration découvrable et installable, et démontrer
+la réduction de glue sans masquer les responsabilités opérateur/domaine.
 
-**Modifications :** documenter l’usage générique du conteneur/moteur de
-conversation, le Protocol d’adaptateur d’approbation, les limites de chaque
-framework, les headers MCP, l’extra d’installation et les règles de secrets.
-Réviser les inventaires de migration pour marquer l’adoption du client MCP et
-des abstractions conversationnelles. Garder les guides Mail/Wiki comme exemples
-exécutables et clarifier que les runtimes de composition, skills et dialectes
-restent applicatifs.
+**Fichiers/composants :** `pyproject.toml`, `README.md`, `docs/python/langchain.md`,
+guide natif runtime, exemple LangChain/FastAPI, guide Wiki/HTTP, règles de
+frontière de distributions et documentation d’architecture/parité des deux
+dépôts.
 
-**Validation :** vérifier tous les chemins/imports/documentations référencés,
-construire les distributions Python concernées et s’assurer que chaque extrait
-de démarrage correspond aux signatures publiques finales.
+**Modifications :** documenter les versions, extras, factories, contexte,
+admission, historique, streaming, approbation, limites du worker mono-processus
+et responsabilités de déploiement. Ajouter un exemple hors ligne minimal avec
+factory, définition et worker dans la limite de glue de la SPEC. Mettre à jour
+le service Wiki et son guide selon l’API réelle ; ne pas introduire de secrets
+ou de modèle distant dans l’exemple.
 
-### Étape 8 — Validation croisée, revue et livrables
+**Validation :** vérifier les chemins et commandes documentés, construire
+isolément les wheels/sdists requis et contrôler les imports, métadonnées et
+typing marker dans les environnements d’installation ciblés.
 
-**Objectif :** valider les deux dépôts séparément et produire des changements
-prêts à relire.
+### Étape 7 — Validation croisée et revue locale
 
-**Fichiers/composants :** les deux worktrees, distributions Python, suites
-pytest, Ruff/mypy, architecture et diffs finaux.
+**Objectif :** établir les résultats des deux dépôts indépendamment et confirmer
+les limites de la modification.
 
-**Modifications :** corriger seulement les écarts dans le périmètre approuvé.
-Vérifier la compatibilité des versions/extras et les imports de packages
-installés. Préparer d’abord la PR runtime, puis la PR `ai_agents` qui la
-référence. Ne pas fusionner et ne pas publier de release PyPI dans cette issue.
+**Fichiers/composants :** distributions runtime LangChain, core agents, package
+MAF en non-régression, agent Wiki, tests, docs et diffs des deux dépôts.
 
-**Validation :** exécuter les suites ciblées puis les contrôles qualité des deux
-dépôts, builds des packages, contrôles de frontières et mesures de performance
-sur les mêmes fixtures qu’à l’étape 1. Inspecter les deux statuts/diffs,
-exécuter `git diff --check` dans les worktrees propres et confirmer que les
-modifications locales initiales n’y figurent pas.
+**Modifications :** corriger les écarts du périmètre approuvé ; maintenir les
+versions et imports des deux intégrations indépendants. Mettre à jour le PLAN
+avec résultats effectifs et toute limite de l’environnement.
+
+**Validation :** exécuter tests ciblés LangChain/worker, tests Wiki et tests de
+non-régression nécessaires, Ruff, mypy strict, builds isolés, contrôles de
+frontière, `pip check` et `git diff --check` dans chaque dépôt. Relever les
+timings sur les mêmes fixtures avant/après ; aucun test ne doit exiger une API
+LLM, Confluence, Gmail, secret réel ou transport distant. Vérifier les statuts
+et diffs séparément. Ne pas déclarer un contrôle PASS s’il n’a pas été exécuté.
 
 ## Tests
 
-- **Runtime — conversations :** conteneur, Protocols, moteur, cache loué,
-  isolation du principal, commandes de confirmation, ticket inconnu, réponse,
-  éviction et fermeture ; tous les tests utilisent des fausses sessions et
-  runtime sans fournisseur LLM.
-- **Runtime — approbation :** limites, branche sans question, reprise, abandon,
-  purge du ledger, refus fail-closed et erreur de nettoyage.
-- **Runtime — MCP :** bindings génériques, factories typées, headers, erreurs
-  personnalisées, connexion paresseuse/concurrente/fermeture et imports
-  facultatifs.
-- **Agents :** tests Mail et Wiki des parcours de conversation, adaptateurs MAF
-  et LangGraph, providers, auth, config livrée, capacités, dialectes natifs et
-  fournisseurs, plus la suite HTTP.
-- **Architecture et qualité :** tests de frontières dans `ai_agents`, pytest,
-  Ruff et mypy strict dans chaque dépôt, builds/metadata wheel et vérification
-  que le runtime n’importe pas de framework agentique.
-- **Performance :** médianes sur les mêmes fixtures locales avant/après. Les
-  chargements de binding et le dispatch avec faux états restent chacun à moins
-  de 10 % du baseline ; aucun aller-retour réseau supplémentaire ni nouvelle
-  allocation conservée après réponse.
+- **Binding LangGraph :** invocation normale et stream réel, extraction du
+  message final, conversions typées, usage, terminaison, citations/contenu,
+  événement inconnu, erreur, annulation et fermeture.
+- **Cycle d’approbation :** interruption unique et multiple, reprise, refus,
+  limite de question/tour, purge d’autorisation à abandon, erreur pendant le
+  nettoyage et invalidation fail-closed.
+- **Admission :** accord entre outils réels et déclarations ; surface dynamique
+  non inspectable refusée sans hook explicite ; aucune déclaration n’accorde à
+  elle seule une autorisation.
+- **Worker :** factory synchrone/asynchrone/scopée, factory de conversation
+  avancée, auth obligatoire, sélection d’export de confiance, cache, readiness,
+  timeout, fermeture à éviction et drainage à l’arrêt.
+- **Wiki :** isolation principal/conversation, `thread_id`, commandes avant
+  modèle, tickets, formats HTTP, mode normal/stream configuré, configuration
+  MCP existante, auth, capacités read-only, logs sans secret et fermeture des
+  ressources.
+- **Distribution :** core seul, LangChain seul, MAF seul et combinaisons
+  supportées ; absence de dépendance croisées entre frameworks, wheel/sdist,
+  imports publics et `py.typed`.
+- **Qualité et performance :** Ruff, mypy strict, `pip check`, validations
+  architecture et mesures locales déterministes selon la SPEC.
 
 ## Validation finale
 
-- Les deux branches d’issue sont basées sur leurs `origin/main` respectifs et
-  contiennent uniquement les changements de l’issue.
-- Le runtime contient une seule implémentation générique du conteneur/moteur
-  HTTP conversationnel, de la politique commune d’approbation et du client MCP.
-- Mail/Wiki utilisent ces APIs publiques. Leurs sessions MAF/LangGraph, runtimes
-  de composition, skills, catalogues, secrets et dialectes restent dans
-  `ai_agents`.
-- Les contrats conversationnels conservent l’isolation, l’ordre sûr des
-  confirmations et l’abandon fail-closed. Les contrats MCP conservent les
-  comportements Mail/Wiki documentés.
-- Tous les contrôles ciblés et qualité spécifiés passent dans les deux dépôts ;
-  les budgets de performance restent respectés.
-- La PR runtime est créée avant la PR `ai_agents`, qui la référence. Aucun
-  merge ni publication PyPI n’est effectué.
-- Le checkout initial de `ai_agents`, notamment `.vscode/launch.json`, reste
-  inchangé.
+- Les packages neutres du runtime n’importent pas LangChain/LangGraph ou MAF.
+- `ygo74-agent-runtime-langchain` fournit le binding natif et la façade de
+  worker avec des dépendances et versions documentées, sans partager de
+  namespace de framework avec MAF.
+- Wiki utilise le worker et le binding sans déplacer son domaine, son
+  autorisation, ses tickets ou son modèle de composition.
+- Les contrats HTTP/auth/discovery existants et les invariants conversation,
+  approbation, identité et fermeture sont couverts par les validations
+  effectivement exécutées.
+- Les deux diffs Git sont isolés et revus. La PR runtime précède la PR
+  `ai_agents` uniquement après validations et résultats présentables ; aucun
+  merge ni publication PyPI n’est fait dans cette tâche sans décision
+  ultérieure.
 
 ## Risques
 
-- Un moteur commun de conversation pourrait lier le runtime aux détails des
-  frameworks. Les Protocols doivent rester étroits et les conversions de
-  résultats/interruption doivent demeurer dans les adaptateurs locaux.
-- Les boucles d’abandon sont des garde-fous de sécurité. Une erreur dans
-  l’adaptateur ou dans l’ordre de purge/reprise peut laisser une opération
-  suspendue ; les tests doivent prouver que le ledger est purgé avant tout
-  nettoyage qui peut échouer.
-- Mail et Wiki exposent des hiérarchies d’erreurs métier existantes. Les
-  factories d’erreurs runtime doivent les préserver sans multiple héritage et
-  sans divulguer d’informations sensibles.
-- Les valeurs d’autorisation Wiki et d’environnement stdio ne doivent apparaître
-  ni dans un binding livré, ni dans les logs, ni dans une représentation.
-- Les clients Mail/Wiki importent toujours certaines parties du SDK MCP pour
-  les payloads et OAuth ; retirer à tort leur dépendance directe briserait leurs
-  dialectes même si le transport a migré.
-- Les workflows de `ai_agents` utilisent une version runtime PyPI plutôt que le
-  worktree local. La validation locale croisée ne doit pas être présentée comme
-  preuve du résultat CI distant tant que le package runtime correspondant n’est
-  pas disponible.
-- L’intégration couvre autour de quarante call sites MCP et deux frameworks.
-  Garder les changements séparés par étapes et comparer chaque comportement à
-  ses tests actuels.
-
-## État de réalisation — 2026-09-27
-
-- Les deux worktrees isolés sont sur `refactor/6-generic-conversation-and-mcp`.
-- Les abstractions génériques de conversation et d’approbation sont ajoutées au
-  runtime et adoptées par Mail/Wiki ; les mécanismes MCP runtime sont également
-  adoptés en conservant les politiques et dialectes propres aux agents.
-- La documentation du runtime, la parité Python-first, l’architecture et les
-  guides Mail/Wiki ont été mis à jour.
-- Python 3.12.14 et les dépendances du projet sont disponibles dans les
-  environnements virtuels des checkouts initiaux.
-- Validations déjà exécutées : 33 tests runtime, 14 tests Mail de conversation,
-  les tests synchrones ciblés de `ai_agents`, Ruff ciblé dans les deux worktrees
-  et mypy strict sur les modules runtime et agents touchés. Après les corrections
-  de typage, le mypy ciblé passe sur cinq modules runtime et 17 modules agents ;
-  les deux registres de dialectes passent leurs cinq tests ciblés.
-- Ruff complet passe dans `ai_agents`. Dans le runtime, les modules modifiés
-  passent Ruff, mais l’analyse complète signale 34 violations dans
-  `docs/examples/`, hors des fichiers de cette issue.
-- Les tests Wiki de conversation vérifient leurs assertions, mais restent
-  bloqués lors de la fermeture de la boucle `pytest-asyncio`. Le blocage a aussi
-  été reproduit sur le checkout initial ; un appel direct au moteur Wiki renvoie
-  la réponse attendue. Il reste à diagnostiquer ou à documenter comme limite de
-  l’environnement de test.
-- Les mesures de référence n’ont pas été prises avant l’implémentation. Les
-  budgets de performance de la SPEC ne peuvent donc pas être déclarés validés.
-- Les builds de distributions et les vérifications CI distantes restent à
-  effectuer : la commande `build` et les backends `setuptools`/`hatchling` ne
-  sont pas installés dans les environnements disponibles. Les deux branches ont
-  été poussées sur `origin`. La création de PR a été refusée par l’intégration
-  GitHub (403, permission de création absente) ; le jeton local `gh` est
-  invalide. Aucune pull request n’a été créée.
+- Les versions et flux de sortie LangGraph peuvent changer l’enveloppe d’état ;
+  l’extracteur doit rester typé et couvert par les versions prises en charge.
+- Les événements de chaîne/retriever ou snapshots d’outils peuvent divulguer
+  des données internes si le binding ne sélectionne pas strictement les
+  événements publics.
+- Les graphes peuvent ajouter des outils par middleware/providers de contexte.
+  L’admission doit vérifier le graphe construit ou refuser la surface.
+- Le ticket bridge Wiki est une orchestration de domaine ; un worker trop simple
+  pourrait forcer une seconde boucle d’exécution HTTP. La factory de conversation
+  avancée est un point d’extension requis.
+- Le streaming peut être interrompu par le client avant la terminaison ; la
+  fermeture du graphe et de sa lease doit rester garantie sans déclarer un
+  succès complet.
+- Les plages de versions doivent rester compatibles avec les dépendances
+  LangChain déjà sélectionnées par Wiki et ne pas imposer de mise à niveau
+  applicative hors périmètre.
+- Les deux dépôts ont un cycle Git et une publication distincts. Les validations
+  locales contre le worktree runtime ne prouvent pas la disponibilité d’une
+  version publiée dans les workflows distants.
 
 ## Décisions techniques
 
-- Le runtime fournit le conteneur et le moteur génériques de conversation dans
-  `domains.sessions`; `ConversationTurn`, `AgentReply` et le protocole
-  `ConversationEngine` existants restent les contrats de bordure.
-- Un Protocol structurel minimal relie les runtimes applicatifs au conteneur.
-  `MailAgentRuntime` et `WikiAgentRuntime` ne partagent pas de classe de base.
-- Le runtime fournit un coordinateur de boucle d’approbation dans
-  `domains.humanapproval`. Les adapters MAF/LangGraph implémentent les
-  interfaces typées de lecture, reprise et refus de leur état de framework.
-- Les erreurs métier Mail/Wiki demeurent locales. Le runtime MCP accepte une
-  factory d’erreur typed pour les erreurs de transport/dialecte ; les erreurs
-  de binding génériques sont maintenues explicites à la frontière de config.
-- Les headers sont un paramètre de transport générique. La création du header
-  Wiki, l’OAuth Mail, la résolution des valeurs des variables Wiki et le filtre
-  read-only demeurent dans `ai_agents`.
-- Les APIs MCP et la nouvelle orchestration de conversation sont Python-first.
-  La parité .NET/Java existante n’est pas modifiée ni revendiquée pour ces
-  APIs ; ce statut est documenté dans le runtime.
-- Les APIs restent dans leurs sous-packages métier publics. Aucun alias de
-  compatibilité ne sera ajouté pour les classes génériques supprimées des
-  distributions Mail/Wiki.
+- Étendre `integrations.langchain` existant au lieu de créer un package ou un
+  namespace parallèle. Réutiliser `LangChainResultAdapter` et
+  `LangChainStreamAdapter`.
+- Garder le package de base `agents` indépendant des frameworks. Utiliser
+  `AgentDefinition`, `AgentFactoryContext`, `WorkerSettings` et
+  `ManagedAgentWorker`; les ajouter seulement si un besoin générique est
+  démontré.
+- Garder une façade worker LangChain séparée facultativement installable avec
+  HTTP. Elle fournit un parcours factory simple et accepte la factory de
+  conversation avancée nécessaire aux intégrations domaine.
+- Le binding possède les appels natifs et la traduction de résultat/stream ;
+  le runtime neutre possède budgets, cache, transport et cycle de vie HTTP ;
+  Wiki possède confirmation, politique et admission effective.
+- Conserver `thread_id_of` comme frontière d’identité LangGraph ; le contexte
+  fournisseur ne contient ni payload HTTP brut ni credentials.
+- Ne pas modifier MAF, ses APIs ou Mail hors corrections de non-régression
+  directement nécessaires et approuvées.
 
 ## Critères de réussite
 
-- Les classes génériques Mail/Wiki identiques sont remplacées par les
-  abstractions runtime décrites dans la SPEC ; aucun framework agentique
-  n’entre dans une distribution runtime.
-- Les runtimes de composition Mail/Wiki restent différents et typés. Le code
-  spécifique MAF/LangGraph est réduit à des adaptateurs de session, tandis que
-  l’abandon sécurisé est implémenté une fois.
-- Les deux ensembles de tests d’agents réussissent contre le runtime du
-  worktree, les contrôles qualité passent et les documents décrivent le même
-  état que les APIs publiées.
-- Les budgets de régression et les limites de secrets de la SPEC sont validés.
-- Les PR des deux dépôts sont ouvertes dans l’ordre de dépendance et aucune
-  n’est fusionnée.
+- Les critères d’acceptation de la SPEC sont satisfaits dans les deux dépôts.
+- L’intégration native LangChain/LangGraph réutilise les adaptateurs de sortie
+  et les abstractions génériques sans nouvelle implémentation de cache,
+  endpoints, transport ou tickets de domaine.
+- Wiki délègue l’exécution native au package runtime, tandis que les règles
+  Wiki et les confirmations restent locales.
+- Les tests et contrôles listés passent ; versions réellement vérifiées et
+  limites sont rapportées sans extrapoler au-delà des validations exécutées.
+
+## État de réalisation — 2026-10-10
+
+- Le binding natif LangGraph, son adaptation d’approbation et la façade
+  `LangGraphWorker` sont implémentés dans la distribution LangChain du runtime.
+  Les dépendances, la surface publique, la documentation et l’exemple hors
+  ligne ont été mis à jour.
+- Wiki délègue désormais invocation, streaming, approbations et hébergement
+  managé au binding et au worker. Les tickets, le ledger, les autorisations,
+  les ressources MCP et la composition restent dans l’application Wiki.
+- Validations runtime : 28 tests passent ; Ruff, `pip check` et les builds des
+  wheels/sdists des distributions LangChain, LangGraph et Wiki passent. Le
+  build du sdist runtime signale l’absence d’un README standard.
+- Validations Wiki/LangGraph : 332 tests passent, couvrant les tests unitaires,
+  d’intégration, HTTP et sécurité. `compileall` passe dans les deux dépôts.
+- Ruff passe sur les fichiers modifiés des deux dépôts. Le typage ciblé passe
+  avec `mypy --strict --follow-imports=silent
+  --disable-error-code=no-any-return` ; les dépendances importées n’ont donc
+  pas fait l’objet d’une vérification mypy stricte complète.
+- `git diff --check` passe dans le runtime et dans `ai_agents` avec
+  `core.whitespace=cr-at-eol`, qui respecte les fins de ligne CRLF existantes
+  dans ce dernier dépôt.
+- Le démarrage du portal AnyIO était bloqué dans la sandbox ; les tests Wiki
+  ont été exécutés hors sandbox après autorisation.
+- Aucun baseline de performance n’a été capturé avant les changements. Les
+  budgets de performance de la SPEC ne peuvent donc pas être déclarés validés.
+- Les deux worktrees contiennent des changements non commités sur les branches
+  retenues. Aucun commit, push, merge, publication PyPI ou PR n’a été créé.
