@@ -14,8 +14,18 @@ pending confirmation is an ordinary message and goes to the model as such.
 from __future__ import annotations
 
 import logging
+from collections.abc import AsyncIterator
+from uuid import uuid4
 
 from ygo74.agent_runtime.domains.auth.agent_principal import AgentPrincipal
+from ygo74.agent_runtime.domains.contracts.agent_output import TextContent
+from ygo74.agent_runtime.domains.contracts.conversation import AgentReply, ConversationTurn
+from ygo74.agent_runtime.domains.contracts.stream_events import (
+    AgentStreamEvent,
+    ContentEvent,
+    TerminalEvent,
+)
+from ygo74.agent_runtime.domains.humanapproval.commands import ConfirmationCommandParser
 from ygo74.agent_runtime.domains.humanapproval.confirmed_operations import ConfirmedOperationRunner
 from ygo74.agent_runtime.domains.humanapproval.pending_renderer import PendingConfirmationRenderer
 from ygo74.agent_runtime.domains.humanapproval.tickets import InMemoryPendingConfirmationStore
@@ -23,6 +33,7 @@ from ygo74.agent_runtime.domains.sessions.agent_conversation import (
     AgentConversation,
     HttpConversationEngine,
 )
+from ygo74.agent_runtime.domains.sessions.conversation_cache import ConversationRuntimeCache
 
 from ai_agent_lab.maf.approval import MafApprovalTranslator
 from ai_agent_lab.mail.application.approval.tickets import TicketApprovalResolver
@@ -33,7 +44,41 @@ from ai_agent_lab.mail.capabilities.results import MailToolResultRenderer
 _logger = logging.getLogger(__name__)
 
 MailConversation = AgentConversation[MailAgentRuntime, MailAgentSession]
-MailConversationEngine = HttpConversationEngine[MailConversation]
+
+
+class MailConversationEngine:
+    """Serve ordinary and streaming turns over the same conversation cache."""
+
+    def __init__(
+        self,
+        conversations: ConversationRuntimeCache[MailConversation],
+        parser: ConfirmationCommandParser | None = None,
+    ) -> None:
+        self._conversations = conversations
+        self._parser = parser or ConfirmationCommandParser()
+        self._standard = HttpConversationEngine(conversations, self._parser)
+
+    async def respond(self, turn: ConversationTurn) -> AgentReply:
+        """Answer a turn using the existing non-streaming runtime behavior."""
+        return await self._standard.respond(turn)
+
+    async def stream(self, turn: ConversationTurn) -> AsyncIterator[AgentStreamEvent]:
+        """Stream neutral events while holding the caller's conversation lease."""
+        if self._parser.parse(turn.message) is not None:
+            reply = await self.respond(turn)
+            if reply.text:
+                yield ContentEvent(uuid4().hex, TextContent(reply.text))
+            yield TerminalEvent()
+            return
+
+        async with self._conversations.lease(turn.principal, turn.conversation_id) as conversation:
+            async for event in conversation.session.ask_stream(turn.message):
+                yield event
+            pending = conversation.describe_pending()
+            if pending:
+                yield ContentEvent(uuid4().hex, TextContent(pending))
+
+        yield TerminalEvent()
 
 
 class MailConversationFactory:

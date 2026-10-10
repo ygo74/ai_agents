@@ -73,11 +73,17 @@ def _maps_to_openai() -> bool:
     contributed upstream, and this makes the suite tell the truth against both
     the published release and a patched checkout.
     """
+    from ygo74.agent_runtime.domains.contracts.agent_output import AgentOutput, TextContent
+    from ygo74.agent_runtime.domains.contracts.exchange_models import StandardExchangeResponse
     from ygo74.agent_runtime.domains.mapping.response_mapper import map_response
 
     rendered = map_response(
         "openai.chat_completions",
-        {"request_id": "probe", "status": "success", "output": "ok"},
+        StandardExchangeResponse(
+            request_id="probe",
+            status="success",
+            output=AgentOutput(contents=(TextContent("ok"),)),
+        ),
     )
     return rendered.get("object") == "chat.completion"
 
@@ -163,14 +169,21 @@ def _only_descriptor(app: FastAPI) -> AgentDescriptor:
     return descriptor
 
 
-def chat(http: TestClient, message: str, *, key: str | None = API_KEY, conversation: str | None = None):
+def chat(
+    http: TestClient,
+    message: str,
+    *,
+    key: str | None = API_KEY,
+    conversation: str | None = None,
+    stream: bool = False,
+):
     """Post one OpenAI chat completion, the way LibreChat does."""
     headers = {} if key is None else {"x-api-key": key}
     if conversation is not None:
         headers["X-Conversation-Id"] = conversation
     return http.post(
         "/v1/chat/completions",
-        json={"model": MODEL, "messages": [{"role": "user", "content": message}], "stream": False},
+        json={"model": MODEL, "messages": [{"role": "user", "content": message}], "stream": stream},
         headers=headers,
     )
 
@@ -209,13 +222,14 @@ class TestTheEndpointAnswers:
     """What works today, end to end, through the real routes."""
 
     def test_a_request_is_answered(self):
-        app, _client = build_service([says("I found two messages from John.")])
+        app, client = build_service([says("I found two messages from John.")])
 
         with TestClient(app) as http:
             response = chat(http, "anything from John?")
 
         assert response.status_code == 200
         assert "two messages from John" in answer_of(response)
+        assert client.stream_modes == [False]
 
     def test_the_agent_is_discoverable_as_a_model(self):
         """LibreChat lists it, and the description comes from `config/`."""
@@ -270,6 +284,19 @@ class TestTheEndpointAnswers:
         seen = _user_text(client)
         assert "what about John?" in seen
         assert "hello" not in seen
+        assert client.stream_modes == [False]
+
+    def test_streaming_request_returns_protocol_events_from_maf_updates(self):
+        app, client = build_service([says("hello from a streamed response")])
+
+        with TestClient(app) as http:
+            response = chat(http, "hi", stream=True)
+
+        assert response.status_code == 200
+        assert response.headers["content-type"].startswith("text/event-stream")
+        assert "hello" in response.text
+        assert "response" in response.text
+        assert client.stream_modes == [True]
 
 
 @pytest.mark.skipif(not maps_to_openai, reason=NOT_OPENAI_YET)

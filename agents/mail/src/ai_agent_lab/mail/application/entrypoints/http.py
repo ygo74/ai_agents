@@ -15,13 +15,15 @@ pick a victim.
 from __future__ import annotations
 
 import logging
-from collections.abc import Mapping
+from collections.abc import AsyncIterator, Mapping
 from datetime import UTC, datetime
 from typing import Any
 
 from ygo74.agent_runtime.domains.contracts.contract_errors import EmptyRequestError
 from ygo74.agent_runtime.domains.contracts.conversation import AgentReply, ConversationTurn
+from ygo74.agent_runtime.domains.contracts.exchange_models import StandardExchangeResponse
 from ygo74.agent_runtime.domains.contracts.manifests import AgentManifest
+from ygo74.agent_runtime.domains.contracts.stream_events import AgentStreamEvent
 from ygo74.agent_runtime.domains.discovery.agent_descriptor import AgentDescriptor
 from ygo74.agent_runtime.domains.discovery.manifest_descriptor import (
     AdvertisedSecurity,
@@ -76,14 +78,21 @@ class MailAgentEntrypoint:
         )
         self._renderer = AgentReplyRenderer()
 
-    async def __call__(self, payload: Mapping[str, Any]) -> dict[str, Any]:
-        """Answer one request, as ``add_ai_endpoints`` expects."""
+    async def __call__(
+        self,
+        payload: Mapping[str, Any],
+    ) -> StandardExchangeResponse | AsyncIterator[AgentStreamEvent]:
+        """Answer one request in the response mode requested by the runtime."""
         _logger.info("Handling Mail Agent HTTP request")
         _logger.debug(
-            "MailAgentEntrypoint.__call__ arguments: payload_keys=%s",
+            "MailAgentEntrypoint.__call__ arguments: payload_keys=%s, stream=%s",
             tuple(sorted(str(key) for key in payload)),
+            payload.get("stream") is True,
         )
-        reply = await self._engine.respond(self.to_turn(payload))
+        turn = self.to_turn(payload)
+        if payload.get("stream") is True:
+            return self._engine.stream(turn)
+        reply = await self._engine.respond(turn)
         return self.to_payload(payload, reply)
 
     def to_turn(self, payload: Mapping[str, Any]) -> ConversationTurn:
@@ -95,7 +104,7 @@ class MailAgentEntrypoint:
         )
         return self._reader.to_turn(payload)
 
-    def to_payload(self, payload: Mapping[str, Any], reply: AgentReply) -> dict[str, Any]:
+    def to_payload(self, payload: Mapping[str, Any], reply: AgentReply) -> StandardExchangeResponse:
         """Render a reply in the exchange shape the runtime maps to OpenAI."""
         _logger.info("Rendering Mail Agent HTTP response payload")
         _logger.debug(

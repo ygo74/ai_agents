@@ -121,6 +121,7 @@ class MailAgentCompositionRoot:
         )
         self._settings = settings
         self._chat_client = chat_client
+        # TODO: if principal is not provided, fall back to a default principal based on the current process credentials
         self._principal = principal or LocalPrincipalSource(settings).principal()
         self._mail_tools_override = mail_tools
         self._reasoner_override = reasoner

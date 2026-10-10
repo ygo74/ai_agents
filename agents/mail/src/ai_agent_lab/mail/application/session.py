@@ -16,15 +16,19 @@ premise. Whatever remains is explicitly declined instead.
 from __future__ import annotations
 
 import logging
+from collections.abc import AsyncIterator
 from typing import Any
+from uuid import uuid4
 
-from agent_framework import AgentResponse, AgentSession
+from agent_framework import AgentResponse, AgentResponseUpdate, AgentSession, Message, ResponseStream
+from ygo74.agent_runtime.domains.contracts.stream_events import AgentStreamEvent
 from ygo74.agent_runtime.domains.humanapproval.approval_loop import ApprovalLoop
 
 from ai_agent_lab.maf.approval import (
     MafApprovalTranslator,
     PendingToolApproval,
 )
+from ai_agent_lab.maf.streaming import MafStreamEventTranslator
 from ai_agent_lab.mail.application.approval.resolver import ApprovalResolver
 from ai_agent_lab.mail.application.composition import MailAgentRuntime
 
@@ -57,6 +61,7 @@ class MailAgentSession:
         resolver: ApprovalResolver,
         translator: MafApprovalTranslator,
         *,
+        stream_translator: MafStreamEventTranslator | None = None,
         max_approval_rounds: int = _MAX_ASKED_ROUNDS,
         max_total_rounds: int = _MAX_TOTAL_ROUNDS,
     ) -> None:
@@ -74,6 +79,9 @@ class MailAgentSession:
         self._runtime = runtime
         self._resolver = resolver
         self._translator = translator
+        self._max_approval_rounds = max_approval_rounds
+        self._max_total_rounds = max_total_rounds
+        self._stream_translator = stream_translator or MafStreamEventTranslator()
         self._session: AgentSession = runtime.agent.create_session(session_id=runtime.user.session_id)
         self._approval_loop = ApprovalLoop(
             self,
@@ -106,6 +114,82 @@ class MailAgentSession:
         )
         response = await self._runtime.agent.run(message, session=self._session)
         return await self._approval_loop.run(response)
+
+    async def ask_stream(self, message: str) -> AsyncIterator[AgentStreamEvent]:
+        """Stream visible text while retaining the bounded approval lifecycle."""
+        _logger.info("Starting streamed Mail Agent turn and approval loop")
+        _logger.debug(
+            "MailAgentSession.ask_stream arguments: session_id=%s, user_id=%s, message_length=%d",
+            self._runtime.user.session_id,
+            self._runtime.user.user_id,
+            len(message),
+        )
+        asked = 0
+        current_message: str | Message = message
+        state: AgentResponse[Any] | None = None
+
+        for _ in range(self._max_total_rounds):
+            response_stream = self._stream_run(current_message)
+            async for event in self._stream_translator.translate(
+                response_stream,
+                content_id=uuid4().hex,
+            ):
+                yield event
+            state = await response_stream.get_final_response()
+            pending = self.pending(state)
+            if not pending:
+                return
+
+            asked, limit_reached = self._approval_limit_reached(pending, asked)
+            if limit_reached:
+                async for event in self._abandon_stream(state, _INTERRUPTED):
+                    yield event
+                return
+
+            round_ = await self._resolver.resolve(pending)
+            current_message = self._translator.answer_message(round_.answers)
+
+        if state is not None:
+            async for event in self._abandon_stream(state, _EXHAUSTED):
+                yield event
+
+    def _stream_run(self, message: str | Message) -> ResponseStream[AgentResponseUpdate, AgentResponse[Any]]:
+        """Start one framework round in streaming mode."""
+        return self._runtime.agent.run(message, stream=True, session=self._session)
+
+    def _approval_limit_reached(
+        self,
+        pending: tuple[PendingToolApproval, ...],
+        asked: int,
+    ) -> tuple[int, bool]:
+        """Count confirmation prompts and identify when their configured bound is crossed."""
+        if not self.will_question(pending):
+            return asked, False
+        asked += 1
+        return asked, asked > self._max_approval_rounds
+
+    async def _abandon_stream(
+        self,
+        state: AgentResponse[Any],
+        message: str,
+    ) -> AsyncIterator[AgentStreamEvent]:
+        """Decline remaining calls within a bound before emitting the interruption."""
+        self.discard_authorizations()
+        current = state
+        for _ in range(_MAX_DECLINE_ROUNDS):
+            pending = self.pending(current)
+            if not pending:
+                yield self._stream_translator.complete_text(message, content_id=uuid4().hex)
+                return
+            try:
+                current = await self.decline(pending)
+            except Exception as error:  # noqa: BLE001 - grants are already discarded
+                _logger.warning("could not finish declining an abandoned streamed turn: %s", type(error).__name__)
+                yield self._stream_translator.complete_text(message, content_id=uuid4().hex)
+                return
+            finally:
+                self.discard_authorizations()
+        yield self._stream_translator.complete_text(message, content_id=uuid4().hex)
 
     def pending(self, response: AgentResponse[Any]) -> tuple[PendingToolApproval, ...]:
         """Inspect Microsoft Agent Framework state for suspended calls."""

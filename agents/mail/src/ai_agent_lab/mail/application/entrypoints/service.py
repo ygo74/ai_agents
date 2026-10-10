@@ -113,7 +113,7 @@ def build_app(*, base_path: Path | None = None) -> FastAPI:
         MailAgentEntrypoint(MailConversationEngine(conversations)),
         _descriptor(composition, jwt_validation=jwt_validation, api_key_resolver=api_key_resolver),
     ).add_ai_endpoints(
-        EndpointSurface.OPENAI_CHAT_COMPLETIONS
+        EndpointSurface.OPENAI_CHAT_COMPLETIONS, EndpointSurface.OPENAI_RESPONSES
     ).add_security(authentication).add_discovery(
         DiscoveryConfiguration(enable_openai_models=True, require_authentication=True)
     ).register()

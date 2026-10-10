@@ -19,6 +19,7 @@ import pytest
 from tests.support.maf_fakes import ScriptedChatClient, ToolCall, calls, says
 from ygo74.agent_runtime.domains.auth.agent_principal import AgentPrincipal
 from ygo74.agent_runtime.domains.contracts.conversation import ConversationTurn
+from ygo74.agent_runtime.domains.contracts.stream_events import ContentEvent, TerminalEvent, TextDelta
 from ygo74.agent_runtime.domains.sessions.conversation_cache import ConversationRuntimeCache
 
 from ai_agent_lab.mail.application.composition import MailAgentCompositionRoot
@@ -99,6 +100,35 @@ class TestAnOrdinaryTurn:
 
         assert reply.pending_confirmations == ()
         assert not reply.awaits_confirmation
+
+
+class TestStreamingTurn:
+    async def test_it_streams_maf_text_updates(self):
+        engine, client, _cache = build_engine([says("I found two messages from John.")])
+
+        events = [event async for event in engine.stream(turn("anything from John?"))]
+
+        deltas = [event.text for event in events if isinstance(event, TextDelta)]
+        assert "".join(deltas) == "I found two messages from John."
+        assert len(deltas) > 1
+        assert isinstance(events[-1], TerminalEvent)
+        assert client.stream_modes == [True]
+
+    async def test_a_gated_tool_stays_pending_during_streaming(self):
+        engine, client, cache = build_engine(labelling_script())
+
+        events = [event async for event in engine.stream(turn("file the Project Alpha message under Finance"))]
+        streamed_text = "".join(
+            event.content.text if isinstance(event, ContentEvent) else event.text
+            for event in events
+            if isinstance(event, (ContentEvent, TextDelta))
+        )
+
+        assert "CONFIRM" in streamed_text
+        assert "cfm-" in streamed_text
+        assert LABEL_ID not in await labels_of(cache, MESSAGE_ID)
+        assert client.stream_modes == [True, True]
+        assert isinstance(events[-1], TerminalEvent)
 
 
 @pytest.mark.security
