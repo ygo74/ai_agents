@@ -7,6 +7,8 @@ from pathlib import Path
 
 import httpx
 from ygo74.agent_runtime.domains.configuration.directory import ConfigurationDirectory
+from ygo74.agent_runtime.domains.mcp.binding import McpConnection, McpServerBinding, McpTransport
+from ygo74.agent_runtime.domains.mcp.dialects import DialectRegistry
 
 from ai_agent_lab.mail.catalog import MailToolName
 from ai_agent_lab.mail.config.settings import (
@@ -17,10 +19,10 @@ from ai_agent_lab.mail.config.settings import (
 )
 from ai_agent_lab.mail.inmemory.dataset import MailDatasetLoader
 from ai_agent_lab.mail.inmemory.mail_tools import InMemoryMailTools
+from ai_agent_lab.mail.mail_errors import MailToolUnavailableError
 from ai_agent_lab.mail.mcp.bearer import BearerTokenAuth
-from ai_agent_lab.mail.mcp.binding import McpServerBinding, McpServerBindingLoader, McpTransport
-from ai_agent_lab.mail.mcp.connection import McpConnection
-from ai_agent_lab.mail.mcp.dialects import MailDialectRegistry
+from ai_agent_lab.mail.mcp.configuration import load_binding
+from ai_agent_lab.mail.mcp.dialects import create_dialect_registry
 from ai_agent_lab.mail.mcp.oauth import MailOAuthProvider
 from ai_agent_lab.mail.tools_port import MailTools
 
@@ -44,7 +46,7 @@ class MailToolsProvider:
         *,
         owner_id: str | None = None,
         mcp_settings: MailMcpSettings | None = None,
-        dialects: MailDialectRegistry | None = None,
+        dialects: DialectRegistry[MailTools, [McpConnection, str]] | None = None,
     ) -> None:
         _logger.info("Initializing Mail tools provider")
         _logger.debug(
@@ -60,7 +62,7 @@ class MailToolsProvider:
         self._dataset_loader = dataset_loader
         self._owner_id = owner_id or settings.user_id
         self._mcp_settings = mcp_settings or MailMcpSettings()
-        self._dialects = dialects or MailDialectRegistry()
+        self._dialects = dialects or create_dialect_registry()
         self._connection: McpConnection | None = None
 
     def build(self, *, base_path: Path | None = None) -> MailTools:
@@ -131,6 +133,7 @@ class MailToolsProvider:
             binding,
             timeout_seconds=self._mcp_settings.request_timeout_seconds,
             auth=self._auth(binding),
+            unavailable=MailToolUnavailableError,
         )
         tools = self._dialects.build(binding, self._connection, self._owner_id)
         _logger.debug(
@@ -176,4 +179,4 @@ class MailToolsProvider:
             self._mcp_settings.server,
         )
         directory = ConfigurationDirectory.resolve(base_path=base_path)
-        return McpServerBindingLoader(directory).load(self._mcp_settings.server)
+        return load_binding(directory, self._mcp_settings.server)

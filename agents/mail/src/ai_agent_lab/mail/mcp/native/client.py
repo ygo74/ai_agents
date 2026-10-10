@@ -18,6 +18,7 @@ from collections.abc import Mapping
 from typing import Any
 
 from mcp.types import CallToolResult, TextContent
+from ygo74.agent_runtime.domains.mcp.binding import McpConnection, McpServerBinding
 from ygo74.agent_runtime.domains.security.user_context import UserContext
 
 from ai_agent_lab.mail.catalog import MailToolName as MailCapability
@@ -38,8 +39,6 @@ from ai_agent_lab.mail.mail_errors import (
     MailToolUnavailableError,
     decode_failure,
 )
-from ai_agent_lab.mail.mcp.binding import McpServerBinding
-from ai_agent_lab.mail.mcp.connection import McpConnection
 from ai_agent_lab.mail.mcp.native.mapping import MailWireMapper
 from mail_mcp.protocol import payloads as wire
 from mail_mcp.protocol.tools import MailToolName

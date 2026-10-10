@@ -25,7 +25,7 @@ from ai_agent_lab.mail.application.mail_tools_provider import MailToolsProvider
 from ai_agent_lab.mail.config.settings import MailAgentMode, MailAgentSettings, MailMcpSettings
 from ai_agent_lab.mail.domain.permissions import MailPermission
 from ai_agent_lab.mail.inmemory.dataset import MailDatasetLoader
-from ai_agent_lab.mail.mcp.binding import McpServerBindingLoader
+from ai_agent_lab.mail.mcp.configuration import load_binding
 from ai_agent_lab.mail.mcp.oauth import MailOAuthSettings
 
 _CONSENT_TIMEOUT_SECONDS = 600
@@ -84,7 +84,7 @@ def main() -> None:
     server = parser.parse_args().server
 
     EnvironmentFile().load()
-    binding = McpServerBindingLoader(ConfigurationDirectory.resolve(base_path=Path.cwd())).load(server)
+    binding = load_binding(ConfigurationDirectory.resolve(base_path=Path.cwd()), server)
     print(f"Authorising against {binding.server!r} at {binding.url}")
     print(f"Requesting only: {MailOAuthSettings().scopes}\n")
 

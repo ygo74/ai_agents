@@ -16,12 +16,11 @@ from pathlib import Path
 
 import pytest
 from tests.contract.test_mail_tools_contract import MailToolsContractTests
+from ygo74.agent_runtime.domains.mcp.binding import McpConnection, McpServerBinding, McpTransport
 
 from ai_agent_lab.mail.catalog import MailToolName
 from ai_agent_lab.mail.domain.models import MailSearchRequest
 from ai_agent_lab.mail.mail_errors import MailAccessDeniedError, MailNotFoundError
-from ai_agent_lab.mail.mcp.binding import McpServerBinding, McpTransport
-from ai_agent_lab.mail.mcp.connection import McpConnection
 from ai_agent_lab.mail.mcp.native.client import McpMailTools
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
