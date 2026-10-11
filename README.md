@@ -32,7 +32,7 @@ frameworks, not to build the same business logic three times.
 | Agent | Framework | State |
 |---|---|---|
 | Mail Agent | Microsoft Agent Framework | Working. See [docs/mail-agent.md](./docs/mail-agent.md). |
-| Wiki Agent | LangChain / LangGraph | Working, read-only. See [docs/wiki-agent.md](./docs/wiki-agent.md). |
+| Wiki Agent | LangChain / LangGraph | Working, with read capabilities and confirmation-gated writes. See [docs/wiki-agent.md](./docs/wiki-agent.md). |
 | Mail MCP | our server, on the Gmail REST API | Working against a real mailbox, full coverage. |
 | Mail MCP | our server, on a dataset | Working over stdio, validated by the conformance suite. |
 | Mail MCP | official Google Gmail server | Bound and capability-checked; blocked by Workspace Developer Preview enrolment. |
@@ -64,7 +64,11 @@ data/              deterministic datasets and MCP discovery records
 scenarios/         reproducible agent scenarios
 spec/              system-level specification
 docs/              user guides for configuration, operation and deployment
+doc/contributors/  architecture and maintenance guides for contributors
 ```
+
+Contributor architecture and maintenance guidance is indexed in
+[doc/contributors/README.md](./doc/contributors/README.md).
 
 No `mail_mcp` or `wiki_mcp` package imports `ai_agent_lab`: a server we write and
 a server somebody else wrote are reached the same way, through a dialect on the
@@ -126,6 +130,9 @@ See the [system specification](./spec/README.md) for architecture, component
 responsibilities, contracts and security invariants.
 
 ## User guides
+
+Start with the [user and operator documentation index](./doc/users/README.md).
+It groups the practical guides below by task.
 
 | Document | Content |
 |---|---|

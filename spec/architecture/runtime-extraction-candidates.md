@@ -1,12 +1,13 @@
-# What could move to `ygo74-agent-runtime`
+# Runtime extraction candidates (historical analysis)
 
-> **Status, 2026-09-27.** Batches 1 to 11 and issue #5 are delivered. Issue #6
-> now implements adoption of the generic conversation container and HTTP turn
-> engine, bounded approval loop, and MCP bindings/connections/dialect registry
-> in the Mail and Wiki agents. Application composition roots, MAF/LangGraph
-> session adapters, credentials, capability policy and concrete dialects stay
-> here. Implementation and documentation are in the worktrees; test suites and
-> quality checks are still pending.
+> **Status, 2026-10-11.** Batches 1 to 11, issue #5, and issue #6 are implemented
+> on the issue branch. Issue #6 moved the generic conversation container and
+> HTTP turn engine, bounded approval loop, and MCP binding/connection/registry
+> mechanics into the runtime and adopted them in Mail and Wiki. The Wiki agent
+> also uses the runtime's native LangGraph binding and managed worker. The
+> application ownership boundary is recorded in the [system specification](../README.md),
+> [LangGraph integration specification](../integrations/langchain-langgraph.md),
+> and [issue #6 task record](../../docs/tasks/issue-6/SPEC.md).
 >
 > See [architecture.md](./architecture.md#10-what-this-repository-no-longer-owns)
 > for what the move changed here, and `docs/parity-status.md` in the runtime for
@@ -18,8 +19,10 @@
 > rendered a refusal, and the library's package root pulled a web framework into
 > every import.
 
-This is an **analysis of the remaining candidates**, not a plan to move every item below. It records
-which parts of this repository belong to the hosting library and what each candidate still needs.
+The candidate inventory below is a historical analysis of the pre-issue #6
+baseline. It is not the current ownership map or a plan to move every item. Use
+the system specification and current integration specifications for the
+delivered boundaries; the remaining entries are useful only as design history.
 
 The target is `ygo74-agent-runtime` (Python package `ygo74.agent_runtime`), which already owns the
 OpenAI and Anthropic endpoints (`domains.endpoints`), discovery and the agent descriptor
@@ -499,7 +502,7 @@ listed here imports nothing that a later batch owns.
 | 10 | `ConversationRuntimeCache`, after the lease and lock-scope repair | Python-first | 1, 2 | **done**; `acquire` became a lease, and closers moved off the global lock |
 | 11 | Generic HTTP settings, with issuer discovery instead of the Keycloak path | portable | 0 | **done**; plain `pydantic` with `from_env(prefix)`, so no settings library is imposed |
 | 12 | MCP transport lifecycle, binding schema and registry mechanics | Python-first | 0 | **adopted by Mail and Wiki in issue #6**; the runtime adds generic HTTP headers and typed error/factory hooks |
-| 13 | Generic conversation container/HTTP engine, bounded approval loop and cross-repository adoption | Python-first | 2, 7, 10, 12 | **implemented in issue #6 worktrees; targeted tests, Ruff and strict mypy pass, with broader validation still pending** |
+| 13 | Generic conversation container/HTTP engine, bounded approval loop and cross-repository adoption | Python-first | 2, 7, 10, 12 | **implemented in issue #6; validation results are recorded in the task plan** |
 
 ### What the delivered batches actually cost
 
@@ -559,9 +562,10 @@ them without their test suites would amount to rewriting them.
 
 ## Recommendation
 
-The approved scope of issue #6 is implemented in the two worktrees. Targeted
-tests, Ruff and strict mypy have passed; the Wiki conversation test shutdown and
-broader package/CI checks remain to be resolved. Before publishing, capture
-comparable performance measurements, review the full diffs, and prepare the
-runtime pull request before the `ai_agents` pull request. Keep the framework
-adapters, composition roots, credentials and domain policies in this repository.
+Issue #6's approved scope is implemented. Its tests and quality-check results,
+including checks that were not run or were limited by the local environment,
+are recorded in the [implementation plan](../../docs/tasks/issue-6/PLAN.md).
+No performance baseline was captured, so the proposed performance budget is
+not validated. The durable application boundary is described by the current
+system and integration specifications, not by the pre-migration candidates
+listed in this historical analysis.

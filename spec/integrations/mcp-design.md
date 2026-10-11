@@ -1,116 +1,88 @@
-# MCP Design
+# MCP client and tool-port design
 
-## 1. Role of MCP in this repository
+## Why this boundary exists
 
-MCP is the integration boundary between agents and enterprise systems. Agents
-and skills know a typed tool contract; they never know how it is implemented.
+Mail and Wiki can use different MCP servers without making their skills depend
+on a server's tool names or payload format. Each agent works through a typed
+domain tool port. A concrete dialect translates between that port and the
+selected server.
 
-```text
-Skill  ->  MailTools (Protocol)  ->  McpMailTools  ->  MCP client
-                                                          |
-                                                          v
-                                                    Mail MCP Server
-                                                          |
-                                                          v
-                                                        Gmail
+```mermaid
+flowchart LR
+    Skill[Agent skill] --> Port[MailTools or WikiTools]
+    Port --> Dialect[Application MCP dialect]
+    Dialect --> Client[Runtime MCP client]
+    Client --> Server[Selected MCP server]
+    Server --> Source[Mail or Wiki system]
 ```
 
-Whether the server uses the Gmail API, Microsoft Graph, EWS, IMAP or SMTP is
-invisible above the contract, by design.
+This separation lets a mock, a repository reference server, and an external
+server serve the same application behavior. It also keeps framework SDKs and
+provider-specific MCP payloads out of the skills.
 
-## 2. Contract layer (`mcp/mail`)
+## Responsibilities
 
-The contract layer contains no implementation:
+| Part | Responsibility | Owner |
+|---|---|---|
+| `MailTools` and `WikiTools` | Typed operations that skills can call | Mail and Wiki applications |
+| Domain dialect | Map tool names and payloads, validate results, translate failures, and apply domain capability filters | Mail or Wiki application |
+| Binding, transport lifecycle, and dialect registry | Load and validate delivered server settings, connect, and select the dialect | Shared runtime MCP client |
+| Wire protocol and server behavior | Expose MCP tools and reach a data source | MCP server distribution |
 
-| Module         | Content                                                    |
-|----------------|------------------------------------------------------------|
-| `contracts.py` | `MailTools` Protocol - the tool surface                     |
-| `catalog.py`   | `MailToolCatalog` - operation type, risk, descriptions      |
-| `errors.py`    | `McpToolError` hierarchy raised across the boundary         |
+The runtime does not own Mail or Wiki domain models, credentials, capability
+policy, or concrete dialects. Each application chooses its dialect, resolves
+secrets and caller-specific authorization, and passes transport settings to
+the runtime client. The Mail Agent Framework and Wiki LangChain/LangGraph
+adapters use the same application tool ports; changing a framework does not
+change the tool contract.
 
-Every operation has a typed input model and a typed output model taken from
-`domain/mail`. Raw dictionaries never cross the boundary.
+## Binding and call behavior
 
-## 3. Mail tool surface
+An application loads a binding for its selected server. The binding describes
+the transport, dialect identifier, capabilities provided, and server tool
+names. The runtime validates the generic structure and opens the configured
+stdio or streamable-HTTP connection. The application registers dialect
+factories and supplies the domain-specific configuration.
 
-One generic search capability covers every search variation; the variation is
-carried by `MailSearchRequest`, not by a proliferation of tools.
+Before exposing tools to an agent, the application combines the binding's
+available capabilities with its own policy. A missing remote tool is not
+advertised. Wiki read-only mode removes write capabilities. The model can only
+request an admitted operation; deterministic application checks and the source
+system still decide whether that operation is allowed.
 
-| Tool            | Type  | Risk   | Confirmation | Input -> Output                          |
-|-----------------|-------|--------|--------------|------------------------------------------|
-| `search_mail`   | READ  | LOW    | no           | `MailSearchRequest` -> `MailSearchResult`|
-| `get_mail`      | READ  | LOW    | no           | `message_id` -> `MailMessage`            |
-| `get_thread`    | READ  | LOW    | no           | `thread_id` -> `MailThread`              |
-| `list_labels`   | READ  | LOW    | no           | - -> `list[MailLabel]`                   |
-| `create_draft`  | WRITE | LOW    | no (default) | `MailDraft` -> `MailDraft`               |
-| `send_mail`     | WRITE | HIGH   | yes          | `MailSendRequest` -> `MailSendResult`    |
-| `mark_read`     | WRITE | LOW    | yes (default, configurable) | `message_id`, `is_read` -> none |
-| `archive_mail`  | WRITE | MEDIUM | yes          | `message_id` -> none                     |
-| `apply_label`   | WRITE | MEDIUM | yes          | `message_id`, `label` -> none            |
-| `remove_label`  | WRITE | MEDIUM | yes          | `message_id`, `label` -> none            |
+For each call, the dialect maps typed domain input to the server's wire input,
+checks the returned payload, and maps it to the domain result. A missing tool,
+unavailable server, or malformed response becomes a typed application error;
+it is not treated as an empty or successful result. Tool results remain
+untrusted content even when their structure is valid.
 
-`create_draft` mutates the mailbox but sends nothing, so it is a low-risk write
-that does not require confirmation by default. It remains configurable.
+## Identity and security
 
-## 4. Tool descriptions
+Authentication and authorization are separate decisions. The application
+derives the caller from its trusted request context, resolves any delegated
+headers or credentials, and passes them to the configured connection. The
+server or source system must enforce access to the caller's mailbox, pages, or
+spaces. Application permissions and confirmation policy remain additional
+checks for writes.
 
-Descriptions are part of the contract because the model uses them to select a
-tool. They must state what the tool does, what it does not do, and whether it
-has side effects. Ambiguous descriptions are a correctness bug, not a cosmetic
-issue.
+Credentials do not belong in prompts, domain tool arguments, or manifests.
+Free text returned by a server is untrusted data. Neither a tool description
+nor a binding grants permission to read or change source data.
 
-## 5. Implementations
+## Acceptance
 
-| Implementation      | Location                        | Purpose                     |
-|---------------------|---------------------------------|-----------------------------|
-| `InMemoryMailTools` | `infrastructure/inmemory`       | deterministic dataset, tests|
-| `McpMailTools`      | `infrastructure/mcp`            | real MCP server             |
+- Skills call typed Mail or Wiki ports and do not depend on MCP wire payloads.
+- A concrete dialect validates and translates both requests and responses.
+- A binding that omits a capability cannot expose that operation to the agent.
+- Authorization and write confirmation are checked outside model-controlled
+  text.
+- Invalid payloads, unavailable tools, and connection failures remain visible
+  as typed errors.
 
-Both are validated by the same conformance suite in `tests/contract`, so a mock
-run and a real run exercise identical semantics.
-
-## 6. Error translation
-
-MCP transport and protocol errors never leak upwards. `McpMailTools` translates
-them into domain-meaningful exceptions:
-
-| Situation                        | Exception                  |
-|----------------------------------|----------------------------|
-| unknown message / thread         | `MailNotFoundError`        |
-| caller not allowed by the source | `MailAccessDeniedError`    |
-| server unreachable / timeout     | `MailToolUnavailableError` |
-| malformed or unexpected payload  | `MailToolProtocolError`    |
-
-Payload validation is strict: an unexpected shape is an error, never a silently
-accepted partial result.
-
-## 7. Security
-
-- credentials live in the MCP server / infrastructure layer and are never
-  placed in prompts, in `UserContext`, in logs or in tool results;
-- authorisation is enforced by the source system and re-checked deterministically
-  in the application layer; the model never authorises anything;
-- every call carries the caller identity so the server can scope results;
-- all returned content is untrusted data and is wrapped as `UntrustedText`.
-
-## 8. Separation of concerns
-
-MCP protocol handling, domain logic and agent reasoning stay separate:
-
-- `mcp/` declares contracts only;
-- `infrastructure/mcp/` speaks the protocol and maps payloads;
-- `skills/` applies business rules;
-- `frameworks/` adapts to an agent framework.
-
-## 9. Client API in use
-
-The Microsoft Agent Framework adapter uses the MCP client shipped with the
-framework (`MCPStdioTool` for local servers, `MCPStreamableHTTPTool` for HTTP
-servers). The MCP client is an infrastructure detail: `McpMailTools` owns it and
-exposes only `MailTools`.
-
-## 10. Mail MCP server
-
-The Gmail-backed Mail MCP server is a separate deliverable. Until it exists, the
-contract is honoured by `InMemoryMailTools` and the mock runtime mode. No Gmail
-code is ever added above the contract to compensate.
+See the [Mail agent specification](../agents/mail-agent.md),
+[Wiki agent specification](../agents/wiki-agent.md), and [MCP server hosting
+specification](mcp-server-hosting.md). Shared binding, connection, and registry
+behavior is described by the runtime's [MCP specification](https://github.com/ygo74/ai-enterprise-agent-runtime/blob/main/spec/mcp/client-and-server.md).
+Application implementations live in [`agents/mail/.../mcp/`](../../agents/mail/src/ai_agent_lab/mail/mcp/),
+[`agents/wiki/.../mcp/`](../../agents/wiki/src/ai_agent_lab/wiki/mcp/), and the
+runtime MCP client provider factories.
