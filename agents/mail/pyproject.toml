@@ -14,8 +14,8 @@ requires-python = ">=3.12"
 dependencies = [
     "ai-agent-lab-core",
     "mcp>=1.24,<2",
-    "ygo74-agent-runtime-agents[configuration,mcp]>=1.0,<2",
-    "ygo74-agent-runtime-security>=0.6",
+    "ygo74-agent-runtime-agents[configuration,mcp]>=0.8,<2",
+    "ygo74-agent-runtime-security>=0.8",
 ]
 
 [project.optional-dependencies]
@@ -32,7 +32,7 @@ native = ["mail-mcp-protocol"]
 # with the published wheel the next time anything is installed. The upper bound
 # still holds, since a pre-1.0 minor is free to move the API.
 http = [
-    "ygo74-agent-runtime-agents>=1.0,<2",
+    "ygo74-agent-runtime-agents>=0.8,<2",
     "fastapi>=0.115",
     "uvicorn[standard]>=0.30",
 ]
