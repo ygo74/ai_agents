@@ -11,6 +11,61 @@ The agent, the skills and the domain contain no Gmail, OAuth, IMAP or SMTP
 knowledge. That is enforced by `tests/architecture/test_distribution_boundaries.py`,
 not by convention.
 
+## BYOA: develop with MAF, then integrate
+
+The Mail Agent is a Microsoft Agent Framework agent. Its framework object is a
+normal MAF `Agent`, built in
+[`application/composition.py`](../agents/mail/src/ai_agent_lab/mail/application/composition.py).
+In a framework-only prototype, the developer supplies the chat client and tool
+functions, then calls MAF directly. These two application objects are the only
+parts omitted from this short example:
+
+```python
+from agent_framework import Agent
+
+async def run_agent(chat_client, search_mail):
+    agent = Agent(
+        chat_client,
+        "You help the mailbox owner.",
+        tools=[search_mail],
+    )
+    return await agent.run("Find unread mail from John.")
+```
+
+This is the framework-native development loop: change the agent or its tools,
+then run it with MAF. The tools in a real agent still need their own data and
+security rules.
+
+To work on turns without starting the runtime HTTP host, run the console entry
+point:
+
+```powershell
+.\.venvs\mail-agent-maf\Scripts\python.exe -m ai_agent_lab.mail.application
+```
+
+The console still uses this repository's shared runtime packages for permissions,
+tool policies, confirmations and MCP. It is independent from the HTTP worker,
+but it is not a zero-runtime-dependency version of the complete Mail Agent. For
+a small MAF agent with no runtime dependency, see
+`docs/examples/python-agentframework-fastapi/developer_app.py` in the
+`ai-enterprise-agent-runtime` repository.
+
+When adding managed HTTP hosting, the integration keeps the same native MAF
+agent and adds application wiring:
+
+1. `application/native.py` exports the trusted MAF agent factory.
+2. `AgentDefinition` names that factory and describes the Mail tools and control
+   point.
+3. `MailConversationFactory` creates the caller's conversation and connects
+   MAF approvals to Mail's ticket resolver and confirmation ledger.
+4. `ManagedAgentWorker` receives the definition, conversation factory and
+   operator settings. It supplies the shared HTTP routes, authentication,
+   discovery, conversation cache and shutdown lifecycle.
+
+Mail owns its permission and approval decisions. The runtime owns reusable
+hosting services. The full setup and run command are in
+[mail-agent-http.md](mail-agent-http.md).
+
 ## 1. Capabilities
 
 | Tool exposed to the model | Type  | Confirmation | What it does |

@@ -6,6 +6,9 @@ lets LibreChat talk to it, and later what lets an aggregator agent call it.
 Two things change, and only two: the caller is established by the transport
 instead of by `.env`, and a confirmation can no longer block a turn.
 
+For the developer path before HTTP hosting, see
+[BYOA: develop with MAF, then integrate](./mail-agent.md#byoa-develop-with-maf-then-integrate).
+
 ## What runs the HTTP surface
 
 Routes, OpenAI request shapes, JWT validation and discovery come from

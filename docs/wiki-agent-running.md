@@ -124,6 +124,9 @@ to `false` deliberately. The full reasoning is in
 Everything above drives one person at a console. To let LibreChat - or another
 agent - talk to it, run the OpenAI-compatible service instead:
 
+The steps from the native LangGraph console to managed HTTP hosting are in
+[BYOA: develop with LangGraph, then integrate](./wiki-agent.md#byoa-develop-with-langgraph-then-integrate).
+
 ```powershell
 $env:WIKI_AGENT_HTTP_API_KEY = "demo-key"
 .\.venvs\wiki-agent\Scripts\python.exe -m uvicorn `

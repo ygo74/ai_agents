@@ -27,6 +27,54 @@ belongs in the library; anything that encodes what your domain means belongs in
 your agent.** When you find yourself about to write a second copy of something,
 that is the signal it was a library concern.
 
+## BYOA: build the agent first, add runtime hosting later
+
+Bring Your Own Agent means that the agent remains a normal agent from its
+framework. You create its instructions, model and tools with the framework's
+public API. The runtime is added when you need shared HTTP hosting and
+conversation services; it does not replace `Agent(...)` or LangChain's
+`create_agent(...)`.
+
+```text
+Develop:    framework agent -> framework tools -> console or direct invocation
+Integrate:  trusted agent factory -> agent definition -> managed runtime worker -> HTTP
+```
+
+The console commands already provide a development entry point in this
+repository:
+
+```powershell
+python -m ai_agent_lab.mail.application
+wiki-agent
+```
+
+They run the MAF Mail Agent and the LangGraph Wiki Agent without starting the
+HTTP service. This is the normal place to iterate on an agent turn and its
+framework behaviour. It does **not** mean these complete agents have no runtime
+dependencies: their shared domain, permissions, confirmation and MCP code uses
+the runtime's common packages. The separate offline MAF example in the runtime
+repository (`docs/examples/python-agentframework-fastapi/developer_app.py`)
+shows a small native agent that can run with no runtime package installed.
+
+When the agent is ready for managed HTTP hosting, keep the framework agent and
+add the application integration:
+
+1. Export a trusted factory for the native agent and describe its tools and
+   control point in `AgentDefinition`.
+2. Build a conversation factory when the application needs per-user state,
+   confirmation tickets, result rendering or resource cleanup.
+3. Give the definition, worker settings and conversation factory to the
+   framework integration. It adds the shared routes, authentication,
+   discovery, conversation cache and shutdown handling.
+4. Keep domain permissions, tool policies and approval decisions in the agent
+   application. Do not put them in an HTTP handler or select the agent factory
+   from a request.
+
+The concrete paths are different at the framework edge: Mail uses the MAF
+`Agent` with `ManagedAgentWorker`; Wiki keeps its LangGraph graph and uses
+`LangGraphWorker`. See the BYOA sections in [mail-agent.md](mail-agent.md) and
+[wiki-agent.md](wiki-agent.md), and the HTTP guides for their service settings.
+
 ---
 
 ## Step 0 — Decide what the agent is *not* allowed to do
