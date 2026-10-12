@@ -25,7 +25,7 @@ def setup_logging(*, default_level: str = "INFO", level_name: str | None = None)
     root_logger = logging.getLogger()
     root_logger.setLevel(numeric_level)
     if not root_logger.handlers:
-        handler = logging.StreamHandler(sys.stdout)
+        handler: logging.Handler = logging.StreamHandler(sys.stdout)
         handler.setLevel(numeric_level)
         handler.setFormatter(logging.Formatter(_LOG_FORMAT))
         root_logger.addHandler(handler)
