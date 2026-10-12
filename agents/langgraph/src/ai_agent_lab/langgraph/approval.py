@@ -32,7 +32,7 @@ from ygo74.agent_runtime.domains.humanapproval.confirmation import (
 from ygo74.agent_runtime.domains.security.user_context import UserContext
 from ygo74.agent_runtime.integrations.langchain import LangGraphPendingApproval as PendingToolApproval
 
-__all__ = ["PendingToolApproval", "LangGraphApprovalTranslator"]
+__all__ = ["LangGraphApprovalTranslator", "PendingToolApproval"]
 
 _logger = logging.getLogger(__name__)
 
