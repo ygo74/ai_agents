@@ -41,10 +41,13 @@ def test_setup_logging_uses_environment_and_is_idempotent(monkeypatch) -> None:
 
 def test_setup_logging_updates_existing_handlers_without_adding_another(monkeypatch) -> None:
     root_logger = logging.getLogger()
+    application_logger = logging.getLogger("ai_agent_lab")
     existing_handler = logging.StreamHandler(io.StringIO())
 
     monkeypatch.setattr(root_logger, "handlers", [existing_handler])
     monkeypatch.setattr(root_logger, "level", logging.WARNING)
+    monkeypatch.setattr(application_logger, "level", application_logger.level)
+    monkeypatch.setattr(application_logger, "propagate", application_logger.propagate)
     monkeypatch.delenv("LOG_LEVEL", raising=False)
 
     setup_logging(default_level="ERROR")

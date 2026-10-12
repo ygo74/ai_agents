@@ -22,7 +22,7 @@ async def test_logs_loop_once_and_repeated_retrievals_at_debug(
 ) -> None:
     read_skill = MailReadSkill(mail_tools)
 
-    with caplog.at_level(logging.DEBUG):
+    with caplog.at_level(logging.DEBUG, logger="ai_agent_lab.mail"):
         await read_skill.read_messages(("m1", "m3"), owner)
 
     records = caplog.records
@@ -53,7 +53,7 @@ def test_logs_search_shape_without_search_content(caplog: pytest.LogCaptureFixtu
     private_subject = "Restricted board discussion"
     request = MailSearchRequest(keywords=private_keywords, subject_contains=private_subject)
 
-    with caplog.at_level(logging.DEBUG):
+    with caplog.at_level(logging.DEBUG, logger="ai_agent_lab.mail"):
         GmailQueryBuilder().build(request)
 
     assert "Building Gmail MCP search query" in caplog.text
@@ -68,7 +68,7 @@ def test_logs_oauth_configuration_without_credentials(caplog: pytest.LogCaptureF
     credential = "-".join(("opaque", "credential", "value"))
     settings = MailOAuthSettings(client_id=client_identifier, client_secret=SecretStr(credential))
 
-    with caplog.at_level(logging.DEBUG):
+    with caplog.at_level(logging.DEBUG, logger="ai_agent_lab.mail"):
         settings.require_client()
 
     assert "client_id_configured=True" in caplog.text
