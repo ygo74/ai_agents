@@ -36,17 +36,17 @@ The selected file replaces `.env`: missing values are not read from another file
 For a real mailbox, create private component files in the repository root:
 
 - `.env.mail-agent`: model settings, `MAIL_AGENT_MODE=mcp`, inbound HTTP OIDC settings,
-  and secret values referenced by the shared runtime's MCP configuration.
+  and the Keycloak OBO client secret.
 - `.env.gmail-mcp`: Google OAuth settings for the MCP server. The server uses JWT
   validation with `MAIL_MCP_AUTH_MODE=jwt`, the Keycloak realm issuer, and the
   `mail-mcp` audience. Never put Google credentials in the agent's environment.
 
-The shared runtime must implement generic OAuth token exchange before this flow
-can run. See the [runtime prerequisite](#runtime-prerequisite) below.
-The agent's confidential Keycloak client must be allowed to exchange the verified
-LibreChat access token for a token with audience `mail-mcp`. Keycloak and the MCP
-server must accept that exchange and validate the resulting token. Do not give the
-agent a Google credential or send the incoming LibreChat token directly to MCP.
+The shared runtime's `McpAgentRegistryLoader` builds its standard RFC 8693 source
+from the MCP server YAML. The confidential Keycloak client must be allowed to
+exchange the verified LibreChat access token for a token with audience
+`mail-mcp`. Keycloak and the MCP server must accept that exchange and validate the
+resulting token. Do not give the agent a Google credential or send the incoming
+LibreChat token directly to MCP.
 
 Run from the repository root, using your installed Mail environment:
 
@@ -83,40 +83,39 @@ conversation ID when answering the ticket.
 
 ## Connect the authenticated caller to Gmail through MCP
 
-### Runtime prerequisite
+### Configure the OBO source
 
-Token exchange belongs to `ai-enterprise-agent-runtime`. Mail contains no
-Keycloak exchange implementation and no `MAIL_AGENT_MCP_OBO_*` settings.
+The runtime owns the MCP connection and provides a standard RFC 8693
+`OAuthOnBehalfOfTokenSource`. `McpAgentRegistryLoader` builds it from each
+server's resolved settings. Mail can still inject a custom source when a host
+needs provider-specific behavior. The MCP server YAML contains the token
+endpoint, client ID, audience and scopes. Put only the client secret in
+`.env.mail-agent`:
 
-The runtime checkout currently linked to the Mail environment (commit `abb70a7`)
-only accepts `audience` and `scopes` in `McpDelegatedOAuthInput`. It requires an
-injected `OAuthOnBehalfOfTokenSource`; without one, calls fail with
-`delegated token exchange is not configured`. Its published configuration guide
-also describes that injected port. This is not yet generic YAML-configured exchange.
-The steps below prepare Keycloak, but the complete agent flow is **blocked** until
-the runtime containing built-in exchange is available and its exact YAML schema
-is used. Do not add guessed `token_url`, `client_id`, or `client_secret` fields:
-the currently linked loader rejects unknown fields.
+```dotenv
+MCP_MAIL_OBO_CLIENT_SECRET=<private-client-secret>
+```
 
 The valid resource part of `config/mcp/gmail-http.yaml` is:
 
 ```yaml
 authentication_mode: oauth_on_behalf_of
 authentication_oauth_on_behalf_of:
+  token_url: https://localhost:8443/realms/localhost_backends/protocol/openid-connect/token
+  client_id: mail-agent
+  client_secret: ${MCP_MAIL_OBO_CLIENT_SECRET}
   audience: mail-mcp
   scopes: []
 ```
 
-When the updated runtime is available, configure its generic exchange settings
-in this server description, using its documented field names. The required
-operator values for this test are:
+The exchange uses these operator values:
 
 | Value | Test setting |
 |---|---|
 | Grant | RFC 8693 token exchange, not client credentials or an Entra-specific OBO grant |
 | Token endpoint | `https://localhost:8443/realms/localhost_backends/protocol/openid-connect/token` |
 | Requesting client | `mail-agent` |
-| Client credential | A private environment secret referenced by the runtime YAML schema |
+| Client credential | `${MCP_MAIL_OBO_CLIENT_SECRET}` resolved from the private Mail environment file |
 | Subject token | The access token verified by the Mail HTTP host for this request |
 | Requested audience | `mail-mcp` |
 | Requested scopes | None for this initial test; use configured Keycloak scopes only |
@@ -181,6 +180,7 @@ adding that audience to the Keycloak token mapper):
 MAIL_AGENT_HTTP_OIDC_ISSUER=https://localhost:8443/realms/localhost_backends
 MAIL_AGENT_HTTP_OIDC_AUDIENCE=mail-agent
 MAIL_AGENT_MODE=mcp
+MCP_MAIL_OBO_CLIENT_SECRET=<private-client-secret>
 ```
 
 Configure the server's private `.env_mcp_server` separately:

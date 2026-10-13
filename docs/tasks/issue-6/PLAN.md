@@ -395,3 +395,64 @@ et diffs séparément. Ne pas déclarer un contrôle PASS s’il n’a pas été
   budgets de performance de la SPEC ne peuvent donc pas être déclarés validés.
 - Les deux worktrees contiennent des changements non commités sur les branches
   retenues. Aucun commit, push, merge, publication PyPI ou PR n’a été créé.
+
+## Suivi ciblé — OBO Mail via le registre MCP générique
+
+**Statut :** Implémenté et validé localement dans le worktree `ai_agents-issue-6`.
+
+- Le chemin Mail utilise `McpAgentRegistryLoader`, qui construit la source
+  RFC 8693 standard du runtime par serveur. L’injection directe de
+  `OAuthOnBehalfOfTokenSource` reste disponible comme override.
+- Le token endpoint, le client ID, l’audience et les scopes résident dans
+  `config/mcp/gmail-http.yaml`. Seul `client_secret` vient de l’environnement,
+  via `${MCP_MAIL_OBO_CLIENT_SECRET}`. La source runtime vérifie l’audience JWT
+  et masque les erreurs du fournisseur.
+- L’injection personnalisée traverse toujours `MailAgentApplicationFactory`,
+  `MailAgentCompositionRoot`, les compositions par principal et
+  `MailToolsProvider`.
+
+## Amendement — paramètres OBO dans le YAML MCP
+
+**Dépendance :** Le dépôt `ai-enterprise-agent-runtime`, branche
+`feature/27-mcp-configuration`, a ajouté les champs typés OBO au contrat serveur
+MCP et la factory de source par serveur à `McpAgentRegistryLoader`. Les
+validations et l’historique Git restent séparés dans chaque dépôt.
+
+- Déplacer `token_url` et `client_id` de l’environnement Mail vers
+  `config/mcp/gmail-http.yaml`. Garder `audience` et `scopes` dans ce YAML et
+  remplacer l’environnement du secret par
+  `client_secret: ${MCP_MAIL_OBO_CLIENT_SECRET}`.
+- Utiliser la source RFC 8693 générique construite par défaut par le runtime à
+  partir des settings OBO résolus. Garder l’injection explicite actuelle comme
+  override.
+- Garder dans `.env.example` et le fichier privé Mail uniquement la variable de
+  secret référencée par le YAML; mettre à jour les exemples et la documentation.
+- Ajouter des tests montrant que les valeurs YAML atteignent la source, que le
+  secret provient exclusivement de l’environnement et reste masqué, et que
+  l’override injecté continue de fonctionner.
+- Validations finales : 63 tests runtime ciblés et 21 tests Mail ciblés passent.
+  Ruff, Ruff format, le smoke example runtime et les contrôles de diff
+  (CRLF-aware côté Mail) passent. Ces tests ne contactent aucun fournisseur OAuth
+  ni serveur MCP distant. Aucun commit, push ou PR n’a été créé.
+
+## Amendement approuvé — source RFC 8693 dans le runtime
+
+**Statut :** Implémenté et validé le 2026-10-13.
+
+- Le runtime devient propriétaire de `OAuthTokenExchangeSettings` et de
+  `Rfc8693OAuthOnBehalfOfTokenSource`, et le registre construit cette source
+  standard par défaut depuis les settings MCP résolus.
+- Mail supprime l’adaptateur RFC 8693 local, conserve son override explicite
+  `OAuthOnBehalfOfTokenSource` et garde la configuration non secrète dans
+  `gmail-http.yaml`, avec le seul secret référencé depuis l’environnement.
+- L’ordre de livraison reste runtime puis Mail; les branches, tests et
+  historiques restent séparés. Les validations RFC 8693 avec transport HTTP
+  simulé appartiennent au runtime; Mail valide le branchement et l’override.
+- Validations après déplacement : 108 tests ciblés passent dans le runtime et
+  18 tests ciblés passent dans Mail. Ruff, Ruff format, l’import optionnel sans
+  HTTPX, le smoke example hors réseau et les contrôles de diff passent. Aucun
+  serveur OAuth ou MCP distant n’a été contacté.
+- Vérification de suivi de l’invariant scopes : les mêmes 108 tests runtime et
+  18 tests Mail passent; Ruff et Ruff format passent sur les fichiers Python
+  modifiés. Le contrôle Ruff global relève 36 problèmes dans des exemples
+  inchangés, hors périmètre de l’amendement.

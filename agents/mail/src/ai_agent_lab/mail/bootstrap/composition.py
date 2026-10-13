@@ -21,6 +21,7 @@ from pathlib import Path
 
 from agent_framework import Agent, SupportsChatGetResponse, ToolApprovalMiddleware
 from ygo74.agent_runtime.domains.auth.agent_principal import AgentPrincipal
+from ygo74.agent_runtime.domains.auth.tokens import OAuthOnBehalfOfTokenSource
 from ygo74.agent_runtime.domains.configuration.directory import ConfigurationDirectory
 from ygo74.agent_runtime.domains.configuration.manifests import AgentManifestLoader, SkillManifestLoader
 from ygo74.agent_runtime.domains.contracts.capability_registry import SkillDescriptor, SkillRegistry
@@ -109,16 +110,19 @@ class MailAgentCompositionRoot:
         mail_tools: MailTools | None = None,
         reasoner: TextReasoner | None = None,
         base_path: Path | None = None,
+        delegated_token_source: OAuthOnBehalfOfTokenSource | None = None,
     ) -> None:
         _logger.info("Initializing Mail Agent composition root")
         _logger.debug(
             "MailAgentCompositionRoot.__init__ arguments: mode=%s, principal=%s, "
-            "mail_tools_override=%s, reasoner_override=%s, base_path=%s, chat_client_type=%s",
+            "mail_tools_override=%s, reasoner_override=%s, base_path=%s, "
+            "delegated_token_source_supplied=%s, chat_client_type=%s",
             settings.mode.value,
             principal.subject if principal is not None else settings.user_id,
             mail_tools is not None,
             reasoner is not None,
             base_path,
+            delegated_token_source is not None,
             type(chat_client).__name__,
         )
         self._settings = settings
@@ -128,6 +132,7 @@ class MailAgentCompositionRoot:
         self._mail_tools_override = mail_tools
         self._reasoner_override = reasoner
         self._base_path = base_path
+        self._delegated_token_source = delegated_token_source
 
     def for_principal(self, principal: AgentPrincipal) -> MailAgentCompositionRoot:
         """Return a root that assembles the agent for another caller.
@@ -145,6 +150,7 @@ class MailAgentCompositionRoot:
             mail_tools=self._mail_tools_override,
             reasoner=self._reasoner_override,
             base_path=self._base_path,
+            delegated_token_source=self._delegated_token_source,
         )
 
     def manifest(self) -> AgentManifest:
@@ -178,7 +184,9 @@ class MailAgentCompositionRoot:
             self._settings,
             MailDatasetLoader(),
             owner_id=principal.subject,
+            manifest=manifest,
             server=MailToolsProvider.server_for(manifest) if self._settings.mode is MailAgentMode.MCP else None,
+            delegated_token_source=self._delegated_token_source,
         )
         mail_tools = self._mail_tools(provider)
         skills = self._skills(manifest, mail_tools, policy, audit)

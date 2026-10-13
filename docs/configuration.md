@@ -255,15 +255,13 @@ The delivered `gmail-http` binding uses the literal URL
 `http://127.0.0.1:9100/mcp`, `authentication_mode: oauth_on_behalf_of`, and the
 `mail-mcp` audience. The Mail Agent exchanges a verified inbound Keycloak access
 token for an MCP token through the shared runtime; it does not forward the caller's
-original token. Configure the agent's inbound OIDC validation and the runtime's
-generic exchange settings in the MCP YAML,
-and configure the MCP server to validate JWTs from the same issuer with audience
-`mail-mcp`. The server also requires `MAIL_MCP_RESOURCE_URL`.
-
-The currently linked runtime accepts only `audience` and `scopes` in the OBO block
-and still requires an injected token source. Mail no longer supplies a custom
-Keycloak implementation. End-to-end OBO is blocked until the runtime with built-in
-exchange is available. See the [runtime prerequisite and Keycloak setup](../doc/users/mail-agent.md#connect-the-authenticated-caller-to-gmail-through-mcp).
+original token. Configure the agent's inbound OIDC validation. The runtime
+builds its RFC 8693 source from the settings in the MCP server YAML: token
+endpoint, client ID, audience and scopes. Keep only
+`MCP_MAIL_OBO_CLIENT_SECRET` in the private Mail environment file, referenced
+from YAML as `${MCP_MAIL_OBO_CLIENT_SECRET}`. Configure the MCP server to
+validate JWTs from the same issuer with audience `mail-mcp`. The server also
+requires `MAIL_MCP_RESOURCE_URL`. See the [Keycloak setup](../doc/users/mail-agent.md#connect-the-authenticated-caller-to-gmail-through-mcp).
 
 A shared API key remains an explicit alternative for deployments that do not need
 caller identity propagation; it is not the delivered default. In that mode, use a

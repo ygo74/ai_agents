@@ -555,9 +555,10 @@ Use **Mail MCP Gmail - HTTP** to start the Gmail server at
 `http://127.0.0.1:9100/mcp`. Select the MCP server environment file containing
 `MAIL_MCP_AUTH_MODE=jwt`, the Keycloak OIDC issuer, and audience `mail-mcp`.
 Complete Google consent first. For authenticated HTTP calls, start **Mail Agent —
-HTTP** with the Mail Agent environment file and the shared-runtime OBO settings
-in MCP YAML. The currently linked runtime still needs an injected exchange source;
-end-to-end OBO is blocked until the generic exchange runtime is available.
+HTTP** with the Mail Agent environment file. Mail builds
+the RFC 8693 source from the settings in `config/mcp/gmail-http.yaml`; only the
+client secret is resolved from the private environment file as
+`${MCP_MAIL_OBO_CLIENT_SECRET}`.
 See [Mail MCP setup](mail-mcp-servers.md#local-http-setup) and the
 [HTTP hosting guide](mail-agent-http.md).
 
@@ -567,6 +568,8 @@ the shared server selected by those manifests, and reads transport and
 validates the incoming bearer token and exchanges it for a token intended for the
 MCP audience. The console has no inbound caller token and cannot use this OBO
 profile; run it in mock mode or select a separately configured non-OBO profile.
+The runtime builds its RFC 8693 source from the MCP server settings; set only
+`MCP_MAIL_OBO_CLIENT_SECRET` in the private environment file.
 The Gmail MCP server still uses one Google credential for one mailbox.
 
 Create `.env.mail-agent` from `.env.example` and set the model provider and inbound

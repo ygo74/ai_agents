@@ -23,7 +23,7 @@
 #
 # Configure the server environment with MAIL_MCP_AUTH_MODE=jwt,
 # MAIL_MCP_OIDC_ISSUER, MAIL_MCP_OIDC_AUDIENCE=mail-mcp, and MAIL_MCP_RESOURCE_URL.
-# See doc/users/mail-agent.md for the shared-runtime prerequisite and Keycloak setup.
+# See doc/users/mail-agent.md for the host OBO source and Keycloak setup.
 #
 # This authenticates the caller to the MCP server. The current Gmail server still
 # holds one Google OAuth credential and serves that mailbox; it does not yet map
@@ -48,11 +48,13 @@ transport: http
 url: http://127.0.0.1:9100/mcp
 request_timeout_seconds: 30
 authentication_mode: oauth_on_behalf_of
-# The currently linked runtime accepts only audience/scopes here and still
-# requires an injected token source. A runtime with built-in generic exchange
-# is required for end-to-end OBO; no Mail-specific source is supplied.
-# Add exchange settings only according to that runtime version's YAML schema.
+# The host supplies an RFC 8693 source factory to McpAgentRegistryLoader.
+# Non-secret client settings live beside the MCP endpoint. The secret is resolved
+# from the selected private environment file and is never stored as YAML text.
 authentication_oauth_on_behalf_of:
+  token_url: https://localhost:8443/realms/localhost_backends/protocol/openid-connect/token
+  client_id: mail-agent
+  client_secret: ${MCP_MAIL_OBO_CLIENT_SECRET}
   audience: mail-mcp
   scopes: []
 

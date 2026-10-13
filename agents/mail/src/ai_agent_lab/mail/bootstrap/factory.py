@@ -6,6 +6,7 @@ from pathlib import Path
 
 from agent_framework import SupportsChatGetResponse
 from ygo74.agent_runtime.domains.auth.agent_principal import AgentPrincipal
+from ygo74.agent_runtime.domains.auth.tokens import OAuthOnBehalfOfTokenSource
 
 from ai_agent_lab.core.config.azure_credentials import AzureIdentityCredentialProvider
 from ai_agent_lab.maf.chat_client import MafChatClientFactory
@@ -37,6 +38,7 @@ class MailAgentApplicationFactory:
         chat_client: SupportsChatGetResponse | None = None,
         principal: AgentPrincipal | None = None,
         base_path: Path | None = None,
+        delegated_token_source: OAuthOnBehalfOfTokenSource | None = None,
     ) -> MailAgentCompositionRoot:
         """Build a composition root with one consistent set of dependencies."""
         return MailAgentCompositionRoot(
@@ -44,4 +46,5 @@ class MailAgentApplicationFactory:
             chat_client if chat_client is not None else self.build_chat_client(),
             principal=principal,
             base_path=base_path if base_path is not None else Path.cwd(),
+            delegated_token_source=delegated_token_source,
         )

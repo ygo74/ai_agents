@@ -199,3 +199,30 @@ Pour les consommateurs Python, l’API publique générique doit donner aux deux
 Aucune question bloquante pour établir la SPEC. Le choix précis entre adaptation des types d’erreurs existants et traduction à la frontière d’application, la forme typée des factories de dialecte, la plage de versions LangChain/LangGraph et la surface publique de la façade native seront fixés dans le PLAN après approbation de cette portée et vérification des call sites concernés.
 
 Le protocole précis de l’adaptateur d’approbation (types génériques de résultat, appels de reprise/refus et extraction du texte final) et le point d’injection de conversation avancée seront détaillés dans le PLAN à partir des tests MAF et LangGraph. Le PLAN devra démontrer que les mécanismes communs sont réutilisés, que l’intégration reste séparée et que le package de base ne prend aucune dépendance de framework.
+
+## Amendement approuvé — configuration OBO du serveur MCP
+
+Pour le flux Mail OBO, le YAML du serveur MCP contient toute la configuration
+non secrète du client d’échange : `token_url`, `client_id`, `audience` et
+`scopes`. Le seul secret, `client_secret`, est une référence exacte à une
+variable d’environnement, par exemple `${MCP_MAIL_OBO_CLIENT_SECRET}`. Le
+chargeur du runtime résout cette valeur sans l’exposer dans les erreurs ou la
+représentation des settings.
+
+Le runtime construit par défaut une source RFC 8693 par serveur à partir des
+settings résolus remis par `McpAgentRegistryLoader`. Une source ou une factory
+explicitement injectée par l’hôte reste possible comme override. Cela conserve
+la transmission du jeton vérifié de l’utilisateur tout en plaçant la
+configuration de chaque client MCP avec la définition du serveur.
+
+## Amendement approuvé — échange RFC 8693 fourni par le runtime
+
+La source RFC 8693 générique et le type de settings résolus
+`OAuthTokenExchangeSettings` sont fournis par le domaine d’authentification
+générique de `ai-enterprise-agent-runtime`.
+Le chargeur du registre construit cette source par défaut depuis le YAML MCP.
+Mail conserve sa composition et son point d’override
+`OAuthOnBehalfOfTokenSource`, sans porter sa propre implémentation HTTP RFC
+8693. Les applications qui utilisent un mécanisme d’échange spécifique peuvent
+toujours injecter une source ou une factory personnalisée. L’utilisateur a
+approuvé cette modification de frontière entre dépôts le 2026-10-13.

@@ -68,11 +68,10 @@ before the HTTP agent. The delivered skill manifests all name
 `mcp_server: gmail-http`; they select one shared server, independently of
 environment variables. `config/mcp/gmail-http.yaml` uses delegated OAuth
 (`oauth_on_behalf_of`) with audience `mail-mcp`. The HTTP host verifies the incoming
-caller token; token exchange must be implemented and configured by the shared
-runtime, not by Mail-specific Keycloak code. The currently linked runtime still
-requires an injected exchange source and cannot run this flow from YAML alone;
-use the runtime prerequisite and Keycloak setup in the user guide below.
-The server must validate JWTs from the same
+caller token and the runtime builds the standard RFC 8693 source from the server
+configuration. YAML holds the token endpoint, client ID, target
+audience and scopes; set only `MCP_MAIL_OBO_CLIENT_SECRET` in the private
+environment file. The server must validate JWTs from the same
 issuer and audience `mail-mcp`; see [local MCP setup](mail-mcp-servers.md#local-http-setup)
 and [the Mail Agent user guide](../doc/users/mail-agent.md#connect-the-authenticated-caller-to-gmail-through-mcp).
 The current Gmail MCP server still uses one Google credential for one mailbox; OBO

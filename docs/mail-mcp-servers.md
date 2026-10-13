@@ -30,10 +30,11 @@ To use another binding, update all delivered Mail skill references together.
 URL `http://127.0.0.1:9100/mcp`. The delivered configuration uses OAuth on behalf
 of the authenticated HTTP caller (`oauth_on_behalf_of`) and requests the audience
 `mail-mcp`. It requires the Mail Agent HTTP host to authenticate the caller and
-exchange that verified Keycloak token; a console call has no such caller token.
-The currently linked runtime has only the OBO port, not built-in exchange.
-End-to-end OBO needs the runtime version with generic YAML-configured exchange;
-Mail does not supply a Keycloak-specific source.
+exchange that verified Keycloak token through the runtime's standard RFC 8693
+token source; a console call has no such caller token. The YAML holds the exchange endpoint,
+client ID, audience and scopes; set only `MCP_MAIL_OBO_CLIENT_SECRET` in the
+Mail Agent's private environment file. The registry builds the source from each
+server's resolved settings.
 See the [Mail Agent user guide](../doc/users/mail-agent.md#connect-the-authenticated-caller-to-gmail-through-mcp)
 for the complete Keycloak exchange configuration.
 
@@ -56,8 +57,8 @@ Start the server from the repository root, after completing Google consent:
   --host 127.0.0.1 --port 9100 --owner "<test-user-Keycloak-sub>"
 ```
 
-Then start the Mail HTTP host with `MAIL_AGENT_MODE=mcp` and the agent's OBO
-settings once the runtime prerequisite is met. Use the test user's Keycloak `sub`
+Then start the Mail HTTP host with `MAIL_AGENT_MODE=mcp` and the client secret
+from `.env.mail-agent`. Use the test user's Keycloak `sub`
 as `--owner`, since the server refuses other mailbox identifiers.
 The server validates the exchanged JWT, not the original LibreChat token.
 For a container, make the canonical issuer reachable and trusted from the container
