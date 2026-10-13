@@ -108,7 +108,7 @@ $env:OPENAI_API_KEY = "<your key>"
 $env:OPENAI_CHAT_MODEL = "gpt-4o-mini"
 
 .\.venvs\wiki-agent\Scripts\wiki-agent.exe
-.\.venvs\mail-agent\Scripts\python.exe -m ai_agent_lab.mail.application
+.\.venvs\mail-agent\Scripts\python.exe -m ai_agent_lab.mail.adapters.cli
 ```
 
 From VS Code, press **F5** and pick a configuration from `.vscode/launch.json`.

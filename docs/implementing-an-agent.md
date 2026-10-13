@@ -4,8 +4,9 @@ This is the order in which an agent is actually built here, and the reason each
 step comes where it does. The Mail Agent and the Wiki Agent are the worked
 examples: everything below points at real files in one or both of them.
 
-Two agents exist, on two different frameworks, and they share almost all of their
-structure. That is not a coincidence — it is the result of putting the
+Two agents exist, on two different frameworks, and they share the same boundary
+principles. Mail now uses explicit domain, application, infrastructure, adapter
+and bootstrap layers; Wiki keeps its existing layout. This is the result of putting the
 cross-cutting concerns in [`ygo74-agent-runtime`](https://pypi.org/project/ygo74-agent-runtime/)
 and keeping the framework at the very edge. A third agent should feel like
 filling in a shape that already exists.
@@ -44,7 +45,7 @@ The console commands already provide a development entry point in this
 repository:
 
 ```powershell
-python -m ai_agent_lab.mail.application
+python -m ai_agent_lab.mail.adapters.cli
 wiki-agent
 ```
 
@@ -169,7 +170,7 @@ confirmation gate and the audit trail read the same catalogue, which is what
 keeps them from disagreeing.
 
 **Worked examples:** [`wiki/catalog.py`](../agents/wiki/src/ai_agent_lab/wiki/catalog.py),
-[`mail/catalog.py`](../agents/mail/src/ai_agent_lab/mail/catalog.py).
+[`mail/application/operations.py`](../agents/mail/src/ai_agent_lab/mail/application/operations.py).
 
 ---
 
@@ -195,7 +196,7 @@ the target is Data Center; they differ in authentication, REST version and half
 their endpoints, and none of that reaches above this line.
 
 **Worked examples:** [`wiki/tools_port.py`](../agents/wiki/src/ai_agent_lab/wiki/tools_port.py),
-[`mail/tools_port.py`](../agents/mail/src/ai_agent_lab/mail/tools_port.py).
+[`mail/application/ports/mail_tools.py`](../agents/mail/src/ai_agent_lab/mail/application/ports/mail_tools.py).
 
 ---
 
@@ -208,9 +209,16 @@ leak upward into an interface the fixture also has to satisfy.
 
 **Then the MCP implementation.** This is the only place that knows a protocol
 exists. The library provides `McpConnection`, `McpServerBinding`,
-`McpServerBindingLoader`, `DialectRegistry` and `PinnedScopeOAuthProvider`, so
+`McpServerBindingLoader`, `McpServerConfigurationLoader`, `DialectRegistry`
+and `McpOAuthProviderFactory`, so
 what you write is the mapping between your domain models and the tool payloads —
 not the transport.
+
+Mail uses
+[`MailMcpConnectionFactory`](../agents/mail/src/ai_agent_lab/mail/infrastructure/mcp/connection.py)
+to apply runtime YAML timeout, resolved headers and network options. Its OAuth
+provider comes from the runtime factory; it has no separate OAuth or bearer
+settings implementation. See [Mail MCP ownership](../doc/contributors/mail-agent.md#mcp-dialect-ownership).
 
 An agent **never** calls Confluence, Gmail, a database or an enterprise API
 directly. It calls tools exposed by an MCP server. That boundary is what lets the
@@ -233,7 +241,7 @@ rule-based decisions belong in code. Ask the model only for what it is genuinely
 better at — which is reading and writing prose.
 
 **Worked examples:** [`wiki/capabilities/`](../agents/wiki/src/ai_agent_lab/wiki/capabilities),
-[`mail/capabilities/`](../agents/mail/src/ai_agent_lab/mail/capabilities).
+[`mail/adapters/capabilities/`](../agents/mail/src/ai_agent_lab/mail/adapters/capabilities).
 
 ---
 
@@ -253,7 +261,7 @@ framework adapter turns into tools, and what discovery turns into the advertised
 capability list.
 
 **Worked examples:** [`wiki/skills/`](../agents/wiki/src/ai_agent_lab/wiki/skills),
-[`mail/skills/`](../agents/mail/src/ai_agent_lab/mail/skills).
+[`mail/application/skills/`](../agents/mail/src/ai_agent_lab/mail/application/skills).
 
 ---
 
@@ -356,7 +364,7 @@ Derive the advertised security from the *real* configuration with
 cannot advertise a scheme the service does not accept.
 
 **Worked examples:** [`wiki/application/entrypoints/service.py`](../agents/wiki/src/ai_agent_lab/wiki/application/entrypoints/service.py),
-[`mail/application/entrypoints/service.py`](../agents/mail/src/ai_agent_lab/mail/application/entrypoints/service.py),
+[`mail/bootstrap/service.py`](../agents/mail/src/ai_agent_lab/mail/bootstrap/service.py),
 and [mail-agent-http.md](mail-agent-http.md) / [wiki-agent-http.md](wiki-agent-http.md).
 
 ---

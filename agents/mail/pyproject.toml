@@ -38,7 +38,7 @@ http = [
 ]
 
 [project.scripts]
-mail-agent = "ai_agent_lab.mail.application.cli_entrypoint:main"
+mail-agent = "ai_agent_lab.mail.adapters.cli.entrypoint:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/ai_agent_lab"]

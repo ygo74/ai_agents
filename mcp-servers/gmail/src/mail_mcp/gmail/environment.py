@@ -22,9 +22,12 @@ class EnvironmentFile:
 
     def __init__(self, path: Path | None = None) -> None:
         self._path = path or Path(ENV_FILE)
+        self._required = path is not None
 
     def load(self) -> bool:
         """Load the file when it exists, never overriding what is already set."""
         if not self._path.is_file():
+            if self._required:
+                raise FileNotFoundError(f"Gmail MCP environment file does not exist: {self._path}")
             return False
         return load_dotenv(self._path, override=False)

@@ -1,88 +1,149 @@
-"""Tests of how the Mail Agent proves itself to an MCP server over HTTP.
+"""Mail consumes MCP authentication and transport settings from server YAML."""
 
-Two servers can sit behind an HTTP binding, and they need different things.
-Google's endpoint wants the authorisation-code flow; the server this repository
-deploys next to the agent wants the shared secret the two were given. Guessing
-between them is not possible, so the deployment says which - and saying nothing
-keeps the behaviour every existing deployment already had.
-"""
-
-from __future__ import annotations
+from dataclasses import replace
+from pathlib import Path
+from unittest.mock import Mock, patch
 
 import pytest
+from ygo74.agent_runtime.domains.configuration.directory import ConfigurationDirectory
+from ygo74.agent_runtime.domains.configuration.manifests import AgentManifestLoader, SkillManifestLoader
+from ygo74.agent_runtime.domains.contracts.manifests import AgentManifest
+from ygo74.agent_runtime.domains.mcp.configuration import McpAuthenticationMode
+from ygo74.agent_runtime.domains.security.permissions import PermissionRegistry
 
-from ai_agent_lab.mail.config.settings import MailMcpAuthScheme, MailMcpSettings
-from ai_agent_lab.mail.mail_errors import MailAgentConfigurationError
-from ai_agent_lab.mail.mcp.bearer import BearerTokenAuth
+from ai_agent_lab.mail.bootstrap.mail_tools_provider import MailToolsProvider
+from ai_agent_lab.mail.domain.permissions import MailPermission
+from ai_agent_lab.mail.domain.policies.security_floor import MailSecurityFloor
+from ai_agent_lab.mail.infrastructure.configuration.settings import MailAgentSettings
+from ai_agent_lab.mail.infrastructure.inmemory.dataset import MailDatasetLoader
+from ai_agent_lab.mail.infrastructure.mcp.configuration import load_configuration
+from ai_agent_lab.mail.infrastructure.mcp.connection import MailMcpConnectionFactory
+from ai_agent_lab.mail.infrastructure.mcp.errors import McpBindingError
 
-SECRET = "a-shared-deployment-secret"  # noqa: S105 - a fixture, not a credential
+ROOT = Path(__file__).resolve().parents[2]
+SECRET = "fixture-value-not-a-real-key"  # noqa: S105
 
 
-class TestTheSchemeIsChosenByConfiguration:
-    """Never inferred from the URL: two servers can share a shape."""
+@pytest.fixture
+def directory() -> ConfigurationDirectory:
+    return ConfigurationDirectory(ROOT / "config")
 
-    def test_oauth_is_the_default(self):
-        """Before this setting existed, an HTTP binding always meant Google."""
-        assert MailMcpSettings(_env_file=None).auth_scheme is MailMcpAuthScheme.OAUTH
 
-    def test_bearer_is_selected_explicitly(self):
-        settings = MailMcpSettings(_env_file=None, auth_scheme="bearer", http_token=SECRET)
+@pytest.fixture
+def manifest(directory: ConfigurationDirectory) -> AgentManifest:
+    skills = SkillManifestLoader(PermissionRegistry(MailPermission.declared()), MailSecurityFloor().build())
+    return AgentManifestLoader(directory, skills).load("mail")
 
-        assert settings.auth_scheme is MailMcpAuthScheme.BEARER
-        assert settings.bearer_token() == SECRET
+
+def test_skills_select_gmail_http_and_ignore_the_old_environment_selector(manifest, monkeypatch):
+    monkeypatch.setenv("MAIL_MCP_SERVER", "gmail-api")
+    assert MailToolsProvider.server_for(manifest) == "gmail-http"
+
+
+@pytest.mark.parametrize("server", [None, "gmail-api"])
+def test_missing_or_conflicting_skill_servers_are_refused(manifest, server):
+    changed = manifest.skills[0].model_copy(update={"mcp_server": server})
+    with pytest.raises(McpBindingError, match=r"mcp_server|one MCP server"):
+        MailToolsProvider.server_for(manifest.model_copy(update={"skills": (changed, *manifest.skills[1:])}))
+
+
+def test_http_yaml_loads_delegated_oauth_configuration(directory):
+    configuration = load_configuration(directory, "gmail-http", environment={})
+    assert configuration.binding.url == "http://127.0.0.1:9100/mcp"
+    assert configuration.authentication_mode is McpAuthenticationMode.OAUTH_ON_BEHALF_OF
+    assert configuration.delegated_oauth.audience == "mail-mcp"
+    assert configuration.delegated_oauth.scopes == ()
+    assert configuration.request_timeout_seconds == 30
+
+
+def test_stdio_yaml_needs_no_http_credentials(directory):
+    configuration = load_configuration(directory, "gmail-api", environment={})
+    assert configuration.authentication_mode is McpAuthenticationMode.NONE
+    assert not configuration.headers
+
+
+def test_connection_receives_all_yaml_options(tmp_path):
+    root = tmp_path / "config"
+    (root / "mcp").mkdir(parents=True)
+    (root / "mcp" / "custom.yaml").write_text(
+        "transport: http\nurl: http://127.0.0.1:9100/mcp\n"
+        "capabilities: [list_labels]\ntools: {list_labels: list_labels}\n"
+        "request_timeout_seconds: 19\nauthentication_mode: api_key\n"
+        "authentication_api_key:\n  header_name: Authorization\n  value: ${AUTH}\n"
+        "headers: {X-Agent: mail}\nnetwork: {proxy_url: http://proxy.example.test:8080}\n",
+        encoding="utf-8",
+    )
+    configuration = load_configuration(ConfigurationDirectory(root), "custom", environment={"AUTH": f"Bearer {SECRET}"})
+    with patch("ai_agent_lab.mail.infrastructure.mcp.connection.McpConnection") as connection:
+        result = MailMcpConnectionFactory().build(configuration)
+    assert result is connection.return_value
+    assert connection.call_args.kwargs["timeout_seconds"] == 19
+    assert connection.call_args.kwargs["auth"] is None
+    assert dict(connection.call_args.kwargs["headers"]) == {"Authorization": f"Bearer {SECRET}", "X-Agent": "mail"}
+    assert connection.call_args.kwargs["network"].proxy_url == "http://proxy.example.test:8080"
+
+
+def test_oauth_factory_receives_yaml_configuration(directory):
+    configuration = load_configuration(directory, "gmail", environment={"MAIL_MCP_OAUTH_CLIENT_SECRET": SECRET})
+    with (
+        patch("ai_agent_lab.mail.infrastructure.mcp.connection.McpOAuthProviderFactory") as oauth,
+        patch("ai_agent_lab.mail.infrastructure.mcp.connection.McpConnection") as connection,
+    ):
+        MailMcpConnectionFactory().build(configuration)
+    oauth.return_value.build.assert_called_once_with(configuration.binding.url, configuration.oauth)
+    assert connection.call_args.kwargs["auth"] is oauth.return_value.build.return_value
+
+
+def test_connection_passes_delegated_oauth_configuration_to_runtime(tmp_path):
+    root = tmp_path / "config"
+    (root / "mcp").mkdir(parents=True)
+    (root / "mcp" / "obo.yaml").write_text(
+        "transport: http\nurl: https://mail.example.test/mcp\n"
+        "capabilities: [list_labels]\ntools: {list_labels: list_labels}\n"
+        "authentication_mode: oauth_on_behalf_of\n"
+        "authentication_oauth_on_behalf_of: {audience: mail-mcp, scopes: [mail.read]}\n",
+        encoding="utf-8",
+    )
+    configuration = load_configuration(ConfigurationDirectory(root), "obo", environment={})
+    with patch("ai_agent_lab.mail.infrastructure.mcp.connection.McpConnection") as connection:
+        MailMcpConnectionFactory().build(configuration)
+
+    assert connection.call_args.kwargs["delegated_oauth"] == configuration.delegated_oauth
+    assert "delegated_token_source" not in connection.call_args.kwargs
+
+
+def test_connection_rejects_missing_delegated_oauth_settings(directory):
+    configuration = load_configuration(directory, "gmail-http", environment={})
+    configuration = replace(configuration, delegated_oauth=None)
+
+    with pytest.raises(McpBindingError, match="missing delegated OAuth settings"):
+        MailMcpConnectionFactory().build(configuration)
+
+
+def test_provider_uses_yaml_not_legacy_environment_settings(directory, manifest, monkeypatch):
+    monkeypatch.setenv("MAIL_MCP_SERVER", "gmail-api")
+    monkeypatch.setenv("MAIL_MCP_REQUEST_TIMEOUT_SECONDS", "1")
+    monkeypatch.setenv("MAIL_MCP_AUTH_SCHEME", "api_key")
+    monkeypatch.setenv("MAIL_MCP_HTTP_AUTHORIZATION", "unused-legacy-value")
+    dialects = Mock()
+    provider = MailToolsProvider(
+        MailAgentSettings(mode="mcp"),
+        MailDatasetLoader(),
+        server=MailToolsProvider.server_for(manifest),
+        dialects=dialects,
+    )
+    with patch("ai_agent_lab.mail.infrastructure.mcp.connection.McpConnection") as connection:
+        assert provider.build(base_path=ROOT) is dialects.build.return_value
+    binding = dialects.build.call_args.args[0]
+    assert binding.server == "gmail-http"
+    assert connection.call_args.kwargs["timeout_seconds"] == 30
+    assert connection.call_args.kwargs["delegated_oauth"].audience == "mail-mcp"
+    assert "delegated_token_source" not in connection.call_args.kwargs
+    assert provider.capabilities(base_path=ROOT) == binding.capabilities
 
 
 @pytest.mark.security
-class TestABearerDeploymentNeedsASecret:
-    """Half-configured is refused, because the symptom would appear late."""
-
-    def test_a_missing_secret_is_refused_with_an_actionable_message(self):
-        settings = MailMcpSettings(_env_file=None, auth_scheme="bearer")
-
-        with pytest.raises(MailAgentConfigurationError) as refusal:
-            settings.bearer_token()
-
-        assert "MAIL_MCP_HTTP_TOKEN" in str(refusal.value)
-
-    def test_a_blank_secret_is_not_a_secret(self):
-        blank = "   "
-        settings = MailMcpSettings(_env_file=None, auth_scheme="bearer", http_token=blank)
-
-        with pytest.raises(MailAgentConfigurationError):
-            settings.bearer_token()
-
-
-@pytest.mark.security
-class TestTheSecretStaysOutOfSight:
-    """A shared secret in a log is a shared secret in an incident report."""
-
-    def test_the_settings_never_print_it(self):
-        settings = MailMcpSettings(_env_file=None, auth_scheme="bearer", http_token=SECRET)
-
-        assert SECRET not in repr(settings)
-        assert SECRET not in str(settings)
-
-    def test_the_credential_never_prints_it(self):
-        auth = BearerTokenAuth(SECRET)
-
-        assert SECRET not in repr(auth)
-        assert SECRET not in str(auth)
-        assert SECRET not in f"auth={auth}"
-
-    def test_an_empty_credential_is_refused(self):
-        with pytest.raises(ValueError, match="cannot be empty"):
-            BearerTokenAuth("")
-
-
-class TestTheCredentialTravelsInOnePlace:
-    """The header, and nowhere else."""
-
-    def test_it_is_attached_to_the_outgoing_request(self):
-        import httpx
-
-        request = httpx.Request("POST", "http://mail-mcp-gmail:9100/mcp")
-
-        flow = BearerTokenAuth(SECRET).auth_flow(request)
-        prepared = next(flow)
-
-        assert prepared.headers["Authorization"] == f"Bearer {SECRET}"
+@pytest.mark.parametrize("name", ["../gmail-http", "nested/gmail-http", "..\\gmail-http", "gmail-http."])
+def test_server_configuration_names_cannot_escape_the_mcp_directory(directory, name):
+    with pytest.raises(McpBindingError, match="unsafe"):
+        load_configuration(directory, name, environment={})

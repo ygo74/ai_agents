@@ -16,14 +16,14 @@ from ygo74.agent_runtime.domains.humanapproval.confirmation import (
 from ygo74.agent_runtime.domains.security.user_context import UserContext
 
 from ai_agent_lab.maf.tool_adapter import SkillToolAdapter
-from ai_agent_lab.mail.application.composition import MailAgentCompositionRoot
-from ai_agent_lab.mail.capabilities.read_capabilities import CLASSIFY_MAIL, SUMMARISE_MAIL
-from ai_agent_lab.mail.capabilities.write_capabilities import DRAFT_MAIL_REPLY
-from ai_agent_lab.mail.catalog import MailToolName
-from ai_agent_lab.mail.config.settings import MailAgentSettings
+from ai_agent_lab.mail.adapters.capabilities.read_capabilities import CLASSIFY_MAIL, SUMMARISE_MAIL
+from ai_agent_lab.mail.adapters.capabilities.write_capabilities import DRAFT_MAIL_REPLY
+from ai_agent_lab.mail.bootstrap.composition import MailAgentCompositionRoot
+from ai_agent_lab.mail.domain.operation_names import MailToolName
 from ai_agent_lab.mail.domain.permissions import MailPermission
-from ai_agent_lab.mail.inmemory.reasoner import ScriptedTextReasoner
-from ai_agent_lab.mail.security_floor import MailSecurityFloor
+from ai_agent_lab.mail.domain.policies.security_floor import MailSecurityFloor
+from ai_agent_lab.mail.infrastructure.configuration.settings import MailAgentSettings
+from ai_agent_lab.mail.infrastructure.inmemory.reasoner import ScriptedTextReasoner
 
 REPOSITORY_ROOT_MARKER = "data"
 
@@ -59,7 +59,7 @@ def tools_of(runtime, settings: MailAgentSettings | None = None):
         InMemoryConfirmationPreferenceStore({resolved.user_id: resolved.confirmation_preferences()}),
         MailSecurityFloor().build(),
     )
-    from ai_agent_lab.mail.capabilities.results import MailToolResultRenderer
+    from ai_agent_lab.mail.adapters.capabilities.results import MailToolResultRenderer
 
     adapter = SkillToolAdapter(MailToolResultRenderer(), policy)
     return {tool.name: tool for tool in adapter.to_tools(runtime.registry, runtime.user)}
@@ -137,7 +137,7 @@ class TestApprovalModeFollowsConfiguration:
             InMemoryConfirmationPreferenceStore({settings.user_id: settings.confirmation_preferences()}),
             MailSecurityFloor().build(),
         )
-        from ai_agent_lab.mail.capabilities.results import MailToolResultRenderer
+        from ai_agent_lab.mail.adapters.capabilities.results import MailToolResultRenderer
 
         adapter = SkillToolAdapter(MailToolResultRenderer(), policy)
         for_owner = {tool.name: tool for tool in adapter.to_tools(runtime.registry, runtime.user)}

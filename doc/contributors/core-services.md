@@ -75,7 +75,7 @@ provide handlers and a default level. Do not add provider payloads or
 credentials to startup logs.
 
 Sources: [`agents/core`](../../agents/core/),
-[`Mail chat client composition`](../../agents/mail/src/ai_agent_lab/mail/application/chat_client.py),
+[`Mail chat client composition`](../../agents/mail/src/ai_agent_lab/mail/bootstrap/chat_client.py),
 [`Wiki chat model construction`](../../agents/wiki/src/ai_agent_lab/wiki/application/cli_entrypoint.py),
 and [MAF client factory](../../agents/maf/src/ai_agent_lab/maf/chat_client.py).
 Tests: [chat client selection](../../tests/integration/test_chat_client_selection.py)

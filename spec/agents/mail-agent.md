@@ -7,9 +7,12 @@ messages, prepare responses, and perform explicitly requested mailbox changes.
 It separates read and analysis skills from operations that change the mailbox so
 that a summary or proposal cannot silently become a write.
 
-The application owns mailbox identity, domain models, skills, permission
-policy, and the tool port. The selected Microsoft Agent Framework adapter
-executes those skills. The shared runtime owns generic conversation handling,
+The Mail domain owns models and deterministic policies. The application owns
+skills, tool ports, operation metadata, and confirmation meaning. Infrastructure
+implements the ports and reads configuration; adapters bind capabilities to
+CLI, HTTP, and Microsoft Agent Framework. Bootstrap assembles these objects.
+This Mail-only layout change preserves existing behavior and leaves Wiki and
+the shared runtime unchanged. The shared runtime owns generic conversation handling,
 approval limits, and MCP client mechanics. Gmail, a reference dataset, or an
 external mail server is reached through a concrete MCP dialect.
 
@@ -67,8 +70,20 @@ confirms a write.
 
 ## Runtime modes and acceptance
 
-`mock` uses deterministic in-memory tools and needs no mail service. `mcp` uses
-the selected binding and dialect. Both modes use the same skill contracts.
+`MAIL_AGENT_MODE=mock` uses deterministic in-memory tools and needs no mail
+service. `MAIL_AGENT_MODE=mcp` uses one shared binding and dialect selected
+from the delivered skills' `mcp_server` references. Every delivered skill must
+name the same server; missing or conflicting references are configuration
+errors, not a reason to fall back to an environment selector. All delivered
+Mail skills currently name `gmail-http`. Both modes use the same skill contracts.
+
+The shared runtime owns MCP YAML authentication, headers,
+`request_timeout_seconds`, transport and network configuration. Mail keeps its
+tool contract, dialect mapping and authorization rules. Only designated secret
+references resolve environment variables; non-secret connection values are
+literal YAML. The local HTTP client sends a complete configured authorization
+header; the Gmail server holds the raw shared secret and all `GMAIL_OAUTH_*`
+credentials. No change to the MCP server API or Mail authorization is implied.
 
 - Search and analysis do not mutate the mailbox.
 - Drafting a reply does not deliver it; sending is a separate capability.
@@ -76,9 +91,16 @@ the selected binding and dialect. Both modes use the same skill contracts.
 - A confirmed write uses the exact arguments shown to the person.
 - Caller identity scopes mailbox access, tickets, and conversation state.
 - Missing remote tools are not offered as model capabilities.
+- Missing or conflicting skill server references fail MCP configuration.
+- Console and HTTP hosting use the same manifest-selected server and runtime YAML.
+- `authorise --server` and `discover --server` load the selected runtime YAML;
+  `authorise` defaults to the official `gmail` binding with YAML OAuth settings.
 
 See [Mail HTTP and approval flow](../../docs/mail-agent-http.md), the
 [Mail user guide](../../docs/mail-agent.md), the [MCP boundary](../integrations/mcp-design.md),
 and the [server specification](../integrations/mcp-server-hosting.md). The
 delivered inventory is in [`agent.yaml`](../../config/agents/mail/agent.yaml);
-tool posture is defined by [`catalog.py`](../../agents/mail/src/ai_agent_lab/mail/catalog.py).
+tool posture is defined by [`application/operations.py`](../../agents/mail/src/ai_agent_lab/mail/application/operations.py).
+See [Mail layer ownership](../../doc/contributors/mail-agent.md) for dependency
+rules and [the Mail guide](../../docs/mail-agent.md) for the supported entrypoints.
+Mail does not provide legacy executable compatibility paths.

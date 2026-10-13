@@ -24,13 +24,13 @@ from ygo74.agent_runtime.domains.humanapproval.confirmation import (
 )
 from ygo74.agent_runtime.domains.security.user_context_factory import UserContextFactory
 
-from ai_agent_lab.mail.application.composition import MailAgentCompositionRoot
-from ai_agent_lab.mail.config.local_principal import LocalPrincipalSource
-from ai_agent_lab.mail.config.settings import MailAgentSettings
+from ai_agent_lab.mail.application.skills.analysis import MailReplyOutput
+from ai_agent_lab.mail.bootstrap.composition import MailAgentCompositionRoot
 from ai_agent_lab.mail.domain.permissions import MailPermission
-from ai_agent_lab.mail.inmemory.reasoner import ScriptedTextReasoner
-from ai_agent_lab.mail.security_floor import MailSecurityFloor
-from ai_agent_lab.mail.skills.analysis import MailReplyOutput
+from ai_agent_lab.mail.domain.policies.security_floor import MailSecurityFloor
+from ai_agent_lab.mail.infrastructure.configuration.local_principal import LocalPrincipalSource
+from ai_agent_lab.mail.infrastructure.configuration.settings import MailAgentSettings
+from ai_agent_lab.mail.infrastructure.inmemory.reasoner import ScriptedTextReasoner
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 

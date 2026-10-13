@@ -38,9 +38,21 @@ application - the same split Microsoft describes for its own hosting helpers:
 ```powershell
 $env:MAIL_AGENT_MODE = "mock"
 $env:MAIL_AGENT_HTTP_API_KEY = "demo-key"
-.\.venvs\mail-agent-maf\Scripts\python.exe -m uvicorn `
-  "ai_agent_lab.mail.application.entrypoints.service:build_app" --factory --port 8123
+.\.venvs\mail-agent-maf\Scripts\python.exe -m ai_agent_lab.mail.adapters.http.server `
+  --port 8123
 ```
+
+`bootstrap.service` assembles the host; Mail's HTTP adapter lives in
+`adapters/http/entrypoint.py`. The Mail Docker entrypoint uses the same bootstrap
+path. No legacy application launch path is provided.
+
+The launcher reads `.env` by default. Add `--env-file .env.mail-agent` to choose
+a component file, and `--reload` for development. It retains that choice in
+Uvicorn reload subprocesses using `MAIL_AGENT_ENV_FILE`. If running Uvicorn
+directly against `bootstrap.service:build_app`, set `MAIL_AGENT_ENV_FILE` to
+the selected path first. Process variables override file values; a selected
+file does not fall back to `.env`. See the
+[component setup](../doc/users/mail-agent.md#choose-an-environment-file-per-component).
 
 ```powershell
 curl -Method POST http://127.0.0.1:8123/v1/chat/completions `
@@ -48,9 +60,23 @@ curl -Method POST http://127.0.0.1:8123/v1/chat/completions `
   -Body '{"model":"mail-agent","messages":[{"role":"user","content":"anything from John?"}]}'
 ```
 
-VS Code has a `Mail Agent API (debug, reload)` configuration that does the same on
-port 8123 with the debugger attached.
+VS Code's Mail HTTP mock profile does the same on port 8123
+with the debugger attached and prompts for the environment file.
 
+For a real mailbox, set `MAIL_AGENT_MODE=mcp` and start **Mail MCP Gmail - HTTP**
+before the HTTP agent. The delivered skill manifests all name
+`mcp_server: gmail-http`; they select one shared server, independently of
+environment variables. `config/mcp/gmail-http.yaml` uses delegated OAuth
+(`oauth_on_behalf_of`) with audience `mail-mcp`. The HTTP host verifies the incoming
+caller token; token exchange must be implemented and configured by the shared
+runtime, not by Mail-specific Keycloak code. The currently linked runtime still
+requires an injected exchange source and cannot run this flow from YAML alone;
+use the runtime prerequisite and Keycloak setup in the user guide below.
+The server must validate JWTs from the same
+issuer and audience `mail-mcp`; see [local MCP setup](mail-mcp-servers.md#local-http-setup)
+and [the Mail Agent user guide](../doc/users/mail-agent.md#connect-the-authenticated-caller-to-gmail-through-mcp).
+The current Gmail MCP server still uses one Google credential for one mailbox; OBO
+authenticates callers but does not yet select a different Google account per user.
 ### Developing against a runtime checkout
 
 The serving library is developed alongside this repository, so publishing a

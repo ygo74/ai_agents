@@ -15,8 +15,8 @@ import asyncio
 import pytest
 from ygo74.agent_runtime.domains.mcp.binding import McpConnection, McpServerBinding, McpTransport
 
-from ai_agent_lab.mail.catalog import MailToolName
-from ai_agent_lab.mail.mail_errors import MailToolUnavailableError
+from ai_agent_lab.mail.application.errors import MailToolUnavailableError
+from ai_agent_lab.mail.domain.operation_names import MailToolName
 
 DATASET = "data/mail/sample_mailbox.json"
 

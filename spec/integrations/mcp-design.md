@@ -83,6 +83,6 @@ See the [Mail agent specification](../agents/mail-agent.md),
 [Wiki agent specification](../agents/wiki-agent.md), and [MCP server hosting
 specification](mcp-server-hosting.md). Shared binding, connection, and registry
 behavior is described by the runtime's [MCP specification](https://github.com/ygo74/ai-enterprise-agent-runtime/blob/main/spec/mcp/client-and-server.md).
-Application implementations live in [`agents/mail/.../mcp/`](../../agents/mail/src/ai_agent_lab/mail/mcp/),
+Application implementations live in [`agents/mail/.../infrastructure/mcp/`](../../agents/mail/src/ai_agent_lab/mail/infrastructure/mcp/),
 [`agents/wiki/.../mcp/`](../../agents/wiki/src/ai_agent_lab/wiki/mcp/), and the
 runtime MCP client provider factories.

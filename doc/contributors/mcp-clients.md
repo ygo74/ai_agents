@@ -54,7 +54,9 @@ stay in the application.
 
 ## Adding a server dialect
 
-1. Implement the relevant domain port with strict input and output mapping.
+1. Implement the relevant tool port with strict input and output mapping.
+   Mail's port is in `application/ports/mail_tools.py`; its implementations belong
+   in `infrastructure/mcp/`.
 2. Convert transport and payload errors to the agent's typed error hierarchy.
 3. Register a factory under a stable dialect name.
 4. Add or update a delivered MCP binding with only the tools the server
@@ -65,9 +67,9 @@ Do not add provider SDKs to skills or framework adapters. Do not treat a
 declared tool as an authorization grant. Keep returned free text marked as
 untrusted content before reasoning uses it.
 
-Sources: [Mail MCP adapters](../../agents/mail/src/ai_agent_lab/mail/mcp/),
+Sources: [Mail MCP adapters](../../agents/mail/src/ai_agent_lab/mail/infrastructure/mcp/),
 [Wiki MCP adapters](../../agents/wiki/src/ai_agent_lab/wiki/mcp/),
-[Mail provider](../../agents/mail/src/ai_agent_lab/mail/application/mail_tools_provider.py),
+[Mail provider](../../agents/mail/src/ai_agent_lab/mail/bootstrap/mail_tools_provider.py),
 and [Wiki provider](../../agents/wiki/src/ai_agent_lab/wiki/application/wiki_tools_provider.py).
 Tests: [Mail dialect registry](../../tests/unit/test_mail_dialect_registry.py),
 [Atlassian dialect](../../tests/unit/wiki/test_atlassian_dialect.py),

@@ -67,9 +67,10 @@ Mail resumes Microsoft Agent Framework session state; Wiki resumes LangGraph
 state through its thread ID and resume command. Keep framework mechanics in the
 respective adapters, and keep confirmation meaning and display in the domain.
 
-Source: [`Mail conversation factory`](../../agents/mail/src/ai_agent_lab/mail/application/entrypoints/conversation.py),
+Source: [`Mail conversation factory`](../../agents/mail/src/ai_agent_lab/mail/bootstrap/conversation.py),
 [`Wiki conversation factory`](../../agents/wiki/src/ai_agent_lab/wiki/application/entrypoints/conversation.py),
-and domain session adapters under each agent's `application/session.py`.
+[`Mail session adapter`](../../agents/mail/src/ai_agent_lab/mail/adapters/maf/session.py),
+and [`Wiki session adapter`](../../agents/wiki/src/ai_agent_lab/wiki/application/session.py).
 Tests: [conversation engine](../../tests/integration/test_conversation_engine.py),
 [Wiki conversation engine](../../tests/integration/test_wiki_conversation_engine.py),
 [confirmation ticket flow](../../tests/integration/test_confirmation_tickets_flow.py),

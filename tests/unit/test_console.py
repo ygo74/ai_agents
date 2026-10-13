@@ -15,7 +15,7 @@ import pytest
 from ygo74.agent_runtime.domains.humanapproval.confirmation import ConfirmationDetail, ConfirmationRequest
 from ygo74.agent_runtime.domains.security.operations import OperationType, RiskLevel, ToolOperationDescriptor
 
-from ai_agent_lab.mail.application.console import (
+from ai_agent_lab.mail.adapters.cli.console import (
     ConfirmationAnswer,
     Console,
     ConsoleConfirmationPrompt,

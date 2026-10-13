@@ -6,8 +6,8 @@ from datetime import UTC, datetime
 
 import httpx
 
-from ai_agent_lab.mail.inmemory.dataset import MailDatasetLoader
-from ai_agent_lab.mail.inmemory.mail_tools import Mailbox
+from ai_agent_lab.mail.infrastructure.inmemory.dataset import MailDatasetLoader
+from ai_agent_lab.mail.infrastructure.inmemory.mail_tools import Mailbox
 
 
 def bounded_mailbox(root):

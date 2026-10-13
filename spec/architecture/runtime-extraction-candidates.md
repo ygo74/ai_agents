@@ -394,12 +394,20 @@ descriptor is derived from the deployment rather than asserted alongside it. The
 
 ### MCP client plumbing
 
-*Sources: `*/mcp/connection.py`, `*/mcp/binding.py`, `*/mcp/dialects.py`, `mail/mcp/oauth.py` ·
+*Sources at assessment: `*/mcp/connection.py`, `*/mcp/binding.py`, `*/mcp/dialects.py`, the former Mail OAuth module ·
 Target: `domains/mcp/` · **Python-first** (depends on the `mcp` SDK)*
 
 This is the candidate whose boundary needs the most care, because the modules are
 **not** uniformly domain-free. Issue #6 adopts the runtime mechanism in Mail and
 Wiki; what stays is every place a domain is named.
+
+Mail's subsequent runtime YAML migration removed its OAuth and bearer modules
+and Mail-specific MCP settings. Current configuration loads through
+[`load_configuration`](../../agents/mail/src/ai_agent_lab/mail/infrastructure/mcp/configuration.py).
+[`MailMcpConnectionFactory`](../../agents/mail/src/ai_agent_lab/mail/infrastructure/mcp/connection.py)
+applies runtime timeout, resolved headers and network options, and delegates
+OAuth to `McpOAuthProviderFactory`. It rejects `delegatedOAuth` without a token
+source. The assessment below is historical where it describes module ownership.
 
 **Moves.**
 
@@ -428,13 +436,13 @@ Wiki; what stays is every place a domain is named.
   reads as read-only - is a deliberate security decision about a specific wiki deployment.
 - The **dialect factories** themselves, which construct Gmail and Atlassian clients returning
   `MailTools` and `WikiTools`.
-- **Google's OAuth policy.** `mail/mcp/oauth.py` hard-codes Gmail scopes and reads `MAIL_MCP_OAUTH_*`
-  settings. The generic parts - loopback callback, token storage, the `SecretStr` discipline - can move;
-  the provider policy cannot. One control in particular must not be lost in transit:
-  `PinnedScopeOAuthProvider` re-pins the requested scope before every authorisation attempt, because the
-  SDK otherwise replaces it with whatever the resource server advertises - which for the official Gmail
-  server includes full mailbox control, permanent deletion included. If that class is dropped or
-  reimplemented casually during extraction, the agent silently acquires a key to the whole mailbox.
+- **Google's OAuth scope policy.** The required scopes stay deployment policy,
+  now expressed in `config/mcp/gmail.yaml`, not a Mail OAuth module or non-secret
+  environment settings. The runtime owns callback, token storage and scope
+  pinning. The scope control must survive extraction: the SDK otherwise replaces
+  configured scopes with those advertised by the resource server, which for the
+  official Gmail server include full mailbox control and permanent deletion.
+  Mail consumes the runtime provider rather than maintaining a second copy.
 
 ## Tier 3 - stays in this repository
 

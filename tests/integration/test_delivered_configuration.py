@@ -30,11 +30,12 @@ from ygo74.agent_runtime.domains.security.floor import SecurityFloorViolationErr
 from ygo74.agent_runtime.domains.security.operations import OperationType, RiskLevel
 from ygo74.agent_runtime.domains.security.permissions import PermissionRegistry, UnknownPermissionError
 
-from ai_agent_lab.mail.catalog import MailToolCatalog, MailToolName
+from ai_agent_lab.mail.application.operations import MailToolCatalog
+from ai_agent_lab.mail.domain.operation_names import MailToolName
 from ai_agent_lab.mail.domain.permissions import MailPermission
-from ai_agent_lab.mail.mcp.configuration import load_binding as load_mail_binding
-from ai_agent_lab.mail.mcp.errors import McpBindingError
-from ai_agent_lab.mail.security_floor import MailSecurityFloor
+from ai_agent_lab.mail.domain.policies.security_floor import MailSecurityFloor
+from ai_agent_lab.mail.infrastructure.mcp.configuration import load_binding as load_mail_binding
+from ai_agent_lab.mail.infrastructure.mcp.errors import McpBindingError
 from ai_agent_lab.wiki.mcp.configuration import load_binding as load_wiki_binding
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
@@ -72,6 +73,7 @@ operation:
   risk: {risk}
   permission: {permission}
   confirmation_required: {confirmation}
+mcp_server: gmail-http
 mcp_tools:
   - get_mail
 """
@@ -111,7 +113,16 @@ def delivered() -> ConfigurationDirectory:
     return ConfigurationDirectory.resolve(base_path=REPOSITORY_ROOT)
 
 
-def test_every_delivered_manifest_matches_the_runtime_json_schema() -> None:
+@pytest.mark.parametrize(
+    "path",
+    sorted(
+        path
+        for path in (REPOSITORY_ROOT / "config").rglob("*.yaml")
+        if path.name in {"agent.yaml", "skill.yaml"}
+    ),
+    ids=lambda path: path.relative_to(REPOSITORY_ROOT / "config").as_posix(),
+)
+def test_every_delivered_manifest_matches_the_runtime_json_schema(path: Path) -> None:
     """The published structural contracts accept every agent and skill we ship."""
     schemas = {
         "agent.yaml": json.loads(ManifestSchemas.agent()),
@@ -121,13 +132,7 @@ def test_every_delivered_manifest_matches_the_runtime_json_schema() -> None:
     for schema in schemas.values():
         Draft202012Validator.check_schema(schema)
 
-    manifest_files = (
-        path
-        for path in (REPOSITORY_ROOT / "config").rglob("*.yaml")
-        if path.name in validators
-    )
-    for path in manifest_files:
-        validators[path.name].validate(yaml.safe_load(path.read_text(encoding="utf-8")))
+    validators[path.name].validate(yaml.safe_load(path.read_text(encoding="utf-8")))
 
 
 def assert_addressable(binding) -> None:
@@ -377,14 +382,13 @@ class TestEveryDeliveredBindingLoads:
 
     def test_a_container_binding_names_a_service_rather_than_localhost(self):
         """`localhost` inside a container means that container, not its neighbour."""
-        for loader, name in (
-            (load_mail_binding, "gmail-http"),
-            (load_wiki_binding, "mcp-atlassian-service"),
-        ):
-            url = loader(delivered(), name).url
+        url = load_wiki_binding(delivered(), "mcp-atlassian-service").url
 
-            assert "localhost" not in url
-            assert "127.0.0.1" not in url
+        assert "localhost" not in url
+        assert "127.0.0.1" not in url
+
+    def test_mail_http_binding_targets_the_local_debug_server(self):
+        assert load_mail_binding(delivered(), "gmail-http").url == "http://127.0.0.1:9100/mcp"
 
     def test_every_delivered_binding_is_covered(self):
         delivered_files = {path.stem for path in (REPOSITORY_ROOT / "config" / "mcp").glob("*.yaml")}

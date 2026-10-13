@@ -8,45 +8,53 @@
 # deployment: the Google token file, the OAuth client and the mailbox credential
 # would all have to live inside the agent image.
 #
-# Over HTTP they are two containers. The credential stays in one of them, the
-# agent holds none, and the boundary between them is a port.
+# Over HTTP they are two containers. The Google credential stays on the MCP
+# server. OAuth token exchange belongs to the shared runtime, not the Mail agent.
 #
-# A port is reachable by anything on the network, so it is authenticated. The
-# simplest deployment sets the same secret on both sides:
+# A port is reachable by anything on the network, so OBO must exchange
+# the verified caller's access token for a token intended for this MCP
+# resource. The server validates that token as a JWT. The Mail Agent never forwards
+# the LibreChat token directly.
 #
-#   agent   MAIL_MCP_AUTH_SCHEME=bearer
-#           MAIL_MCP_HTTP_TOKEN=<the shared secret>
-#   server  MAIL_MCP_HTTP_TOKEN=<the same secret>
 #
 # The server refuses to start over HTTP without a way to identify its caller. That
 # refusal is deliberate: an unauthenticated port would hand the mailbox to anything
 # that can reach it, and the only sign of it would be the absence of a line in a log.
 #
-# `MAIL_MCP_AUTH_MODE` picks the scheme explicitly - `api_key`, `jwt` or `none`. It
-# can be left unset when a token is configured, because a configured token is an
-# unambiguous statement. It can never be left unset to mean `none`: serving everyone
-# is a decision and has to be written down. See docs/deployment.md.
+# Configure the server environment with MAIL_MCP_AUTH_MODE=jwt,
+# MAIL_MCP_OIDC_ISSUER, MAIL_MCP_OIDC_AUDIENCE=mail-mcp, and MAIL_MCP_RESOURCE_URL.
+# See doc/users/mail-agent.md for the shared-runtime prerequisite and Keycloak setup.
 #
-# The secret says "you are the agent I was deployed with". It says nothing about
-# whose mailbox is read — that was settled by the Google credential the server
-# holds, and this server serves exactly one mailbox.
+# This authenticates the caller to the MCP server. The current Gmail server still
+# holds one Google OAuth credential and serves that mailbox; it does not yet map
+# each Keycloak identity to a separate Google account.
 #
 # Start it with:
 #
-#   docker run --rm -p 9100:9100 \
-#     -e MAIL_MCP_HTTP_TOKEN=<the shared secret> \
+#   docker run --rm --env-file .env.gmail-mcp -p 9100:9100 \
 #     -e GMAIL_OAUTH_CLIENT_ID=... -e GMAIL_OAUTH_CLIENT_SECRET=... \
 #     -v /path/to/gmail-token.json:/secrets/gmail-token.json:ro \
 #     -e GMAIL_OAUTH_TOKEN_FILE=/secrets/gmail-token.json \
 #     ghcr.io/ygo74/mail-mcp-gmail:latest \
-#     --transport streamable-http --host 0.0.0.0 --port 9100
+#     --transport streamable-http --host 0.0.0.0 --port 9100 \
+#     --owner <test-user-Keycloak-sub>
 #
 # The token file is mounted rather than created: the initial Google consent opens
 # a browser and listens on the loopback interface, which a container cannot do.
 # Run `mail-mcp-gmail-authorise` once on a workstation. See docs/deployment.md.
 server: gmail-http
 transport: http
-url: http://mail-mcp-gmail:9100/mcp
+# Local debug endpoint. In containers, change the hostname to mail-mcp-gmail.
+url: http://127.0.0.1:9100/mcp
+request_timeout_seconds: 30
+authentication_mode: oauth_on_behalf_of
+# The currently linked runtime accepts only audience/scopes here and still
+# requires an injected token source. A runtime with built-in generic exchange
+# is required for end-to-end OBO; no Mail-specific source is supplied.
+# Add exchange settings only according to that runtime version's YAML schema.
+authentication_oauth_on_behalf_of:
+  audience: mail-mcp
+  scopes: []
 
 # It answers our own tool names with the contract payloads, exactly as it does
 # over stdio. Only the transport changed.

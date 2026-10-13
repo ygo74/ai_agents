@@ -20,6 +20,7 @@ loopback interface - so it cannot happen inside a container. Run
 from __future__ import annotations
 
 import argparse
+from pathlib import Path
 
 from mail_mcp.gmail.api import GmailApiClient
 from mail_mcp.gmail.credentials import GmailCredentials
@@ -64,9 +65,10 @@ def main() -> None:
     )
     parser.add_argument("--host", default=DEFAULT_HOST, help="Interface to bind when serving over HTTP.")
     parser.add_argument("--port", type=int, default=DEFAULT_PORT, help="Port to bind when serving over HTTP.")
+    parser.add_argument("--env-file", type=Path, help="Environment file to load (default: .env).")
     arguments = parser.parse_args()
 
-    EnvironmentFile().load()
+    EnvironmentFile(arguments.env_file).load()
 
     if arguments.transport == STDIO:
         build_surface(arguments.owner).run()

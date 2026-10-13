@@ -29,20 +29,21 @@ from ygo74.agent_runtime.domains.security.security_errors import PermissionDenie
 from ygo74.agent_runtime.domains.security.untrusted import untrusted
 from ygo74.agent_runtime.domains.security.user_context import UserContext
 
-from ai_agent_lab.mail.catalog import MailToolCatalog, MailToolName
+from ai_agent_lab.mail.application.errors import MailAccessDeniedError, MailToolError
+from ai_agent_lab.mail.application.operations import MailToolCatalog
+from ai_agent_lab.mail.application.skills.gating import GatedMailOperationRunner
+from ai_agent_lab.mail.application.skills.management_skill import MailManagementSkill
+from ai_agent_lab.mail.application.skills.search_skill import MailReadSkill, MailSearchSkill
+from ai_agent_lab.mail.application.skills.send_skill import SendMailSkill
 from ai_agent_lab.mail.domain.errors import DraftNotFoundError
 from ai_agent_lab.mail.domain.models import EmailAddress, MailDraft, MailSearchRequest
+from ai_agent_lab.mail.domain.operation_names import MailToolName
 from ai_agent_lab.mail.domain.origins import MailOrigin
 from ai_agent_lab.mail.domain.permissions import MailPermission
-from ai_agent_lab.mail.inmemory.dataset import MailDatasetLoader
-from ai_agent_lab.mail.inmemory.draft_store import InMemoryDraftStore
-from ai_agent_lab.mail.inmemory.mail_tools import InMemoryMailTools
-from ai_agent_lab.mail.mail_errors import MailAccessDeniedError, MailToolError
-from ai_agent_lab.mail.security_floor import MailSecurityFloor
-from ai_agent_lab.mail.skills.gating import GatedMailOperationRunner
-from ai_agent_lab.mail.skills.management_skill import MailManagementSkill
-from ai_agent_lab.mail.skills.search_skill import MailReadSkill, MailSearchSkill
-from ai_agent_lab.mail.skills.send_skill import SendMailSkill
+from ai_agent_lab.mail.domain.policies.security_floor import MailSecurityFloor
+from ai_agent_lab.mail.infrastructure.inmemory.dataset import MailDatasetLoader
+from ai_agent_lab.mail.infrastructure.inmemory.draft_store import InMemoryDraftStore
+from ai_agent_lab.mail.infrastructure.inmemory.mail_tools import InMemoryMailTools
 
 LOCAL_USER = UserContext(user_id="local-user", session_id="s1", permissions=MailPermission.declared())
 OTHER_USER = UserContext(user_id="other-user", session_id="s2", permissions=MailPermission.declared())

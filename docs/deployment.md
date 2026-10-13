@@ -53,7 +53,8 @@ name itself cannot be discovered, so it refuses to start without one.
 refresh token for a real mailbox.** Over stdio its security came from the process
 boundary: the agent spawned it, and nothing else could speak to it. Over HTTP the
 boundary is a network, and anything that can reach the port can read the mailbox.
-The shared secret is what replaces the process boundary — not a convenience.
+In `api_key` mode, the shared secret replaces the process boundary; in `jwt` mode,
+the MCP server validates an issuer-signed caller token.
 
 Consequently:
 
@@ -125,7 +126,11 @@ Without the header the same call answers `401`. That is the gate working.
 ## The full deployment
 
 Three containers on one internal network. The agents are reachable from outside;
-the MCP server is not.
+the MCP server is not. This Compose example deliberately uses shared API-key
+authentication as a single-caller alternative; it does not propagate the
+authenticated end user's identity to the MCP server. For Keycloak caller identity
+propagation, use the [Mail Agent OBO setup](../doc/users/mail-agent.md#connect-the-authenticated-caller-to-gmail-through-mcp)
+and configure the MCP server in JWT mode.
 
 ```yaml
 # compose.yaml
@@ -136,10 +141,8 @@ services:
     image: ghcr.io/ygo74/mail-mcp-gmail:latest
     command: ["--transport", "streamable-http", "--host", "0.0.0.0", "--port", "9100"]
     environment:
-      # The secret that replaces the process boundary. Same value as the agent's
-      # MAIL_MCP_HTTP_TOKEN below. No MAIL_MCP_AUTH_MODE is needed: a configured
-      # token is an unambiguous statement. Set it to `jwt` or `none` to say
-      # something else.
+      # Raw server secret; the agent sends the complete Bearer header below.
+      MAIL_MCP_AUTH_MODE: api_key
       MAIL_MCP_HTTP_TOKEN: ${MAIL_MCP_HTTP_TOKEN:?set a shared secret}
       GMAIL_OAUTH_CLIENT_ID: ${GMAIL_OAUTH_CLIENT_ID:?}
       GMAIL_OAUTH_CLIENT_SECRET: ${GMAIL_OAUTH_CLIENT_SECRET:?}
@@ -173,14 +176,14 @@ services:
     environment:
       MAIL_AGENT_MODE: mcp
       MAIL_AGENT_HTTP_API_KEY: ${MAIL_AGENT_HTTP_API_KEY:?}
-      # Which binding to use, and how to authenticate on it.
-      MAIL_MCP_SERVER: gmail-http
-      MAIL_MCP_AUTH_SCHEME: bearer
-      MAIL_MCP_HTTP_TOKEN: ${MAIL_MCP_HTTP_TOKEN:?}
+      # gmail-http is selected by the delivered Mail skill manifests.
+      MAIL_MCP_HTTP_AUTHORIZATION: ${MAIL_MCP_HTTP_AUTHORIZATION:?set the complete Bearer header}
       OPENAI_API_KEY: ${OPENAI_API_KEY:?}
       OPENAI_CHAT_MODEL: ${OPENAI_CHAT_MODEL:-gpt-4o-mini}
     ports:
       - "8123:8123"
+    volumes:
+      - ./my-config:/app/config:ro
     networks: [internal, edge]
 
   wiki-agent:
@@ -215,6 +218,30 @@ networks:
 
 Copy the secrets into a `.env` next to the compose file, or supply them from your
 orchestrator's secret store. None of them belongs in the compose file itself.
+
+For Mail, copy the delivered `config/` tree to `my-config/` before starting
+this example. Keep every Mail skill's `mcp_server: gmail-http` and change
+`my-config/mcp/gmail-http.yaml` to the literal URL
+`http://mail-mcp-gmail:9100/mcp`. The delivered loopback URL is for local
+debugging; inside a container it would point to the agent itself.
+The runtime YAML loader does not expand environment variables in URLs.
+
+Keep authentication in that YAML as `authentication_mode: api_key`, with
+`authentication_api_key.header_name: Authorization` and
+`authentication_api_key.value: ${MAIL_MCP_HTTP_AUTHORIZATION}`.
+Supply a private raw `MAIL_MCP_HTTP_TOKEN` for the server and the corresponding
+complete header for the agent. A dotenv example is:
+
+```dotenv
+MAIL_MCP_HTTP_TOKEN=<operator-supplied-private-shared-secret>
+MAIL_MCP_HTTP_AUTHORIZATION="Bearer ${MAIL_MCP_HTTP_TOKEN}"
+```
+
+This is dotenv expansion before launch, not YAML interpolation. The agent
+needs neither the raw server token variable nor `GMAIL_OAUTH_*` credentials.
+Its MCP authentication, headers, `request_timeout_seconds` and network settings
+come from runtime YAML; backend selection remains `MAIL_AGENT_MODE`.
+Missing or conflicting skill server references fail configuration.
 
 `WIKI_MCP_READ_ONLY` must match how the Atlassian container was started. It is
 declared twice because the two processes are started independently and neither
@@ -251,8 +278,10 @@ what makes multi-user deployment meaningful. See
 ## Overriding the delivered configuration
 
 Every image bundles `config/` — the agent manifest, the skill packages and the
-MCP bindings — so it runs as it stands. A deployment that binds a different
-server mounts its own over the top:
+MCP bindings. Mail's delivered HTTP binding targets local debugging, so a
+container deployment must change its URL as above. A deployment that binds a
+different server mounts its own configuration over the top and changes all
+Mail skills' `mcp_server` references together:
 
 ```yaml
     volumes:

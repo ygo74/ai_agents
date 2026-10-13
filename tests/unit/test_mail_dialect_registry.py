@@ -16,7 +16,8 @@ import pytest
 from ygo74.agent_runtime.domains.mcp.binding import McpConnection, McpServerBinding, McpTransport
 from ygo74.agent_runtime.domains.security.user_context import UserContext
 
-from ai_agent_lab.mail.catalog import MailToolName
+from ai_agent_lab.mail.application.errors import MailToolUnavailableError
+from ai_agent_lab.mail.application.ports.mail_tools import MailTools
 from ai_agent_lab.mail.domain.models import (
     MailDraft,
     MailLabel,
@@ -28,9 +29,8 @@ from ai_agent_lab.mail.domain.models import (
     MailSendResult,
     MailThread,
 )
-from ai_agent_lab.mail.mail_errors import MailToolUnavailableError
-from ai_agent_lab.mail.mcp.dialects import GMAIL, NATIVE, create_dialect_registry
-from ai_agent_lab.mail.tools_port import MailTools
+from ai_agent_lab.mail.domain.operation_names import MailToolName
+from ai_agent_lab.mail.infrastructure.mcp.dialects import GMAIL, NATIVE, create_dialect_registry
 
 BLUEBIRD = "bluebird"
 

@@ -13,6 +13,31 @@
   //   py -3.12 -m scripts.install --env dev        --into .venvs\dev
   "version": "0.2.0",
   "configurations": [
+    {
+      "name": "Mail MCP Gmail - HTTP",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "mail_mcp.gmail.server",
+      "python": "${workspaceFolder}/.venvs/mail-agent-maf/Scripts/python.exe",
+      "console": "integratedTerminal",
+      "justMyCode": false,
+      "cwd": "${workspaceFolder}",
+      "args": [
+        "--env-file",
+        "${input:mailMcpEnvFile}",
+        "--transport",
+        "streamable-http",
+        "--host",
+        "127.0.0.1",
+        "--port",
+        "9100",
+        "--owner",
+        "${input:mailMcpOwner}"
+      ],
+      "env": {
+        "PYTHONUTF8": "1"
+      }
+    },
     // =========================================================================
     // Mail Agent (Microsoft Agent Framework)
     // =========================================================================
@@ -20,12 +45,12 @@
       "name": "Mail Agent — Console (mock)",
       "type": "debugpy",
       "request": "launch",
-      "module": "ai_agent_lab.mail.application.cli_entrypoint",
+      "module": "ai_agent_lab.mail.adapters.cli.entrypoint",
       "python": "${workspaceFolder}/.venvs/mail-agent-maf/Scripts/python.exe",
       "console": "integratedTerminal",
       "justMyCode": false,
       "cwd": "${workspaceFolder}",
-      "envFile": "${workspaceFolder}/.env",
+      "args": ["--env-file", "${input:mailAgentEnvFile}"],
       "env": {
         "MAIL_AGENT_MODE": "mock",
         "MAIL_AGENT_LOG_LEVEL": "DEBUG",
@@ -33,18 +58,17 @@
       }
     },
     {
-      "name": "Mail Agent — Console (Gmail API)",
+      "name": "Mail Agent — Console",
       "type": "debugpy",
       "request": "launch",
-      "module": "ai_agent_lab.mail.application.cli_entrypoint",
+      "module": "ai_agent_lab.mail.adapters.cli.entrypoint",
       "python": "${workspaceFolder}/.venvs/mail-agent-maf/Scripts/python.exe",
       "console": "integratedTerminal",
       "justMyCode": false,
       "cwd": "${workspaceFolder}",
-      "envFile": "${workspaceFolder}/.env",
+      "args": ["--env-file", "${input:mailAgentEnvFile}"],
       "env": {
         "MAIL_AGENT_MODE": "mcp",
-        "MAIL_MCP_SERVER": "gmail-api",
         "MAIL_AGENT_LOG_LEVEL": "DEBUG",
         "PYTHONUTF8": "1"
       }
@@ -53,15 +77,14 @@
       "name": "Mail Agent — HTTP (mock)",
       "type": "debugpy",
       "request": "launch",
-      "module": "uvicorn",
+      "module": "ai_agent_lab.mail.adapters.http.server",
       "python": "${workspaceFolder}/.venvs/mail-agent-maf/Scripts/python.exe",
       "console": "integratedTerminal",
       "justMyCode": false,
       "cwd": "${workspaceFolder}",
-      "envFile": "${workspaceFolder}/.env",
       "args": [
-        "ai_agent_lab.mail.application.entrypoints.service:build_app",
-        "--factory",
+        "--env-file",
+        "${input:mailAgentEnvFile}",
         "--port",
         "8123",
         "--reload"
@@ -74,49 +97,45 @@
       }
     },
     {
-      "name": "Mail Agent — HTTP (Gmail API)",
+      "name": "Mail Agent — HTTP",
       "type": "debugpy",
       "request": "launch",
-      "module": "uvicorn",
+      "module": "ai_agent_lab.mail.adapters.http.server",
       "python": "${workspaceFolder}/.venvs/mail-agent-maf/Scripts/python.exe",
       "console": "integratedTerminal",
       "justMyCode": false,
       "cwd": "${workspaceFolder}",
-      "envFile": "${workspaceFolder}/.env",
       "args": [
-        "ai_agent_lab.mail.application.entrypoints.service:build_app",
-        "--factory",
+        "--env-file",
+        "${input:mailAgentEnvFile}",
         "--port",
         "8002",
         "--reload"
       ],
       "env": {
         "MAIL_AGENT_MODE": "mcp",
-        "MAIL_MCP_SERVER": "gmail-api",
         "MAIL_AGENT_LOG_LEVEL": "DEBUG",
         "PYTHONUTF8": "1"
       }
     },
     {
-      "name": "Mail Agent — HTTP (Gmail API, Linux)",
+      "name": "Mail Agent — HTTP (Linux)",
       "type": "debugpy",
       "request": "launch",
-      "module": "uvicorn",
+      "module": "ai_agent_lab.mail.adapters.http.server",
       "python": "${workspaceFolder}/.venvs/mail-agent-maf/bin/python",
       "console": "integratedTerminal",
       "justMyCode": false,
       "cwd": "${workspaceFolder}",
-      "envFile": "${workspaceFolder}/.env",
       "args": [
-        "ai_agent_lab.mail.application.entrypoints.service:build_app",
-        "--factory",
+        "--env-file",
+        "${input:mailAgentEnvFile}",
         "--port",
         "8002",
         "--reload"
       ],
       "env": {
         "MAIL_AGENT_MODE": "mcp",
-        "MAIL_MCP_SERVER": "gmail-api",
         "MAIL_AGENT_LOG_LEVEL": "DEBUG",
         "PYTHONUTF8": "1"
       }
@@ -298,7 +317,7 @@
       "console": "integratedTerminal",
       "justMyCode": false,
       "cwd": "${workspaceFolder}",
-      "envFile": "${workspaceFolder}/.env",
+      "args": ["--env-file", "${input:mailMcpEnvFile}"],
       "env": {
         "PYTHONUTF8": "1"
       }
@@ -378,6 +397,26 @@
       "justMyCode": false,
       "cwd": "${workspaceFolder}",
       "args": ["${file}", "-v"]
+    }
+  ],
+  "inputs": [
+    {
+      "id": "mailMcpOwner",
+      "type": "promptString",
+      "description": "Mailbox owner: Keycloak user sub for OBO, or local-user for local fixtures",
+      "default": "local-user"
+    },
+    {
+      "id": "mailAgentEnvFile",
+      "type": "promptString",
+      "description": "Mail Agent environment file (relative to the workspace or absolute)",
+      "default": ".env_mail_agent_http"
+    },
+    {
+      "id": "mailMcpEnvFile",
+      "type": "promptString",
+      "description": "Gmail MCP server environment file (relative to the workspace or absolute)",
+      "default": ".env_mcp_server"
     }
   ]
 }

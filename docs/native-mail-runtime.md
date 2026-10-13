@@ -16,9 +16,17 @@ the CLI still uses its console resolver. Both retain ticket/command behavior;
 this migration does not introduce native MAF suspended-run resume.
 Mail explicitly requires verified email and keeps its existing discovery/auth
 configuration, OpenAI surfaces, OIDC-over-demo-key precedence and safe MCP close.
-The native export in `application/native.py` also yields the normal Agent in an
+The native export in `adapters/maf/native.py` also yields the normal Agent in an
 async dependency scope. HTTP uses the optional advanced conversation composition
 to attach Mail tickets, deterministic gates and renderers.
+
+Mail composition lives in `bootstrap/`; the HTTP launch point is
+`ai_agent_lab.mail.bootstrap.service:build_app`, and the native factory is
+`ai_agent_lab.mail.adapters.maf.native:create_agent`. Only these current paths
+are supported. The session adapter lives in
+`adapters/maf/session.py` and deliberately references bootstrap's
+`MailAgentRuntime`; inner application code does not depend on that adapter.
+The generic `ai_agent_lab.maf` adapter remains a separate distribution.
 
 Install from both source checkouts with the existing install workflow. MAF core
 is deliberately aligned to `>=1.18,<1.19`, OpenAI adapter `>=1.14.2,<1.15`,

@@ -15,34 +15,22 @@ and composition change between evaluations, never the business logic.
 
 ## 2. Layered architecture
 
-```text
-                         USER (CLI, later Teams / API)
-                                     |
-  ---------------------------------- v -------------------------------------
-  frameworks/          Framework adapters          <-- framework-aware code is
-    microsoft_agent_framework/                         kept to adapters and the
-    (later: langchain/, crewai/)                        composition root
-  ---------------------------------- | -------------------------------------
-  agents/              Skill registry and capability bindings
-                       (manifest + code, framework independent)
-  ---------------------------------- | -------------------------------------
-  skills/              Reusable domain capabilities
-                       (orchestrate MCP tools + deterministic business logic)
-  ---------------------------------- | -------------------------------------
-  mcp/                 MCP contracts (Protocols, tool catalog, floors, errors)
-  ---------------------------------- | -------------------------------------
-  infrastructure/      Concrete implementations
-                       mcp/       -> real MCP client       -> MCP server -> system
-                       inmemory/  -> deterministic dataset -> tests / mock mode
-                       config/    -> MCP binding loaders; agent manifests use runtime APIs
-                       observability/
-  ---------------------------------------------------------------------------
-  domain/              Agent-specific typed models and policies
-                       (shared contracts and security APIs come from the runtime)
+Mail's current source layers are:
 
-  application/         Composition root, dependency injection, CLI
-                       (builds the framework agent with its own public API)
+```text
+ai_agent_lab.mail/
+  domain/          Typed models, permissions, origins, operation names,
+                   deterministic services and security floor
+  application/     Skills, tool/storage ports, coded operation metadata,
+                   semantic errors and confirmation meaning
+  infrastructure/  Configuration, native/Google MCP dialects, in-memory tools
+  adapters/        Capability bindings and DTOs, CLI, HTTP and Mail MAF integration
+  bootstrap/       Concrete factories, dependency injection, conversation and service
 ```
+
+This progressive reorganisation applies to Mail only. Wiki keeps its existing
+layout, and `ai_agent_lab.maf` remains a separately distributed generic framework
+adapter. Shared contracts and security APIs still come from the runtime.
 
 Delivered configuration sits beside the code, not inside it:
 
@@ -55,7 +43,7 @@ config/                Agent and skill YAML/Markdown, MCP bindings
 ### Dependency rule
 
 ```text
-domain  <-  mcp  <-  skills  <-  agents  <-  frameworks  <-  application
+Mail domain  <-  application  <-  infrastructure / adapters  <-  bootstrap
 ```
 
 Dependencies point inwards only within the application. Framework-independent
@@ -65,10 +53,22 @@ repository owns neither duplicate implementations nor old-path aliases for those
 APIs. The internal dependency rule is enforced by
 `tests/architecture/test_distribution_boundaries.py`, which fails the build when:
 
-- `domain`, `mcp`, `skills` or `agents` import an agent framework;
-- any layer other than `infrastructure` imports an enterprise system SDK
-  (`google`, `googleapiclient`, `imaplib`, `smtplib`, `httpx`, ...);
+- Mail domain or inner application code imports a framework, transport, or
+  outer Mail layer;
+- Mail domain or inner application code imports a transport or vendor SDK
+  (`google`, `googleapiclient`, `imaplib`, `smtplib`, `httpx`, `mcp`, ...);
 - a lower layer imports a higher one.
+
+The SDK restriction is an inner-layer rule, not an infrastructure-only allowlist.
+Outer code may use transport libraries: bootstrap uses `httpx`, and CLI discovery
+uses the MCP SDK. This does not permit direct enterprise REST calls in skills.
+
+Mail infrastructure implements ports in `application/ports/`, not domain ports.
+There are no legacy executable wrappers under `application/`.
+`adapters/maf/session.py` references bootstrap's `MailAgentRuntime` to connect
+session collaborators. This outer integration exception does not allow inner
+application services to depend on outer layers. See
+[Mail ownership](../../doc/contributors/mail-agent.md) for the detailed map.
 
 ## 3. Integration boundary
 
@@ -78,9 +78,13 @@ Agents never integrate with enterprise systems. The full chain is:
 User -> Agent -> Skill -> MCP Tool contract -> MCP Server -> Enterprise system
 ```
 
-For the Mail Agent this means the agent, the skills and the domain contain no
-Gmail, OAuth, IMAP, SMTP or Gmail API knowledge whatsoever. Those concerns live
-inside the Mail MCP server, behind the `MailTools` contract.
+Mail domain rules, application skills, and framework orchestration do not
+implement source-system integrations. Skills use the `MailTools` contract.
+The outer `infrastructure/mcp/` layer owns MCP authentication, including OAuth,
+and dialect-specific Gmail MCP payload mapping. The MCP server owns access to
+the source Gmail REST API; agents and skills do not call that API directly.
+The reorganisation moves responsibilities without changing tool contracts or
+introducing direct REST integrations.
 
 ## 4. Skills are the tools exposed to the LLM
 
@@ -113,7 +117,7 @@ Skills that genuinely need an LLM (summarisation, classification, action
 extraction, reply drafting) depend on the `TextReasoner` port defined in
 `ygo74.agent_runtime.domains.reasoning`. Implementations:
 
-- `MafTextReasoner` (frameworks/microsoft_agent_framework) for runtime;
+- `MafTextReasoner` (`ai_agent_lab.maf.reasoner`) for runtime;
 - `ScriptedTextReasoner` (tests) for deterministic unit tests.
 
 Skills therefore stay framework independent and testable without a network.
@@ -145,7 +149,7 @@ agents/
   core/      src/ai_agent_lab/core/   chat-provider choices and Azure credentials
   maf/       src/ai_agent_lab/maf/    Microsoft Agent Framework adapter
   langgraph/ src/ai_agent_lab/langgraph/ LangChain / LangGraph adapter
-  mail/      src/ai_agent_lab/mail/   domain/  skills/  capabilities/  mcp/  application/
+  mail/      src/ai_agent_lab/mail/   domain/  application/  infrastructure/  adapters/  bootstrap/
 mcp-servers/
   protocol/  src/mail_mcp/protocol/   wire payloads, tool names, error codes
   gmail/     src/mail_mcp/gmail/      Gmail REST API server
@@ -240,8 +244,9 @@ What remains in `ai_agent_lab.core` is limited to `config/chat.py` and
 `config/azure_credentials.py`. The credential provider and chat-provider choices
 are the only shared code here specific to the agents' model configuration. The
 configuration loaders, reasoning port, common errors and user-context factory are
-runtime APIs. The two `skills/gating.py` modules remain one-line type aliases
-binding each agent's tool enumeration to the generic runtime runner.
+runtime APIs. Mail's `application/skills/gating.py` and Wiki's `skills/gating.py`
+remain one-line type aliases binding each agent's tool enumeration to the generic
+runtime runner.
 
 Two changes worth knowing about when reading the agents:
 

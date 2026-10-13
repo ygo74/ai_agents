@@ -40,10 +40,15 @@ shared core and use one virtual environment per agent deployment.
 
 ## Layer rule
 
-Within an agent, the composition root constructs concrete dependencies. Skills
-depend on domain ports and runtime contracts. MCP dialects implement the
-domain ports. MCP server packages depend on wire protocol packages and never
-import `ai_agent_lab`.
+Within an agent, the composition root constructs concrete dependencies. Mail
+skills depend on ports in `mail.application.ports` and runtime contracts; Wiki
+keeps its existing tool port layout. Mail infrastructure implements those
+application ports. Its domain owns models and deterministic rules, adapters own
+framework/transport bindings, and bootstrap wires concrete objects. Mail's
+inner application never imports frameworks, transports, or outer Mail layers.
+See [Mail layer ownership](mail-agent.md) for the deliberate executable-wrapper
+and MAF session integration exceptions. MCP server packages depend on wire
+protocol packages and never import `ai_agent_lab`.
 
 ```mermaid
 classDiagram
