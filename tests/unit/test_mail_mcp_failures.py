@@ -1,6 +1,10 @@
 """Dialects preserve error meaning without duplicating native wire decoding."""
 
+import asyncio
+import logging
+
 import pytest
+from mcp.server.fastmcp.exceptions import ToolError
 
 from ai_agent_lab.mail.application.errors import (
     MailAccessDeniedError,
@@ -11,6 +15,28 @@ from ai_agent_lab.mail.application.errors import (
 from ai_agent_lab.mail.infrastructure.mcp.google.errors import decode_failure as google_failure
 from ai_agent_lab.mail.infrastructure.mcp.native.errors import decode_failure as native_failure
 from mail_mcp.protocol.errors import MailErrorCode, encode
+from mail_mcp.protocol.serving import SingleMailbox, reporting
+
+
+def test_mcp_tool_logs_access_denial_without_logging_arguments(caplog):
+    """Operators see the tool and denial code, never caller-supplied values."""
+
+    directory = SingleMailbox("configured-owner", object())
+
+    @reporting
+    async def search_mail(owner: str):
+        directory.resolve(owner)
+
+    caplog.set_level(logging.DEBUG, logger="mail_mcp.protocol.serving")
+
+    with pytest.raises(ToolError, match="mail_access_denied") as failure:
+        asyncio.run(search_mail("sensitive-owner-id"))
+
+    assert "MCP tool started: tool=search_mail" in caplog.text
+    assert "MCP tool failed: tool=search_mail" in caplog.text
+    assert "code=mail_access_denied" in caplog.text
+    assert "sensitive-owner-id" not in caplog.text
+    assert "sensitive-owner-id" not in str(failure.value)
 
 
 @pytest.mark.parametrize("decoder", [native_failure, google_failure])

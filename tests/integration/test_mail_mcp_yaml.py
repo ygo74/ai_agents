@@ -37,14 +37,18 @@ def test_gmail_http_debug_configuration_launches_the_matching_authenticated_endp
     source = (ROOT / ".vscode" / "launch.json").read_text(encoding="utf-8")
     launch = json.loads(re.sub(r"^\s*//.*$", "", source, flags=re.MULTILINE))
     debug = next(item for item in launch["configurations"] if item["name"] == "Mail MCP Gmail - HTTP")
+    owner_input = next(item for item in launch["inputs"] if item["id"] == "mailMcpOwner")
     configuration = load_configuration(
         ConfigurationDirectory(ROOT / "config"),
         "gmail-http",
-        environment={},
+        environment={"MAIL_AGENT_MCP_OBO_CLIENT_SECRET": "test-client-secret"},
     )
     assert debug["module"] == "mail_mcp.gmail.server"
     assert "envFile" not in debug
     assert debug["args"][:2] == ["--env-file", "${input:mailMcpEnvFile}"]
+    assert debug["args"][-2:] == ["--log-level", "${input:mailMcpLogLevel}"]
+    assert "default" not in owner_input
+    assert "Keycloak user sub" in owner_input["description"]
     assert debug["justMyCode"] is False
     assert "MAIL_MCP_AUTH_MODE" not in debug["env"]
     assert configuration.authentication_mode is McpAuthenticationMode.OAUTH_ON_BEHALF_OF
@@ -59,7 +63,11 @@ def test_gmail_http_debug_configuration_launches_the_matching_authenticated_endp
     monkeypatch.setenv("MAIL_MCP_OIDC_ISSUER", "https://keycloak.example.test/realms/test")
     monkeypatch.setenv("MAIL_MCP_OIDC_AUDIENCE", "mail-mcp")
     monkeypatch.setenv("MAIL_MCP_RESOURCE_URL", configuration.binding.url)
-    inputs = {"${input:mailMcpEnvFile}": ".env", "${input:mailMcpOwner}": "keycloak-user-sub"}
+    inputs = {
+        "${input:mailMcpEnvFile}": ".env",
+        "${input:mailMcpOwner}": "keycloak-user-sub",
+        "${input:mailMcpLogLevel}": "debug",
+    }
     arguments = [inputs.get(arg, arg) for arg in debug["args"]]
     monkeypatch.setattr("sys.argv", ["mail_mcp.gmail.server", *arguments])
     gmail_server.main()
@@ -67,6 +75,7 @@ def test_gmail_http_debug_configuration_launches_the_matching_authenticated_endp
     build.assert_called_once_with("keycloak-user-sub", host="127.0.0.1", port=9100)
     authentication = surface.run_http.call_args.args[0]
     assert authentication.resource_url == configuration.binding.url
+    assert surface.run_http.call_args.kwargs["log_level"] == "debug"
 
 
 @pytest.mark.security

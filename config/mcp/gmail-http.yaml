@@ -54,7 +54,7 @@ authentication_mode: oauth_on_behalf_of
 authentication_oauth_on_behalf_of:
   token_url: https://localhost:8443/realms/localhost_backends/protocol/openid-connect/token
   client_id: mail-agent
-  client_secret: ${MCP_MAIL_OBO_CLIENT_SECRET}
+  client_secret: ${MAIL_AGENT_MCP_OBO_CLIENT_SECRET}
   audience: mail-mcp
   scopes: []
 

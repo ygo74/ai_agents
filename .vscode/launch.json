@@ -32,7 +32,9 @@
         "--port",
         "9100",
         "--owner",
-        "${input:mailMcpOwner}"
+        "${input:mailMcpOwner}",
+        "--log-level",
+        "${input:mailMcpLogLevel}"
       ],
       "env": {
         "PYTHONUTF8": "1"
@@ -403,8 +405,7 @@
     {
       "id": "mailMcpOwner",
       "type": "promptString",
-      "description": "Mailbox owner: Keycloak user sub for OBO, or local-user for local fixtures",
-      "default": "local-user"
+      "description": "Mailbox owner: enter the exact Keycloak user sub used by the OBO caller"
     },
     {
       "id": "mailAgentEnvFile",
@@ -417,6 +418,13 @@
       "type": "promptString",
       "description": "Gmail MCP server environment file (relative to the workspace or absolute)",
       "default": ".env_mcp_server"
+    },
+    {
+      "id": "mailMcpLogLevel",
+      "type": "pickString",
+      "description": "Gmail MCP server log level",
+      "options": ["debug", "info", "warning", "error", "critical"],
+      "default": "debug"
     }
   ]
 }

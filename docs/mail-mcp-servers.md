@@ -54,8 +54,15 @@ Start the server from the repository root, after completing Google consent:
 ```powershell
 .\.venvs\mail-agent-maf\Scripts\python.exe -m mail_mcp.gmail.server `
   --env-file .env.gmail-mcp --transport streamable-http `
-  --host 127.0.0.1 --port 9100 --owner "<test-user-Keycloak-sub>"
+  --host 127.0.0.1 --port 9100 --owner "<test-user-Keycloak-sub>" `
+  --log-level debug
 ```
+
+The **Mail MCP Gmail - HTTP** VS Code launch profile prompts for the log level
+and defaults to `debug`. Tool starts, outcomes, access-denial codes and sanitized
+Gmail API method/resource/status details are logged. Tool arguments, message
+content, email addresses, and credentials are not logged. Use `info` outside
+local diagnosis to reduce verbosity.
 
 Then start the Mail HTTP host with `MAIL_AGENT_MODE=mcp` and the client secret
 from `.env.mail-agent`. Use the test user's Keycloak `sub`
