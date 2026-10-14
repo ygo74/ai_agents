@@ -6,27 +6,86 @@ each one can actually do, and how to plug in another.
 
 ## Choosing a server
 
-`MAIL_AGENT_MODE` selects the backend, `MAIL_MCP_SERVER` selects the binding:
+`MAIL_AGENT_MODE` selects only the backend:
 
 ```bash
 MAIL_AGENT_MODE=mock                 # deterministic dataset, no MCP at all
 MAIL_AGENT_MODE=mcp
-MAIL_MCP_SERVER=local                # the reference server, over stdio
-MAIL_MCP_SERVER=gmail                # the official Google server, over HTTP
 ```
 
-Each server is described by a delivered file, `config/mcp/<server>.yaml`.
+In MCP mode, every delivered Mail skill must declare `mcp_server` in its
+`skill.yaml`. Mail selects **one shared server** from these references. Missing
+or conflicting references fail configuration; there is no environment selector
+or fallback. All delivered Mail skills currently reference `gmail-http`.
 
+The runtime `McpServerConfigurationLoader` reads
+`config/mcp/<server>.yaml` for transport, URL, authentication, headers,
+`request_timeout_seconds`, and network settings. Mail keeps its tool binding
+and dialect selection, not a second connection-settings implementation.
+To use another binding, update all delivered Mail skill references together.
+
+### Local HTTP setup
+
+`config/mcp/gmail-http.yaml` connects to our Gmail API MCP server at the literal
+URL `http://127.0.0.1:9100/mcp`. The delivered configuration uses OAuth on behalf
+of the authenticated HTTP caller (`oauth_on_behalf_of`) and requests the audience
+`mail-mcp`. It requires the Mail Agent HTTP host to authenticate the caller and
+exchange that verified Keycloak token through the runtime's standard RFC 8693
+token source; a console call has no such caller token. The YAML holds the exchange endpoint,
+client ID, audience and scopes; set only `MCP_MAIL_OBO_CLIENT_SECRET` in the
+Mail Agent's private environment file. The registry builds the source from each
+server's resolved settings.
+See the [Mail Agent user guide](../doc/users/mail-agent.md#connect-the-authenticated-caller-to-gmail-through-mcp)
+for the complete Keycloak exchange configuration.
+
+For a local server process, create `.env.gmail-mcp` with the following MCP
+resource settings, then add the server-side `GMAIL_OAUTH_*` settings described in
+[Setting it up](#setting-it-up):
+
+```dotenv
+MAIL_MCP_AUTH_MODE=jwt
+MAIL_MCP_OIDC_ISSUER=https://localhost:8443/realms/localhost_backends
+MAIL_MCP_OIDC_AUDIENCE=mail-mcp
+MAIL_MCP_RESOURCE_URL=http://127.0.0.1:9100/mcp
+```
+
+Start the server from the repository root, after completing Google consent:
+
+```powershell
+.\.venvs\mail-agent-maf\Scripts\python.exe -m mail_mcp.gmail.server `
+  --env-file .env.gmail-mcp --transport streamable-http `
+  --host 127.0.0.1 --port 9100 --owner "<test-user-Keycloak-sub>" `
+  --log-level debug
+```
+
+The **Mail MCP Gmail - HTTP** VS Code launch profile prompts for the log level
+and defaults to `debug`. Tool starts, outcomes, access-denial codes and sanitized
+Gmail API method/resource/status details are logged. Tool arguments, message
+content, email addresses, and credentials are not logged. Use `info` outside
+local diagnosis to reduce verbosity.
+
+Then start the Mail HTTP host with `MAIL_AGENT_MODE=mcp` and the client secret
+from `.env.mail-agent`. Use the test user's Keycloak `sub`
+as `--owner`, since the server refuses other mailbox identifiers.
+The server validates the exchanged JWT, not the original LibreChat token.
+For a container, make the canonical issuer reachable and trusted from the container
+without changing its value relative to the token's `iss`. Advertise the reachable
+resource URL. The loopback URL above is for local development.
+
+The API-key authentication mode remains available for a deliberate single-caller
+setup: configure `authentication_mode: api_key` in a private copy of the YAML and
+use matching server/client secret values. It does not associate MCP calls with an
+individual caller and is not the delivered OBO configuration.
 ## Servers
 
-| | `mock` | `local` | `gmail-api` | `gmail` |
-|---|---|---|---|---|
-| Backed by | JSON dataset | JSON dataset | a real mailbox | a real mailbox |
-| Protocol | none | MCP over stdio | MCP over stdio | MCP over HTTP |
-| Server | — | ours | **ours** | Google |
-| Credentials | none | none | OAuth 2.0 | OAuth 2.0 |
-| Coverage | 12/12 | 12/12 | **12/12** | 10/12 |
-| Usable today | yes | yes | **yes** | Workspace preview only |
+| | `mock` | `local` | `gmail-api` | `gmail-http` | `gmail` |
+|---|---|---|---|---|---|
+| Backed by | JSON dataset | JSON dataset | a real mailbox | a real mailbox | a real mailbox |
+| Protocol | none | MCP over stdio | MCP over stdio | MCP over HTTP | MCP over HTTP |
+| Server | — | ours | **ours** | **ours** | Google |
+| Credentials | none | none | server-side Google OAuth | Keycloak JWT; server-side Google OAuth | client-side Google OAuth |
+| Coverage | 12/12 | 12/12 | **12/12** | **12/12** | 10/12 |
+| Usable today | yes | yes | **yes** | **yes; delivered default** | Workspace preview only |
 
 The two the official Google server lacks are `send_mail` and `delete_label`. It
 is not a defect on either side: it is what a binding is for. The agent, the
@@ -34,7 +93,7 @@ skills and the delivered skill packages are identical whichever server is bound,
 and the two capabilities are simply never offered to the model against `gmail`.
 `tests/integration/test_capability_exposure.py` holds that claim.
 
-### `gmail-api` — our server, on the Gmail REST API
+### `gmail-http` and `gmail-api` — our server, on the Gmail REST API
 
 This is the one that works on a personal account.
 
@@ -50,7 +109,7 @@ So the integration sits behind **our own MCP server**, which speaks the contract
 on one side and the Gmail REST API on the other:
 
 ```text
-Agent -> Skills -> MCP tools -> our MCP server (stdio) -> Gmail REST API
+Agent -> Skills -> MCP tools -> our MCP server (HTTP or stdio) -> Gmail REST API
                                  the token lives here, and nowhere else
 ```
 
@@ -105,16 +164,14 @@ operation twice without being asked is a defect.
    http://localhost:8765/oauth/callback
    ```
 
-3. In `.env`:
+3. Configure the **server's** environment:
 
    ```bash
-   MAIL_AGENT_MODE=mcp
-   MAIL_MCP_SERVER=gmail-api
    GMAIL_OAUTH_CLIENT_ID=<client id>
    GMAIL_OAUTH_CLIENT_SECRET=<client secret>
    ```
 
-4. Consent once:
+4. Consent once on a workstation:
 
    ```powershell
    .\.venvs\mail-agent-maf\Scripts\python.exe -m mail_mcp.gmail.authorise
@@ -122,6 +179,14 @@ operation twice without being asked is a defect.
 
    The command reports the scopes actually granted and reads the labels back, so
    a grant that cannot be used is reported now rather than mid-conversation.
+
+5. Start the HTTP server, then the agent, as shown above. `GMAIL_OAUTH_*`
+   credentials and the Google token file belong only to the Gmail server.
+   The Mail Agent needs its inbound OIDC and shared-runtime token-exchange settings,
+   not Google credentials. The delivered `gmail-http` binding uses OBO/JWT;
+   API-key mode is an explicit alternative described above. `gmail-api` is the
+   same server over stdio; to use it, change every delivered Mail skill's
+   `mcp_server` to `gmail-api` and use a non-OBO profile.
 
 The authorisation request carries `access_type=offline` and `prompt=consent`,
 which is what makes Google issue a **refresh token**. Without both, the grant
@@ -169,11 +234,30 @@ There is **no official Gmail MCP server on GitHub**: it is a hosted service at
    If the audience is **External**, add your own address under **Audience > Test
    users**, or consent will be refused.
 
-4. Put the issued client in `.env` — never anywhere else:
+4. Configure `authentication_oauth` in `config/mcp/gmail.yaml`. Replace its
+   literal `client_id: configure-in-google-cloud` with the client ID issued by
+   Google. Keep the secret as `${MAIL_MCP_OAUTH_CLIENT_SECRET}`, the callback
+   port as `8765`, the scopes as `gmail.readonly` and `gmail.compose` (their full
+   URLs above), and the token file as `.secrets/mail-mcp-token.json`.
+   Put only the client secret in the environment:
 
    ```bash
-   MAIL_MCP_OAUTH_CLIENT_ID=<client id>
    MAIL_MCP_OAUTH_CLIENT_SECRET=<client secret>
+   ```
+
+   The runtime connection excerpt is:
+
+   ```yaml
+   request_timeout_seconds: 600
+   authentication_mode: oauth
+   authentication_oauth:
+     client_id: configure-in-google-cloud  # replace with your issued client ID
+     client_secret: ${MAIL_MCP_OAUTH_CLIENT_SECRET}
+     callback_port: 8765
+     scopes:
+       - https://www.googleapis.com/auth/gmail.readonly
+       - https://www.googleapis.com/auth/gmail.compose
+     token_file: .secrets/mail-mcp-token.json
    ```
 
    `.env` and `.secrets/` are both excluded by `.gitignore`. The secret is held
@@ -187,10 +271,11 @@ Response shapes are not specified by MCP and Google does not publish theirs, so
 they are asked for rather than assumed:
 
 ```powershell
-.\.venvs\mail-agent-maf\Scripts\python.exe -m ai_agent_lab.mail.application.discover --server gmail
+.\.venvs\mail-agent-maf\Scripts\python.exe -m ai_agent_lab.mail.adapters.cli.discover --server gmail
 ```
 
-The browser opens for consent once, the token is stored, and the tool schemas
+`--server gmail` loads the same runtime YAML connection configuration used by
+Mail. The browser opens for consent once, the token is stored, and the tool schemas
 are written to `data/mcp-discovery/gmail-tools.json`. That recording is what the
 Gmail dialect is written against. The command only lists tools; it reads no
 message.
@@ -201,12 +286,19 @@ Consent happens in a browser and takes as long as a person takes, so it is not
 done inside a tool call:
 
 ```powershell
-.\.venvs\mail-agent-maf\Scripts\python.exe -m ai_agent_lab.mail.application.authorise --server gmail
+.\.venvs\mail-agent-maf\Scripts\python.exe -m ai_agent_lab.mail.adapters.cli.authorise --server gmail
 ```
 
 The browser opens, you approve, the token is stored in
 `.secrets/mail-mcp-token.json` with `0600` permissions, and the command reads
 the labels back to prove the grant is usable.
+
+`authorise` defaults to `gmail`, the official Google service, not our local
+HTTP server. Both `authorise --server` and `discover --server` load the selected
+runtime YAML, including OAuth configuration. Non-secret client parameters no
+longer come from environment variables. These utility commands do not change
+the server selected by the agent's skill manifests. Use
+`mail_mcp.gmail.authorise` for consent to our own Gmail API server.
 
 #### Scopes: what the server asks for, and what we grant
 
@@ -226,11 +318,17 @@ The MCP SDK does not merely suggest those: it **overwrites** the configured
 scope with whatever the resource server advertises, and widens it again when a
 call returns `insufficient_scope` (`mcp/client/auth/oauth2.py:565` and `:614`).
 
-`PinnedScopeOAuthProvider` re-pins the scope before every authorisation attempt,
-so the agent asks only for what it needs. Google honours it: the issued token
+Mail delegates OAuth provider construction to the runtime's
+`McpOAuthProviderFactory`, using the scopes declared in runtime YAML rather
+than a Mail-specific OAuth provider. The runtime pins the requested scopes
+before authorisation so the agent asks only for what it needs.
+The recorded Google grant
 carries `gmail.readonly gmail.compose` and nothing else. Widen it deliberately
-with `MAIL_MCP_OAUTH_SCOPES` if a capability genuinely needs more - applying a
-label needs `gmail.modify`, which also has to be added to the consent screen.
+in `authentication_oauth.scopes` in `config/mcp/gmail.yaml` if a capability
+genuinely needs more - applying a label needs `gmail.modify`, which also has to
+be added to the consent screen. The YAML sets `request_timeout_seconds: 600`
+for browser consent. Mail does not support `delegatedOAuth`; configuring it
+fails explicitly rather than silently using another authentication mode.
 
 Granting `https://mail.google.com/` to an agent that reads mail and drafts
 replies would mean a stolen token can erase the mailbox. That is not a
@@ -282,15 +380,18 @@ the reference a new server can be written against.
 
 ```powershell
 $env:MAIL_AGENT_MODE = "mcp"
-$env:MAIL_MCP_SERVER = "local"
-.\.venvs\mail-agent-maf\Scripts\python.exe -m ai_agent_lab.mail.application
+.\.venvs\mail-agent-maf\Scripts\python.exe -m ai_agent_lab.mail.adapters.cli
 ```
+
+Before this command, change every delivered Mail skill's `mcp_server` to
+`local`. The reference binding spawns the stdio server; no separate HTTP server
+or shared header secret is needed.
 
 ## Plugging in another server, such as one backed by EWS
 
 Two paths, depending on what the server answers.
 
-**If the server implements our contract** — our ten tool names, our payloads,
+**If the server implements our contract** — our tool names, our payloads,
 our error codes — there is nothing to write. Deliver a binding:
 
 ```yaml
@@ -319,7 +420,8 @@ tools:                    # a native server names its tools like we do
   # ...
 ```
 
-Then prove it, with the suite that already exists:
+Set all delivered Mail skills' `mcp_server` to `ews`, then prove it with the
+suite that already exists:
 
 ```python
 class TestEwsContract(MailToolsContractTests):

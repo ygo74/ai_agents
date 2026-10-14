@@ -11,6 +11,107 @@ The agent, the skills and the domain contain no Gmail, OAuth, IMAP or SMTP
 knowledge. That is enforced by `tests/architecture/test_distribution_boundaries.py`,
 not by convention.
 
+## BYOA: develop with MAF, then integrate
+
+The Mail Agent is a Microsoft Agent Framework agent. Its framework object is a
+normal MAF `Agent`, built in
+[`bootstrap/composition.py`](../agents/mail/src/ai_agent_lab/mail/bootstrap/composition.py).
+In a framework-only prototype, the developer supplies the chat client and tool
+functions, then calls MAF directly. These two application objects are the only
+parts omitted from this short example:
+
+```python
+from agent_framework import Agent
+
+async def run_agent(chat_client, search_mail):
+    agent = Agent(
+        chat_client,
+        "You help the mailbox owner.",
+        tools=[search_mail],
+    )
+    return await agent.run("Find unread mail from John.")
+```
+
+This is the framework-native development loop: change the agent or its tools,
+then run it with MAF. The tools in a real agent still need their own data and
+security rules.
+
+To work on turns without starting the runtime HTTP host, run the console entry
+point:
+
+```powershell
+.\.venvs\mail-agent-maf\Scripts\python.exe -m ai_agent_lab.mail.adapters.cli
+```
+
+The console still uses this repository's shared runtime packages for permissions,
+tool policies, confirmations and MCP. It is independent from the HTTP worker,
+but it is not a zero-runtime-dependency version of the complete Mail Agent. For
+a small MAF agent with no runtime dependency, see
+`docs/examples/python-agentframework-fastapi/developer_app.py` in the
+`ai-enterprise-agent-runtime` repository.
+
+When adding managed HTTP hosting, the integration keeps the same native MAF
+agent and adds application wiring:
+
+1. `adapters/maf/native.py` exports the trusted MAF agent factory.
+2. `AgentDefinition` names that factory and describes the Mail tools and control
+   point.
+3. `MailConversationFactory` creates the caller's conversation and connects
+   MAF approvals to Mail's ticket resolver and confirmation ledger.
+4. `ManagedAgentWorker` receives the definition, conversation factory and
+   operator settings. It supplies the shared HTTP routes, authentication,
+   discovery, conversation cache and shutdown lifecycle.
+
+Mail owns its permission and approval decisions. The runtime owns reusable
+hosting services. The full setup and run command are in
+[mail-agent-http.md](mail-agent-http.md).
+
+### Source layout and launch paths
+
+Mail now separates domain rules, application use cases, implementations,
+adapters, and composition. This is a Mail-only move, not a behavior change or a
+restructure of Wiki or the shared runtime.
+
+```text
+agents/mail/src/ai_agent_lab/mail/
+  domain/
+    models.py, errors.py, enums.py, permissions.py, origins.py
+    operation_names.py
+    services/       reply_recipient_planner.py, categories.py
+    policies/       security_floor.py
+  application/
+    ports/          mail_tools.py, draft_store.py, mailbox_owner_directory.py,
+                    operations.py
+    operations.py   MailToolCatalog coded metadata
+    errors.py       semantic mail tool errors
+    capability_names.py
+    skills/         skills, categories.py (MailCategoryCatalog), bundle.py (MailSkills)
+    confirmations/  presenter.py, subjects.py, targets.py (housekeeping_target)
+  infrastructure/
+    configuration/  settings, errors.py, operations.py (DeliveredMailOperations)
+    mcp/            native/ and google/ dialects, codecs and error translation
+    inmemory/       tools, dataset, draft store, scripted reasoner
+  adapters/
+    capabilities/   input/result DTOs, descriptors, renderers, converters
+    cli/            entrypoint.py, console.py, approval.py, authorise.py, discover.py
+    maf/            session.py, native.py, approval.py, tickets.py
+    http/           entrypoint.py
+  bootstrap/        composition.py, factory.py, chat_client.py, mail_tools_provider.py,
+                    skills_factory.py, conversation.py, service.py
+```
+
+For new commands, use `python -m ai_agent_lab.mail.adapters.cli`. Uvicorn uses
+`ai_agent_lab.mail.bootstrap.service:build_app`; native MAF hosting uses
+`ai_agent_lab.mail.adapters.maf.native:create_agent`. The installed `mail-agent`
+console script targets `adapters.cli.entrypoint:main`, and the Mail Docker
+entrypoint uses the bootstrap service.
+
+Only the current launch paths are supported; there are no compatibility wrappers
+under `application/`. Authorisation and discovery use
+`python -m ai_agent_lab.mail.adapters.cli.authorise` and
+`python -m ai_agent_lab.mail.adapters.cli.discover`. See
+[Mail ownership and dependencies](../doc/contributors/mail-agent.md).
+
 ## 1. Capabilities
 
 | Tool exposed to the model | Type  | Confirmation | What it does |
@@ -186,6 +287,9 @@ complete it and execute calls the user approved under a different premise.
 When a turn exceeds its budget, the session therefore drops the recorded answers
 first and only then refuses what is left. The batch completes with no decision
 available, the domain gate refuses every call, and nothing further is executed.
+The runtime's shared `ApprovalLoop` owns the budget and cleanup sequence; the
+Mail session adapter translates suspended Microsoft Agent Framework calls into
+the adapter protocol.
 This is covered by `tests/agent/test_mail_scenarios.py`.
 
 There are two budgets, and they guard different things:
@@ -406,7 +510,7 @@ the future Mail MCP implementation.
 $env:MAIL_AGENT_MODE = "mock"
 $env:OPENAI_API_KEY  = "<your key>"
 $env:OPENAI_CHAT_MODEL = "gpt-4o-mini"
-.\.venvs\mail-agent-maf\Scripts\python.exe -m ai_agent_lab.mail.application
+.\.venvs\mail-agent-maf\Scripts\python.exe -m ai_agent_lab.mail.adapters.cli
 ```
 
 ```text
@@ -442,35 +546,38 @@ To use another deterministic mailbox, provide a JSON file with the same
 $env:MAIL_AGENT_MODE = "mock"
 $env:MAIL_AGENT_MOCK_DATASET = "data/mail/my_mailbox.json"
 $env:OPENAI_CHAT_MODEL = "gpt-4o-mini"
-.\.venvs\mail-agent-maf\Scripts\python.exe -m ai_agent_lab.mail.application
+.\.venvs\mail-agent-maf\Scripts\python.exe -m ai_agent_lab.mail.adapters.cli
 ```
 
 ### VS Code debug
 
-`.vscode/launch.json` provides six configurations, all using
-`.venvs\mail-agent-maf\Scripts\python.exe`:
+Use **Mail MCP Gmail - HTTP** to start the Gmail server at
+`http://127.0.0.1:9100/mcp`. Select the MCP server environment file containing
+`MAIL_MCP_AUTH_MODE=jwt`, the Keycloak OIDC issuer, and audience `mail-mcp`.
+Complete Google consent first. For authenticated HTTP calls, start **Mail Agent —
+HTTP** with the Mail Agent environment file. Mail builds
+the RFC 8693 source from the settings in `config/mcp/gmail-http.yaml`; only the
+client secret is resolved from the private environment file as
+`${MCP_MAIL_OBO_CLIENT_SECRET}`.
+See [Mail MCP setup](mail-mcp-servers.md#local-http-setup) and the
+[HTTP hosting guide](mail-agent-http.md).
 
-| Configuration | What it forces |
-|---|---|
-| **Mail Agent (.env decides)** | nothing — the backend comes from `.env` |
-| **Mail Agent (force mock dataset)** | `MAIL_AGENT_MODE=mock` |
-| **Mail Agent (force the reference MCP server)** | `MAIL_AGENT_MODE=mcp`, `MAIL_MCP_SERVER=local` |
-| **Mail Agent (force the Gmail API MCP server)** | `MAIL_AGENT_MODE=mcp`, `MAIL_MCP_SERVER=gmail-api` |
-| **Authorise the Gmail API server** | one-off Google consent for our Gmail server |
-| **Authorise against the official Gmail MCP server** | one-off consent for the hosted Google server |
+The delivered Mail skills all reference `mcp_server: gmail-http`. MCP mode uses
+the shared server selected by those manifests, and reads transport and
+`oauth_on_behalf_of` settings from `config/mcp/gmail-http.yaml`. The HTTP agent
+validates the incoming bearer token and exchanges it for a token intended for the
+MCP audience. The console has no inbound caller token and cannot use this OBO
+profile; run it in mock mode or select a separately configured non-OBO profile.
+The runtime builds its RFC 8693 source from the MCP server settings; set only
+`MCP_MAIL_OBO_CLIENT_SECRET` in the private environment file.
+The Gmail MCP server still uses one Google credential for one mailbox.
 
-The `env` block of a launch configuration **overrides** `envFile`, so the
-"force" configurations win over `.env` by design. Pick **(.env decides)** when
-you want the file to be the single source of truth — that is the configuration
-to use if you ever wonder why the mock keeps running.
+Create `.env.mail-agent` from `.env.example` and set the model provider and inbound
+OIDC values. Configure exchange using the runtime's MCP YAML contract, not
+Mail-specific environment variables. Keep the Google OAuth credentials and token file in a separate
+`.env.gmail-mcp` used only by the MCP server. Never commit either file.
 
-Create `.env` from `.env.example` first and set the model provider credentials
-there. No launch configuration contains a credential.
-
-The interactive CLI uses Microsoft Agent Framework and therefore needs the
-configured model provider key. The fake MCP itself needs no key, network access
-or mail credentials. The contract and agent scenarios use scripted doubles and
-can be run completely offline:
+The contract and agent scenarios use scripted doubles and can be run offline:
 
 ```powershell
 .\.venvs\mail-agent-maf\Scripts\python.exe -m pytest tests\contract tests\agent tests\security -q
@@ -478,32 +585,17 @@ can be run completely offline:
 
 ### MCP mode
 
-`MAIL_AGENT_MODE=mcp` runs the agent against a real mail MCP server, selected by
-`MAIL_MCP_SERVER`. The reference server needs nothing but the repository:
+`MAIL_AGENT_MODE=mcp` connects through the server declared by the skill manifests.
+For Keycloak delegation, the incoming caller token must first be accepted by the
+Mail HTTP host; Keycloak must permit the confidential Mail Agent client to exchange
+it for audience `mail-mcp`; and the Mail MCP server must validate the resulting JWT.
+Use the detailed [user setup](../doc/users/mail-agent.md#connect-the-authenticated-caller-to-gmail-through-mcp)
+for the variables and request example.
 
-```powershell
-$env:MAIL_AGENT_MODE = "mcp"
-$env:MAIL_MCP_SERVER = "local"
-.\.venvs\mail-agent-maf\Scripts\python.exe -m ai_agent_lab.mail.application
-```
-
-Against a real mailbox, consent once and then run. The Google credential lives
-in the server process alone; the agent talks to it over stdio and never sees a
-token:
-
-```powershell
-.\.venvs\mail-agent-maf\Scripts\python.exe -m mail_mcp.gmail.authorise
-
-$env:MAIL_AGENT_MODE = "mcp"
-$env:MAIL_MCP_SERVER = "gmail-api"
-.\.venvs\mail-agent-maf\Scripts\python.exe -m ai_agent_lab.mail.application
-```
-
-The agent, the skills and the scenarios are identical in both modes; only the
-object built by the provider changes. Which servers exist, what the official
-Google Gmail server can and cannot do, and how to plug in another one are
-covered in [mail-mcp-servers.md](./mail-mcp-servers.md).
-
+The reference stdio server remains available as a separate configuration. The
+agent, skills and scenarios are identical in both modes; only the provider's
+implementation changes. See [mail-mcp-servers.md](./mail-mcp-servers.md) for server
+choices and their capabilities.
 ## 7. Testing
 
 ```powershell
@@ -541,7 +633,7 @@ three different implementations.
 
 ## 9. Known limitations
 
-- The official Gmail server has no send tool and no per-message retrieval, so
+- The official Gmail server has no send tool or label deletion, so
   those capabilities are not offered when it is the bound server. See
   [mail-mcp-servers.md](./mail-mcp-servers.md).
 - Drafts and confirmation preferences live in memory, for the lifetime of a

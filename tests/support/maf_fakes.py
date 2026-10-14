@@ -12,11 +12,11 @@ silently never execute a tool and the scenarios would prove nothing.
 from __future__ import annotations
 
 import uuid
-from collections.abc import Mapping, Sequence
+from collections.abc import AsyncIterator, Awaitable, Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import Any
 
-from agent_framework import BaseChatClient, ChatResponse, Content, Message
+from agent_framework import BaseChatClient, ChatResponse, ChatResponseUpdate, Content, Message, ResponseStream
 from agent_framework._tools import FunctionInvocationLayer
 
 
@@ -61,25 +61,51 @@ class ScriptedChatClient(FunctionInvocationLayer[Any], BaseChatClient[Any]):
         self.turn = 0
         self.offered_tools: list[tuple[str, ...]] = []
         self.received_messages: list[list[Message]] = []
+        self.stream_modes: list[bool] = []
 
     def append(self, *turns: ScriptedTurn) -> None:
         """Arm additional turns, for scenarios that span several user requests."""
         self.script.extend(turns)
 
-    async def _inner_get_response(  # type: ignore[override]
+    def _inner_get_response(  # type: ignore[override]
         self,
         *,
         messages: Sequence[Message],
         stream: bool,
         options: Mapping[str, Any],
         **kwargs: Any,
-    ) -> ChatResponse[Any]:
-        """Return the next scripted turn as a chat response."""
+    ) -> Awaitable[ChatResponse[Any]] | ResponseStream[ChatResponseUpdate, ChatResponse[Any]]:
+        """Return the next scripted turn as a response or a stream of updates."""
         self.received_messages.append(list(messages))
         self._record_tools(options)
         self._reject_structured_output(options)
+        self.stream_modes.append(stream)
         turn = self._next_turn()
-        return ChatResponse(messages=Message(role="assistant", contents=self._contents_of(turn)))
+        if not stream:
+            return self._response_of(turn)
+        return ResponseStream(
+            self._updates_of(turn),
+            finalizer=lambda _updates: ChatResponse(
+                messages=Message(role="assistant", contents=self._contents_of(turn))
+            ),
+        )
+
+    @classmethod
+    async def _response_of(cls, turn: ScriptedTurn) -> ChatResponse[Any]:
+        """Build a response for the non-streaming MAF path."""
+        return ChatResponse(messages=Message(role="assistant", contents=cls._contents_of(turn)))
+
+    @classmethod
+    async def _updates_of(cls, turn: ScriptedTurn) -> AsyncIterator[ChatResponseUpdate]:
+        """Yield deterministic content updates, splitting assistant text in half."""
+        for content in cls._contents_of(turn):
+            if content.type != "text":
+                yield ChatResponseUpdate(role="assistant", contents=[content])
+                continue
+            midpoint = max(1, len(content.text) // 2)
+            for fragment in (content.text[:midpoint], content.text[midpoint:]):
+                if fragment:
+                    yield ChatResponseUpdate(role="assistant", contents=[Content.from_text(fragment)])
 
     @staticmethod
     def _contents_of(turn: ScriptedTurn) -> list[Content]:

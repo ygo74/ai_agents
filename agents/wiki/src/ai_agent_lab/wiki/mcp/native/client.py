@@ -24,8 +24,10 @@ from collections.abc import Mapping
 from typing import Any
 
 from mcp.types import CallToolResult, TextContent
+from ygo74.agent_runtime.domains.mcp.binding import McpConnection, McpServerBinding
 from ygo74.agent_runtime.domains.security.user_context import UserContext
 
+from ai_agent_lab.wiki.catalog import WikiToolName as WikiCapability
 from ai_agent_lab.wiki.domain.models import (
     WikiComment,
     WikiPage,
@@ -35,8 +37,6 @@ from ai_agent_lab.wiki.domain.models import (
     WikiSearchResult,
     WikiSpace,
 )
-from ai_agent_lab.wiki.mcp.binding import McpServerBinding
-from ai_agent_lab.wiki.mcp.connection import McpConnection
 from ai_agent_lab.wiki.mcp.native.mapping import WikiWireMapper
 from ai_agent_lab.wiki.wiki_errors import (
     WikiToolProtocolError,
@@ -61,7 +61,7 @@ class McpWikiTools:
     def __init__(
         self,
         connection: McpConnection,
-        binding: McpServerBinding,
+        binding: McpServerBinding[WikiCapability],
         *,
         mapper: WikiWireMapper | None = None,
     ) -> None:

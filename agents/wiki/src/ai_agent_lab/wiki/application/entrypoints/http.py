@@ -26,6 +26,7 @@ from typing import Any
 
 from ygo74.agent_runtime.domains.contracts.contract_errors import EmptyRequestError
 from ygo74.agent_runtime.domains.contracts.conversation import AgentReply, ConversationTurn
+from ygo74.agent_runtime.domains.contracts.exchange_models import StandardExchangeResponse
 from ygo74.agent_runtime.domains.contracts.manifests import AgentManifest
 from ygo74.agent_runtime.domains.discovery.agent_descriptor import AgentDescriptor
 from ygo74.agent_runtime.domains.discovery.manifest_descriptor import (
@@ -72,7 +73,7 @@ class WikiAgentEntrypoint:
         )
         self._renderer = AgentReplyRenderer()
 
-    async def __call__(self, payload: Mapping[str, Any]) -> dict[str, Any]:
+    async def __call__(self, payload: Mapping[str, Any]) -> StandardExchangeResponse:
         """Answer one request, as ``add_ai_endpoints`` expects."""
         reply = await self._engine.respond(self.to_turn(payload))
         return self.to_payload(payload, reply)
@@ -87,7 +88,7 @@ class WikiAgentEntrypoint:
         """
         return self._reader.to_turn(payload)
 
-    def to_payload(self, payload: Mapping[str, Any], reply: AgentReply) -> dict[str, Any]:
+    def to_payload(self, payload: Mapping[str, Any], reply: AgentReply) -> StandardExchangeResponse:
         """Render a reply in the exchange shape the runtime maps to OpenAI."""
         return self._renderer.to_payload(payload, reply)
 

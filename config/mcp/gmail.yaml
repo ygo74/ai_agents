@@ -7,6 +7,18 @@
 server: gmail
 transport: http
 url: https://gmailmcp.googleapis.com/mcp/v1
+request_timeout_seconds: 600
+authentication_mode: oauth
+authentication_oauth:
+  # Replace with the Web application client ID registered in Google Cloud.
+  client_id: configure-in-google-cloud
+  client_secret: ${MAIL_MCP_OAUTH_CLIENT_SECRET}
+  callback_port: 8765
+  scopes:
+    - https://www.googleapis.com/auth/gmail.readonly
+    - https://www.googleapis.com/auth/gmail.compose
+  token_file: .secrets/mail-mcp-token.json
+  client_name: AI Agent Lab Mail Agent
 
 # This server has its own tool names and its own payloads, so it needs a
 # translating client rather than the native one.
@@ -15,7 +27,7 @@ dialect: gmail
 # What this server can actually serve.
 #
 # Recorded from the live server with:
-#   python -m ai_agent_lab.mail.application.discover --server gmail
+#   python -m ai_agent_lab.mail.adapters.cli.discover --server gmail
 # The recording is kept in data/mcp-discovery/gmail-tools.json. It exposes 23
 # tools, and every one of them returns structured content.
 #

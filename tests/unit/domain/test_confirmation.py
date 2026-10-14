@@ -26,7 +26,7 @@ from ygo74.agent_runtime.domains.security.permissions import Permission
 from ygo74.agent_runtime.domains.security.security_errors import PermissionDeniedError
 
 from ai_agent_lab.mail.domain.permissions import MailPermission
-from ai_agent_lab.mail.security_floor import MailSecurityFloor
+from ai_agent_lab.mail.domain.policies.security_floor import MailSecurityFloor
 
 
 def descriptor(

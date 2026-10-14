@@ -138,10 +138,24 @@ class GmailApiClient:
         """Send one request, turning a retryable failure into a signal."""
         token = await self._credentials.access_token()
         headers = {"Authorization": f"Bearer {token}"}
+        resource = path.strip("/").split("/", maxsplit=1)[0]
+        _logger.debug("Gmail API request: method=%s resource=%s", method, resource)
         try:
             response = await self._http().request(method, f"{BASE_URL}{path}", headers=headers, **kwargs)
         except httpx.HTTPError as error:
+            _logger.warning(
+                "Gmail API transport failed: method=%s resource=%s error=%s",
+                method,
+                resource,
+                type(error).__name__,
+            )
             raise _Transient(type(error).__name__) from error
+        _logger.debug(
+            "Gmail API response: method=%s resource=%s status=%d",
+            method,
+            resource,
+            response.status_code,
+        )
         if response.status_code in _RETRYABLE_STATUSES:
             raise _Transient(f"HTTP {response.status_code}")
         return self._decoded(response, path)
@@ -163,6 +177,7 @@ class GmailApiClient:
         if response.status_code == httpx.codes.NOT_FOUND:
             raise NotFoundError("resource", path)
         if response.status_code in (httpx.codes.UNAUTHORIZED, httpx.codes.FORBIDDEN):
+            _logger.warning("Gmail API access denied: status=%d", response.status_code)
             raise AccessDeniedError(f"Gmail refused {path!r}: {response.status_code}")
         if response.status_code == httpx.codes.CONFLICT:
             raise GmailConflictError(f"Gmail reports {path!r} already exists")

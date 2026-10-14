@@ -11,6 +11,7 @@ from base64 import b64decode
 
 import pytest
 from pydantic import SecretStr
+from ygo74.agent_runtime.domains.mcp.binding import McpConnection, McpServerBinding, McpTransport
 from ygo74.agent_runtime.domains.security.user_context import UserContext
 
 from ai_agent_lab.wiki.catalog import WikiToolName
@@ -22,8 +23,6 @@ from ai_agent_lab.wiki.mcp.authorization import (
     WikiAuthorizationError,
     authorization_for,
 )
-from ai_agent_lab.wiki.mcp.binding import McpServerBinding, McpTransport
-from ai_agent_lab.wiki.mcp.connection import McpConnection
 from ai_agent_lab.wiki.wiki_errors import WikiAccessDeniedError
 
 # A fake credential, present so the tests can assert it never escapes into a

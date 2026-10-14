@@ -5,17 +5,17 @@ from __future__ import annotations
 import pytest
 from ygo74.agent_runtime.domains.reasoning.errors import ReasoningOutputError
 
-from ai_agent_lab.mail.domain.enums import ActionOrigin, ConfidenceLevel, MailCategory
-from ai_agent_lab.mail.inmemory.reasoner import ScriptedTextReasoner
-from ai_agent_lab.mail.skills.action_extraction_skill import MailActionExtractionSkill
-from ai_agent_lab.mail.skills.analysis import (
+from ai_agent_lab.mail.application.skills.action_extraction_skill import MailActionExtractionSkill
+from ai_agent_lab.mail.application.skills.analysis import (
     MailActionsOutput,
     MailClassificationOutput,
     MailSummaryOutput,
 )
-from ai_agent_lab.mail.skills.classification_skill import MailClassificationSkill
-from ai_agent_lab.mail.skills.errors import EmptyMailSelectionError, UngroundedMailResultError
-from ai_agent_lab.mail.skills.summary_skill import MailSummarySkill
+from ai_agent_lab.mail.application.skills.classification_skill import MailClassificationSkill
+from ai_agent_lab.mail.application.skills.errors import EmptyMailSelectionError, UngroundedMailResultError
+from ai_agent_lab.mail.application.skills.summary_skill import MailSummarySkill
+from ai_agent_lab.mail.domain.enums import ActionOrigin, ConfidenceLevel, MailCategory
+from ai_agent_lab.mail.infrastructure.inmemory.reasoner import ScriptedTextReasoner
 
 SUMMARY_ANSWER = {
     "summary": "John asks for a review of the Project Alpha architecture document.",
@@ -236,8 +236,8 @@ class TestMailClassificationSkill:
     async def test_falls_back_when_the_category_is_not_offered(
         self, mail_tools, context_builder, category_catalog, envelope_builder
     ):
-        from ai_agent_lab.mail.skills.analysis import MailAnalysisMapper
-        from ai_agent_lab.mail.skills.categories import MailCategoryCatalog
+        from ai_agent_lab.mail.application.skills.analysis import MailAnalysisMapper
+        from ai_agent_lab.mail.application.skills.categories import MailCategoryCatalog
 
         restricted = MailCategoryCatalog({MailCategory.FYI: "Information only.", MailCategory.OTHER: "Anything else."})
         skill = MailClassificationSkill(

@@ -48,8 +48,6 @@ class GmailCredentialSettings(BaseSettings):
 
     model_config = SettingsConfigDict(
         env_prefix="GMAIL_OAUTH_",
-        env_file=".env",
-        env_file_encoding="utf-8",
         extra="ignore",
     )
 
@@ -67,7 +65,8 @@ class GmailCredentialSettings(BaseSettings):
             return
         raise GoogleAuthorisationError(
             "the Gmail API needs an OAuth client. Set GMAIL_OAUTH_CLIENT_ID and "
-            f"GMAIL_OAUTH_CLIENT_SECRET in .env, and register {LoopbackConsent(self.callback_port).redirect_uri} "
+            "GMAIL_OAUTH_CLIENT_SECRET in the server environment file, and register "
+            f"{LoopbackConsent(self.callback_port).redirect_uri} "
             "as an authorised redirect URI."
         )
 

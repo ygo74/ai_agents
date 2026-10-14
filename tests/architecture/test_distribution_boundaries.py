@@ -21,6 +21,7 @@ Four rules matter most:
 from __future__ import annotations
 
 import ast
+import importlib.util
 import subprocess
 import sys
 import textwrap
@@ -95,6 +96,7 @@ ALLOWED_RUNTIME_IMPORTS: dict[str, tuple[str, ...]] = {
         "ygo74.agent_runtime.domains.endpoints",
         "ygo74.agent_runtime.domains.errors",
         "ygo74.agent_runtime.domains.humanapproval",
+        "ygo74.agent_runtime.domains.mcp",
         "ygo74.agent_runtime.domains.reasoning",
         "ygo74.agent_runtime.domains.security",
         "ygo74.agent_runtime.domains.sessions",
@@ -107,6 +109,7 @@ ALLOWED_RUNTIME_IMPORTS: dict[str, tuple[str, ...]] = {
         "ygo74.agent_runtime.domains.endpoints",
         "ygo74.agent_runtime.domains.errors",
         "ygo74.agent_runtime.domains.humanapproval",
+        "ygo74.agent_runtime.domains.mcp",
         "ygo74.agent_runtime.domains.reasoning",
         "ygo74.agent_runtime.domains.security",
         "ygo74.agent_runtime.domains.sessions",
@@ -126,12 +129,9 @@ FRAMEWORK_ADAPTERS: dict[str, frozenset[str]] = {
     "ai_agent_lab.langgraph": frozenset({"langchain", "langchain_core", "langchain_openai", "langgraph"}),
 }
 
-# Sub-layers of an agent, and what each may import from the others.
-#
-# `config` reads settings and delivered files; it depends on nothing but the
-# domain. `application` is the composition root, and the only place allowed to
-# name an agentic framework.
-AGENT_LAYERS: dict[str, frozenset[str]] = {
+# Wiki retains its existing layering; Mail's application is no longer its
+# composition root.
+WIKI_LAYERS: dict[str, frozenset[str]] = {
     "domain": frozenset(),
     "config": frozenset({"domain"}),
     "mcp": frozenset({"domain"}),
@@ -140,6 +140,21 @@ AGENT_LAYERS: dict[str, frozenset[str]] = {
     "inmemory": frozenset({"domain"}),
     "application": frozenset({"domain", "config", "mcp", "skills", "capabilities", "inmemory"}),
 }
+MAIL_LAYERS: dict[str, frozenset[str]] = {
+    "domain": frozenset(),
+    "application": frozenset({"domain"}),
+    "infrastructure": frozenset({"domain", "application"}),
+    "adapters": frozenset({"domain", "application", "infrastructure", "bootstrap"}),
+    "bootstrap": frozenset({"domain", "application", "infrastructure", "adapters"}),
+}
+AGENT_LAYERS = {
+    "ai_agent_lab.mail": MAIL_LAYERS,
+    "ai_agent_lab.wiki": WIKI_LAYERS,
+}
+MAIL_REMOVED_APPLICATION_MODULES = frozenset(
+    f"ai_agent_lab.mail.application.{name}"
+    for name in ("__main__", "cli_entrypoint", "native", "authorise", "discover", "entrypoints", "approval")
+)
 
 # Modules sitting directly in an agent package rather than in a sub-layer. They
 # are the ports and the policies the layers agree on, so they import nothing but
@@ -170,11 +185,17 @@ ENTERPRISE_SDK_ROOTS = frozenset(
 )
 
 # Agent layers that must stay free of any agentic framework.
-LAYERS_WITHOUT_FRAMEWORKS = frozenset({"domain", "mcp", "skills", "capabilities", "inmemory", "config"})
+LAYERS_WITHOUT_FRAMEWORKS = {
+    "ai_agent_lab.mail": frozenset({"domain", "application", "infrastructure"}),
+    "ai_agent_lab.wiki": frozenset({"domain", "mcp", "skills", "capabilities", "inmemory", "config"}),
+}
 
 # Agent layers that must not name a transport or a vendor SDK. `mcp` is excluded:
 # the dialects are the adapters, and speaking MCP is their job.
-LAYERS_WITHOUT_SDKS = frozenset({"domain", "skills", "capabilities", "inmemory"})
+LAYERS_WITHOUT_SDKS = {
+    "ai_agent_lab.mail": frozenset({"domain", "application"}),
+    "ai_agent_lab.wiki": frozenset({"domain", "skills", "capabilities", "inmemory"}),
+}
 
 # `ygo74-agent-runtime` is a foundation dependency now that it owns the security
 # model and the agent contracts, so naming it is not in itself a layer violation.
@@ -212,7 +233,9 @@ class ModuleUnderTest:
         if not remainder:
             return None
         head = remainder.split(".")[0]
-        return None if head in AGENT_ROOT_MODULES else head
+        if self.distribution == "ai_agent_lab.wiki" and head in AGENT_ROOT_MODULES:
+            return None
+        return head
 
     def imported_roots(self) -> Iterator[str]:
         """Top-level package name of every import in the module."""
@@ -239,12 +262,23 @@ class ModuleUnderTest:
                 yield parts[2]
 
     def _imported_names(self) -> Iterator[str]:
-        """Every module name this file imports, relative imports excluded."""
+        """Resolve imports, including package aliases and relative imports.
+
+        Imported names may be symbols rather than modules. Keeping both the
+        source and its aliases closes ``from package import forbidden_layer``
+        without needing to import production code during collection.
+        """
+        package = self.dotted_name if self._path.name == "__init__.py" else self.dotted_name.rpartition(".")[0]
         for node in ast.walk(self._tree):
             if isinstance(node, ast.Import):
                 yield from (alias.name for alias in node.names)
-            elif isinstance(node, ast.ImportFrom) and node.level == 0 and node.module:
-                yield node.module
+            elif isinstance(node, ast.ImportFrom):
+                source = node.module or ""
+                if node.level:
+                    source = importlib.util.resolve_name("." * node.level + source, package)
+                if source:
+                    yield source
+                    yield from (f"{source}.{alias.name}" for alias in node.names if alias.name != "*")
 
 
 def _modules() -> list[ModuleUnderTest]:
@@ -268,7 +302,7 @@ def _must_avoid_the_transport(module: ModuleUnderTest) -> bool:
     """
     if module.distribution == "ai_agent_lab.core":
         return True
-    return module.agent_layer in LAYERS_WITHOUT_SDKS
+    return module.agent_layer in LAYERS_WITHOUT_SDKS.get(module.distribution, ())
 
 
 def test_every_distribution_has_sources():
@@ -327,8 +361,11 @@ def test_agent_layers_point_inwards(module: ModuleUnderTest):
     layer = module.agent_layer
     if layer is None:
         pytest.skip("not an agent sub-layer")
-
-    allowed = AGENT_LAYERS[layer] | {layer} | AGENT_ROOT_MODULES
+    layers = AGENT_LAYERS[module.distribution]
+    assert layer in layers, f"{module.dotted_name} sits outside the declared layers"
+    allowed = layers[layer] | {layer}
+    if module.distribution == "ai_agent_lab.wiki":
+        allowed |= AGENT_ROOT_MODULES
     violations = {imported for imported in module.imported_agent_layers() if imported not in allowed}
 
     assert not violations, f"{module.dotted_name} must not import layer(s) {sorted(violations)}"
@@ -343,7 +380,7 @@ def test_agent_modules_sit_in_a_declared_layer(module: ModuleUnderTest):
     if layer is None:
         pytest.skip("port or package initialiser")
 
-    assert layer in AGENT_LAYERS, f"{module.dotted_name} sits outside the declared layers"
+    assert layer in AGENT_LAYERS[module.distribution], f"{module.dotted_name} sits outside the declared layers"
 
 
 @pytest.mark.security
@@ -357,7 +394,9 @@ def test_business_code_ignores_agent_frameworks(module: ModuleUnderTest):
     """
     if module.distribution in FRAMEWORK_ADAPTERS:
         pytest.skip("a framework adapter")
-    if module.agent_layer is not None and module.agent_layer not in LAYERS_WITHOUT_FRAMEWORKS:
+    if module.agent_layer is not None and module.agent_layer not in LAYERS_WITHOUT_FRAMEWORKS.get(
+        module.distribution, ()
+    ):
         pytest.skip("composition root")
 
     violations = AGENT_FRAMEWORK_ROOTS.intersection(module.imported_roots())
@@ -409,7 +448,7 @@ def test_an_agent_never_sees_an_enterprise_system(module: ModuleUnderTest):
     must never see Confluence: each reaches its system through an MCP tool and
     nothing else.
     """
-    if module.agent_layer not in LAYERS_WITHOUT_SDKS:
+    if module.agent_layer not in LAYERS_WITHOUT_SDKS.get(module.distribution, ()):
         pytest.skip("adapter, composition root or server")
 
     violations = ENTERPRISE_SDK_ROOTS.intersection(module.imported_roots())
@@ -460,9 +499,9 @@ def test_a_domain_layer_runs_without_a_web_stack():
 
         import ygo74.agent_runtime.domains.humanapproval.confirmation
         import ygo74.agent_runtime.domains.humanapproval.tickets
-        import ai_agent_lab.mail.capabilities.write_capabilities
+        import ai_agent_lab.mail.adapters.capabilities.write_capabilities
         import ai_agent_lab.mail.domain.models
-        import ai_agent_lab.mail.skills.send_skill
+        import ai_agent_lab.mail.application.skills.send_skill
         import ai_agent_lab.wiki.capabilities.write_capabilities
         import ai_agent_lab.wiki.domain.models
         import ai_agent_lab.wiki.skills.answer_skill
@@ -502,3 +541,290 @@ def test_namespaces_stay_implicit(namespace: str):
 def _of(distribution: str) -> list[ModuleUnderTest]:
     """Every module belonging to one distribution."""
     return [module for module in ALL_MODULES if module.distribution == distribution]
+
+
+MAIL = "ai_agent_lab.mail"
+MAIL_BOOTSTRAP_IMPORTS = {
+    f"{MAIL}.adapters.cli.entrypoint": frozenset({f"{MAIL}.bootstrap.composition", f"{MAIL}.bootstrap.factory"}),
+    f"{MAIL}.adapters.cli.authorise": frozenset({f"{MAIL}.bootstrap.mail_tools_provider"}),
+    f"{MAIL}.adapters.http.entrypoint": frozenset({f"{MAIL}.bootstrap.conversation"}),
+    f"{MAIL}.adapters.maf.native": frozenset({f"{MAIL}.bootstrap.factory"}),
+    f"{MAIL}.adapters.maf.session": frozenset({f"{MAIL}.bootstrap.composition"}),
+}
+MAIL_NEUTRAL_RUNTIME_IMPORTS = {
+    "domain": (
+        "ygo74.agent_runtime.domains.errors",
+        "ygo74.agent_runtime.domains.security",
+    ),
+    "application": (
+        "ygo74.agent_runtime.domains.errors",
+        "ygo74.agent_runtime.domains.security",
+        "ygo74.agent_runtime.domains.reasoning",
+        "ygo74.agent_runtime.domains.humanapproval",
+        "ygo74.agent_runtime.domains.contracts",
+    ),
+}
+
+
+def _within(name: str, prefix: str) -> bool:
+    return name == prefix or name.startswith(f"{prefix}.")
+
+
+@pytest.mark.parametrize("module", _of(MAIL), ids=lambda module: module.dotted_name)
+def test_mail_inner_layers_only_import_neutral_dependencies(module: ModuleUnderTest):
+    if module.agent_layer not in MAIL_NEUTRAL_RUNTIME_IMPORTS:
+        pytest.skip("outer Mail module")
+    allowed = (
+        f"{MAIL}.domain",
+        *MAIL_NEUTRAL_RUNTIME_IMPORTS[module.agent_layer],
+        "pydantic",
+    )
+    if module.agent_layer == "application":
+        allowed += (f"{MAIL}.application",)
+    violations = {
+        name
+        for name in module.imported_modules()
+        if name.split(".", 1)[0] not in sys.stdlib_module_names and not any(_within(name, prefix) for prefix in allowed)
+    }
+    assert not violations, f"{module.dotted_name} imports non-neutral dependencies: {sorted(violations)}"
+
+
+@pytest.mark.parametrize("module", _of(MAIL), ids=lambda module: module.dotted_name)
+def test_mail_canonical_modules_never_import_legacy_paths(module: ModuleUnderTest):
+    violations = {
+        name
+        for name in module.imported_modules()
+        if any(_within(name, prefix) for prefix in MAIL_REMOVED_APPLICATION_MODULES)
+    }
+    assert not violations, f"{module.dotted_name} imports legacy Mail paths: {sorted(violations)}"
+
+
+@pytest.mark.parametrize("module", _of(MAIL), ids=lambda module: module.dotted_name)
+def test_mail_adapters_only_reach_named_bootstrap_entrypoints(module: ModuleUnderTest):
+    if module.agent_layer != "adapters":
+        pytest.skip("not a Mail adapter")
+    allowed = MAIL_BOOTSTRAP_IMPORTS.get(module.dotted_name, ())
+    violations = {
+        name
+        for name in module.imported_modules()
+        if _within(name, f"{MAIL}.bootstrap") and not any(_within(name, prefix) for prefix in allowed)
+    }
+    assert not violations, f"{module.dotted_name} reaches bootstrap outside its entrypoint: {sorted(violations)}"
+
+
+def test_mail_root_cannot_regain_business_implementations():
+    root = DISTRIBUTIONS[MAIL].joinpath(*MAIL.split("."))
+    assert sorted(path.name for path in root.glob("*.py")) == ["__init__.py"]
+    tree = ast.parse((root / "__init__.py").read_text(encoding="utf-8"))
+    assert all(
+        isinstance(node, ast.Expr) and isinstance(node.value, ast.Constant) and isinstance(node.value.value, str)
+        for node in tree.body
+    ), "Mail's root initializer must not import or implement business behavior"
+
+
+@pytest.mark.parametrize("name", sorted(MAIL_REMOVED_APPLICATION_MODULES))
+def test_mail_has_no_legacy_entrypoints_or_packages(name: str):
+    root = DISTRIBUTIONS[MAIL]
+    path = root.joinpath(*name.split("."))
+    assert not path.with_suffix(".py").exists(), f"obsolete Mail module: {name}"
+    assert not path.is_dir(), f"obsolete Mail package: {name}"
+
+
+@pytest.mark.parametrize("module", _of("ai_agent_lab.maf"), ids=lambda module: module.dotted_name)
+def test_generic_maf_never_imports_mail(module: ModuleUnderTest):
+    assert not any(_within(name, MAIL) for name in module.imported_modules()), module.dotted_name
+
+
+@pytest.mark.parametrize("module", _of(MAIL), ids=lambda module: module.dotted_name)
+def test_mail_inner_layers_do_not_reach_framework_adapters(module: ModuleUnderTest):
+    if module.agent_layer not in {"domain", "application", "infrastructure"}:
+        pytest.skip("outer Mail module")
+    forbidden = (*FRAMEWORK_ADAPTERS, "ygo74.agent_runtime.integrations")
+    violations = {name for name in module.imported_modules() if any(_within(name, prefix) for prefix in forbidden)}
+    assert not violations, f"{module.dotted_name} reaches a framework adapter: {sorted(violations)}"
+
+
+@pytest.mark.parametrize(
+    ("class_name", "owner"),
+    [
+        ("ReplyRecipientPlanner", f"{MAIL}.domain.services.reply_recipient_planner"),
+        ("MailToolName", f"{MAIL}.domain.operation_names"),
+        ("MailSecurityFloor", f"{MAIL}.domain.policies.security_floor"),
+        ("MailToolCatalog", f"{MAIL}.application.operations"),
+        ("MailSkills", f"{MAIL}.application.skills.bundle"),
+        ("MailTools", f"{MAIL}.application.ports.mail_tools"),
+        ("MailConfirmationPresenter", f"{MAIL}.application.confirmations.presenter"),
+        ("DeliveredMailOperations", f"{MAIL}.infrastructure.configuration.operations"),
+    ],
+)
+def test_mail_business_components_have_one_canonical_owner(class_name: str, owner: str):
+    definitions = [
+        module.dotted_name
+        for module in _of(MAIL)
+        for node in ast.walk(module._tree)
+        if isinstance(node, ast.ClassDef) and node.name == class_name
+    ]
+    assert definitions == [owner], f"{class_name} belongs exclusively to {owner}, found {definitions}"
+
+
+def _synthetic_module(source: str, relative_path: str) -> ModuleUnderTest:
+    module = ModuleUnderTest.__new__(ModuleUnderTest)
+    module.distribution = MAIL
+    module._source_root = DISTRIBUTIONS[MAIL]
+    module._path = module._source_root.joinpath(*MAIL.split("."), *relative_path.split(".")).with_suffix(".py")
+    module._tree = ast.parse(source)
+    return module
+
+
+@pytest.mark.parametrize(
+    ("source", "path", "expected"),
+    [
+        ("from ..infrastructure import mcp as transport", "application.example", f"{MAIL}.infrastructure.mcp"),
+        ("from . import skills as processing", "application.example", f"{MAIL}.application.skills"),
+        ("from . import skills", "application.__init__", f"{MAIL}.application.skills"),
+        ("from ... import maf as framework", "application.example", "ai_agent_lab.maf"),
+        ("from ai_agent_lab import maf", "application.example", "ai_agent_lab.maf"),
+        ("from ai_agent_lab.mail import infrastructure", "application.example", f"{MAIL}.infrastructure"),
+        ("from .. import operations", "application.skills.example", f"{MAIL}.application.operations"),
+        ("from ....mail import domain", "application.skills.example", f"{MAIL}.domain"),
+    ],
+)
+def test_import_reader_resolves_relative_and_package_aliases(source: str, path: str, expected: str):
+    module = _synthetic_module(source, path)
+    assert expected in set(module.imported_modules())
+
+
+@pytest.mark.parametrize(
+    ("source", "path"),
+    [
+        ("from .. import application", "domain.example"),
+        ("from ...adapters import capabilities", "application.skills.example"),
+        ("from ai_agent_lab.mail import bootstrap as composition", "application.example"),
+    ],
+)
+def test_import_reader_cannot_hide_outward_dependencies(source: str, path: str):
+    module = _synthetic_module(source, path)
+    with pytest.raises(AssertionError, match="must not import layer"):
+        test_agent_layers_point_inwards(module)
+
+
+def test_import_reader_cannot_hide_a_framework_distribution():
+    module = _synthetic_module("from ... import maf as framework", "application.example")
+    assert "ai_agent_lab.maf" in set(module.imported_distributions())
+    with pytest.raises(AssertionError, match="non-neutral dependencies"):
+        test_mail_inner_layers_only_import_neutral_dependencies(module)
+
+
+def _run_mail_import_probe(code: str) -> None:
+    finished = subprocess.run(  # noqa: S603 - fixed source, no shell
+        [sys.executable, "-c", code],
+        capture_output=True,
+        text=True,
+        cwd=REPOSITORY_ROOT,
+        timeout=60,
+        check=False,
+    )
+    assert finished.returncode == 0, f"Mail import probe failed:\n{finished.stdout}\n{finished.stderr}"
+
+
+@pytest.mark.security
+@pytest.mark.parametrize("layer", ["domain", "application"])
+def test_mail_inner_layer_imports_without_framework_or_web_stack(layer: str):
+    names = [
+        module.dotted_name for module in _of(MAIL) if module.agent_layer == layer
+    ]
+    _run_mail_import_probe(
+        textwrap.dedent(
+            f"""
+            import importlib
+            import importlib.abc
+            import sys
+            sys.path.insert(0, {str(DISTRIBUTIONS[MAIL])!r})
+            blocked = {{"agent_framework", "ai_agent_lab.maf", "fastapi", "starlette", "uvicorn",
+                        "langchain", "langchain_core", "langgraph", "crewai"}}
+            class BlockOuterDependencies(importlib.abc.MetaPathFinder):
+                def find_spec(self, fullname, path=None, target=None):
+                    if any(fullname == name or fullname.startswith(name + ".") for name in blocked):
+                        raise ModuleNotFoundError("inner Mail layer imported " + fullname, name=fullname)
+            sys.meta_path.insert(0, BlockOuterDependencies())
+            for name in {names!r}:
+                importlib.import_module(name)
+            assert not any(
+                loaded == name or loaded.startswith(name + ".")
+                for loaded in sys.modules for name in blocked
+            )
+            """
+        )
+    )
+
+
+@pytest.mark.security
+@pytest.mark.parametrize("missing_package", ["mail_mcp", "mail_mcp.protocol"])
+def test_gmail_dialect_imports_without_the_optional_native_protocol(missing_package: str):
+    _run_mail_import_probe(
+        textwrap.dedent(
+            f"""
+            import importlib.abc
+            import sys
+            from pathlib import Path
+            sys.path.insert(0, {str(DISTRIBUTIONS[MAIL])!r})
+            class NoNativeProtocol(importlib.abc.MetaPathFinder):
+                def find_spec(self, fullname, path=None, target=None):
+                    if fullname == {missing_package!r} or fullname.startswith({missing_package!r} + "."):
+                        raise ModuleNotFoundError("native protocol is not installed", name=fullname)
+            sys.meta_path.insert(0, NoNativeProtocol())
+            from ai_agent_lab.mail.application.errors import MailToolUnavailableError
+            from ai_agent_lab.mail.infrastructure.mcp.google.client import GmailMailTools
+            from ai_agent_lab.mail.infrastructure.mcp.configuration import load_binding
+            from ai_agent_lab.mail.infrastructure.mcp.dialects import create_dialect_registry
+            from ygo74.agent_runtime.domains.configuration.directory import ConfigurationDirectory
+            registry = create_dialect_registry()
+            binding = load_binding(ConfigurationDirectory(Path.cwd() / "config"), "gmail")
+            client = registry.build(binding, object(), "architecture@example.test")
+            assert isinstance(client, GmailMailTools)
+            assert not any(
+                name == "mail_mcp.protocol" or name.startswith("mail_mcp.protocol.")
+                for name in sys.modules
+            )
+            assert "ai_agent_lab.mail.infrastructure.mcp.native.client" not in sys.modules
+            native_binding = load_binding(ConfigurationDirectory(Path.cwd() / "config"), "local")
+            try:
+                registry.build(native_binding, object(), "architecture@example.test")
+            except MailToolUnavailableError as error:
+                assert "ai-agent-lab-mail-agent[native]" in str(error)
+                assert isinstance(error.__cause__, ModuleNotFoundError)
+                assert error.__cause__.name == {missing_package!r}
+            else:
+                raise AssertionError("native selection must explain the missing optional dependency")
+            assert isinstance(registry.build(binding, object(), "architecture@example.test"), GmailMailTools)
+            """
+        )
+    )
+
+
+def test_native_dialect_does_not_misreport_unrelated_missing_dependencies():
+    _run_mail_import_probe(
+        textwrap.dedent(
+            f"""
+            import importlib.abc
+            import sys
+            from pathlib import Path
+            sys.path.insert(0, {str(DISTRIBUTIONS[MAIL])!r})
+            class BrokenNativeDependency(importlib.abc.MetaPathFinder):
+                def find_spec(self, fullname, path=None, target=None):
+                    if fullname == "ai_agent_lab.mail.infrastructure.mcp.native.client":
+                        raise ModuleNotFoundError("unrelated dependency is missing", name="unrelated_dependency")
+            sys.meta_path.insert(0, BrokenNativeDependency())
+            from ai_agent_lab.mail.infrastructure.mcp.configuration import load_binding
+            from ai_agent_lab.mail.infrastructure.mcp.dialects import create_dialect_registry
+            from ygo74.agent_runtime.domains.configuration.directory import ConfigurationDirectory
+            binding = load_binding(ConfigurationDirectory(Path.cwd() / "config"), "local")
+            try:
+                create_dialect_registry().build(binding, object(), "architecture@example.test")
+            except ModuleNotFoundError as error:
+                assert error.name == "unrelated_dependency"
+            else:
+                raise AssertionError("an unrelated import failure must not be hidden")
+            """
+        )
+    )

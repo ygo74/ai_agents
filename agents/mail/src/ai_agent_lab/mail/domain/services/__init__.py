@@ -1,0 +1,1 @@
+"""Deterministic Mail business rules."""

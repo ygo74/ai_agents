@@ -13,9 +13,11 @@ tool names, and no send tool at all.
 from __future__ import annotations
 
 import pytest
+from ygo74.agent_runtime.domains.mcp.binding import McpConnection, McpServerBinding, McpTransport
 from ygo74.agent_runtime.domains.security.user_context import UserContext
 
-from ai_agent_lab.mail.catalog import MailToolName
+from ai_agent_lab.mail.application.errors import MailToolUnavailableError
+from ai_agent_lab.mail.application.ports.mail_tools import MailTools
 from ai_agent_lab.mail.domain.models import (
     MailDraft,
     MailLabel,
@@ -27,11 +29,8 @@ from ai_agent_lab.mail.domain.models import (
     MailSendResult,
     MailThread,
 )
-from ai_agent_lab.mail.mail_errors import MailToolUnavailableError
-from ai_agent_lab.mail.mcp.binding import McpServerBinding, McpTransport
-from ai_agent_lab.mail.mcp.connection import McpConnection
-from ai_agent_lab.mail.mcp.dialects import GMAIL, NATIVE, MailDialectRegistry
-from ai_agent_lab.mail.tools_port import MailTools
+from ai_agent_lab.mail.domain.operation_names import MailToolName
+from ai_agent_lab.mail.infrastructure.mcp.dialects import GMAIL, NATIVE, create_dialect_registry
 
 BLUEBIRD = "bluebird"
 
@@ -89,7 +88,7 @@ class BluebirdMailTools:
         raise NotImplementedError
 
 
-def _bluebird(connection: McpConnection, binding: McpServerBinding, owner_id: str) -> MailTools:
+def _bluebird(binding: McpServerBinding, connection: McpConnection, owner_id: str) -> MailTools:
     """Build the client of the Bluebird server."""
     return BluebirdMailTools(connection, binding, owner_id=owner_id)
 
@@ -124,10 +123,10 @@ class TestAThirdPartyServerPlugsIn:
     """Registering a dialect is the whole cost of a new server."""
 
     def test_a_registered_dialect_is_built_from_its_binding(self):
-        registry = MailDialectRegistry()
+        registry = create_dialect_registry()
         registry.register(BLUEBIRD, _bluebird)
 
-        built = registry.build(_connection(), BLUEBIRD_BINDING, "local-user")
+        built = registry.build(BLUEBIRD_BINDING, _connection(), "local-user")
 
         assert isinstance(built, BluebirdMailTools)
         assert built.owner_id == "local-user"
@@ -151,21 +150,21 @@ class TestTheRegistryIsExplicit:
     """Which servers a build can reach is readable in one place."""
 
     def test_the_built_in_dialects_are_still_there(self):
-        assert MailDialectRegistry().known == (GMAIL, NATIVE)
+        assert create_dialect_registry().known == (GMAIL, NATIVE)
 
     def test_registering_a_dialect_never_silently_replaces_one(self):
         """A typo must not shadow the dialect a deployment relies on."""
-        registry = MailDialectRegistry()
+        registry = create_dialect_registry()
 
         with pytest.raises(MailToolUnavailableError):
             registry.register(NATIVE, _bluebird)
 
     def test_an_unknown_dialect_names_the_alternatives(self):
         """A misspelled binding should say what it could have said instead."""
-        registry = MailDialectRegistry()
+        registry = create_dialect_registry()
 
         with pytest.raises(MailToolUnavailableError) as failure:
-            registry.build(_connection(), BLUEBIRD_BINDING, "local-user")
+            registry.build(BLUEBIRD_BINDING, _connection(), "local-user")
 
         message = str(failure.value)
         assert BLUEBIRD in message

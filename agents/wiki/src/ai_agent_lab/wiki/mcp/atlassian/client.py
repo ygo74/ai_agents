@@ -42,6 +42,7 @@ from datetime import UTC, datetime
 from typing import Any
 
 from mcp.types import CallToolResult, TextContent
+from ygo74.agent_runtime.domains.mcp.binding import McpConnection, McpServerBinding
 from ygo74.agent_runtime.domains.security.untrusted import untrusted
 from ygo74.agent_runtime.domains.security.user_context import UserContext
 
@@ -60,8 +61,6 @@ from ai_agent_lab.wiki.domain.models import (
     WikiSpace,
 )
 from ai_agent_lab.wiki.domain.origins import WikiOrigin
-from ai_agent_lab.wiki.mcp.binding import McpServerBinding
-from ai_agent_lab.wiki.mcp.connection import McpConnection
 from ai_agent_lab.wiki.wiki_errors import (
     WikiAccessDeniedError,
     WikiConcurrentEditError,
@@ -101,7 +100,7 @@ class AtlassianWikiTools:
     def __init__(
         self,
         connection: McpConnection,
-        binding: McpServerBinding,
+        binding: McpServerBinding[WikiToolName],
         *,
         account_id: str = "",
         is_per_user: bool = False,
@@ -113,7 +112,7 @@ class AtlassianWikiTools:
         self._is_per_user = is_per_user
 
     @staticmethod
-    def _needed_aliases(binding: McpServerBinding) -> tuple[str, ...]:
+    def _needed_aliases(binding: McpServerBinding[WikiToolName]) -> tuple[str, ...]:
         """Return the tool names this dialect must be able to call.
 
         The tools of the declared capabilities, plus the search tool whenever

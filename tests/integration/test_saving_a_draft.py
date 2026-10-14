@@ -18,18 +18,18 @@ import pytest
 from tests.support.maf_fakes import ScriptedChatClient, says
 from ygo74.agent_runtime.domains.security.user_context import UserContext
 
-from ai_agent_lab.mail.application.composition import MailAgentCompositionRoot
-from ai_agent_lab.mail.capabilities.results import DraftPreparedResult, DraftSavedResult
-from ai_agent_lab.mail.capabilities.tool_inputs import DraftReferenceInput, DraftReplyInput
-from ai_agent_lab.mail.catalog import MailToolName
-from ai_agent_lab.mail.config.settings import MailAgentSettings
+from ai_agent_lab.mail.adapters.capabilities.results import DraftPreparedResult, DraftSavedResult
+from ai_agent_lab.mail.adapters.capabilities.tool_inputs import DraftReferenceInput, DraftReplyInput
+from ai_agent_lab.mail.application.skills.analysis import MailReplyOutput
+from ai_agent_lab.mail.bootstrap.composition import MailAgentCompositionRoot
 from ai_agent_lab.mail.domain.errors import DraftNotFoundError
 from ai_agent_lab.mail.domain.models import MailDraft
+from ai_agent_lab.mail.domain.operation_names import MailToolName
 from ai_agent_lab.mail.domain.permissions import MailPermission
-from ai_agent_lab.mail.inmemory.dataset import MailDatasetLoader
-from ai_agent_lab.mail.inmemory.mail_tools import InMemoryMailTools
-from ai_agent_lab.mail.inmemory.reasoner import ScriptedTextReasoner
-from ai_agent_lab.mail.skills.analysis import MailReplyOutput
+from ai_agent_lab.mail.infrastructure.configuration.settings import MailAgentSettings
+from ai_agent_lab.mail.infrastructure.inmemory.dataset import MailDatasetLoader
+from ai_agent_lab.mail.infrastructure.inmemory.mail_tools import InMemoryMailTools
+from ai_agent_lab.mail.infrastructure.inmemory.reasoner import ScriptedTextReasoner
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 DATASET = REPOSITORY_ROOT / "data" / "mail" / "sample_mailbox.json"

@@ -7,9 +7,9 @@ from datetime import UTC, datetime
 import pytest
 from ygo74.agent_runtime.domains.security.security_errors import PermissionDeniedError
 
+from ai_agent_lab.mail.application.errors import MailNotFoundError
+from ai_agent_lab.mail.application.skills.search_skill import MailReadSkill, MailSearchSkill
 from ai_agent_lab.mail.domain.models import EmailAddress, MailSearchRequest
-from ai_agent_lab.mail.mail_errors import MailNotFoundError
-from ai_agent_lab.mail.skills.search_skill import MailReadSkill, MailSearchSkill
 
 
 @pytest.fixture

@@ -42,7 +42,7 @@ Start the agent against the deterministic dataset - no mailbox, no credentials:
 $env:MAIL_AGENT_MODE = "mock"
 $env:MAIL_AGENT_HTTP_API_KEY = "choose-a-key"
 .\.venvs\mail-agent-maf\Scripts\python.exe -m uvicorn `
-  "ai_agent_lab.mail.application.entrypoints.service:build_app" `
+  "ai_agent_lab.mail.bootstrap.service:build_app" `
   --factory --host 0.0.0.0 --port 8123
 ```
 

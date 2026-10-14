@@ -20,6 +20,8 @@ loopback interface - so it cannot happen inside a container. Run
 from __future__ import annotations
 
 import argparse
+import logging
+from pathlib import Path
 
 from mail_mcp.gmail.api import GmailApiClient
 from mail_mcp.gmail.credentials import GmailCredentials
@@ -35,6 +37,7 @@ DEFAULT_PORT = 9100
 
 STDIO = "stdio"
 HTTP = "streamable-http"
+LOG_LEVELS = ("debug", "info", "warning", "error", "critical")
 
 
 def build_surface(owner: str, *, host: str = LOOPBACK, port: int = DEFAULT_MCP_PORT) -> MailToolSurface:
@@ -64,9 +67,21 @@ def main() -> None:
     )
     parser.add_argument("--host", default=DEFAULT_HOST, help="Interface to bind when serving over HTTP.")
     parser.add_argument("--port", type=int, default=DEFAULT_PORT, help="Port to bind when serving over HTTP.")
+    parser.add_argument("--env-file", type=Path, help="Environment file to load (default: .env).")
+    parser.add_argument(
+        "--log-level",
+        choices=LOG_LEVELS,
+        default="info",
+        help="Application and HTTP server log verbosity.",
+    )
     arguments = parser.parse_args()
 
-    EnvironmentFile().load()
+    logging.basicConfig(
+        level=getattr(logging, arguments.log_level.upper()),
+        format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+        force=True,
+    )
+    EnvironmentFile(arguments.env_file).load()
 
     if arguments.transport == STDIO:
         build_surface(arguments.owner).run()
@@ -77,7 +92,7 @@ def main() -> None:
     # holding a credential.
     authentication = MailMcpAuthentication.from_environment()
     surface = build_surface(arguments.owner, host=arguments.host, port=arguments.port)
-    surface.run_http(authentication)
+    surface.run_http(authentication, log_level=arguments.log_level)
 
 
 if __name__ == "__main__":

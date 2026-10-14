@@ -49,11 +49,12 @@ NO_HEADER_FORWARDING = (
 
 def _maps_to_openai() -> bool:
     """Whether the installed runtime renders an OpenAI-shaped response."""
+    from ygo74.agent_runtime.domains.contracts.agent_output import AgentOutput, TextContent
     from ygo74.agent_runtime.domains.mapping.response_mapper import map_response
 
     rendered = map_response(
         "openai.chat_completions",
-        {"request_id": "probe", "status": "success", "output": "ok"},
+        AgentOutput(contents=(TextContent("ok"),)),
     )
     return rendered.get("object") == "chat.completion"
 

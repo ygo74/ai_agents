@@ -8,6 +8,8 @@ from collections.abc import Mapping
 from pathlib import Path
 
 from ygo74.agent_runtime.domains.configuration.directory import ConfigurationDirectory
+from ygo74.agent_runtime.domains.mcp.binding import McpConnection, McpServerBinding
+from ygo74.agent_runtime.domains.mcp.dialects import DialectRegistry
 from ygo74.agent_runtime.domains.security.user_context import UserContext
 
 from ai_agent_lab.wiki.catalog import WikiToolName
@@ -19,10 +21,10 @@ from ai_agent_lab.wiki.config.settings import (
 from ai_agent_lab.wiki.inmemory.dataset import WikiDatasetLoader
 from ai_agent_lab.wiki.inmemory.wiki_tools import InMemoryWikiTools
 from ai_agent_lab.wiki.mcp.authorization import WikiAuthorization, authorization_for
-from ai_agent_lab.wiki.mcp.binding import McpServerBinding, McpServerBindingLoader
-from ai_agent_lab.wiki.mcp.connection import McpConnection
-from ai_agent_lab.wiki.mcp.dialects import DialectContext, WikiDialectRegistry
+from ai_agent_lab.wiki.mcp.configuration import capabilities_in, load_binding, with_resolved_stdio_environment
+from ai_agent_lab.wiki.mcp.dialects import DialectContext, create_dialect_registry
 from ai_agent_lab.wiki.tools_port import WikiTools
+from ai_agent_lab.wiki.wiki_errors import WikiToolUnavailableError
 
 _logger = logging.getLogger(__name__)
 
@@ -51,14 +53,14 @@ class WikiToolsProvider:
         *,
         user_id: str = "",
         mcp_settings: WikiMcpSettings | None = None,
-        dialects: WikiDialectRegistry | None = None,
+        dialects: DialectRegistry[WikiTools, [McpConnection, DialectContext]] | None = None,
         environment: Mapping[str, str] | None = None,
     ) -> None:
         self._settings = settings
         self._dataset_loader = dataset_loader
         self._user_id = user_id or settings.user_id
         self._mcp_settings = mcp_settings or WikiMcpSettings()
-        self._dialects = dialects or WikiDialectRegistry()
+        self._dialects = dialects or create_dialect_registry()
         self._environment = dict(environment if environment is not None else os.environ)
         self._connection: McpConnection | None = None
 
@@ -86,7 +88,7 @@ class WikiToolsProvider:
             caps = frozenset(WikiToolName)
             _logger.debug("Mock mode capabilities count=%d", len(caps))
             return caps
-        caps = self._binding(base_path).capabilities_in(self._environment)
+        caps = capabilities_in(self._binding(base_path), self._environment)
         _logger.debug(
             "MCP binding '%s' capabilities count=%d: %s",
             self._mcp_settings.server,
@@ -118,7 +120,7 @@ class WikiToolsProvider:
         header and the authorisation is empty, which is what tells the dialect it
         is speaking for exactly one person.
         """
-        binding = self._binding(base_path)
+        binding = with_resolved_stdio_environment(self._binding(base_path), self._environment)
         authorization = self._authorization()
         _logger.info(
             "Building MCP wiki tools with server='%s', dialect='%s', transport='%s'",
@@ -136,10 +138,11 @@ class WikiToolsProvider:
             binding,
             timeout_seconds=self._mcp_settings.timeout_seconds,
             headers=authorization.headers_for(self._caller()),
+            unavailable=WikiToolUnavailableError,
         )
         return self._dialects.build(
-            self._connection,
             binding,
+            self._connection,
             DialectContext(
                 account_id=self._mcp_settings.account_id,
                 is_per_user=authorization.is_per_user,
@@ -170,7 +173,7 @@ class WikiToolsProvider:
         """
         return UserContext(user_id=self._user_id, session_id="mcp-connection")
 
-    def _binding(self, base_path: Path | None) -> McpServerBinding:
+    def _binding(self, base_path: Path | None) -> McpServerBinding[WikiToolName]:
         """Load the delivered description of the bound server."""
         directory = ConfigurationDirectory.resolve(base_path=base_path)
-        return McpServerBindingLoader(directory).load(self._mcp_settings.server)
+        return load_binding(directory, self._mcp_settings.server)

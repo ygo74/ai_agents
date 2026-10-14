@@ -14,9 +14,11 @@ none of it: a caller adapts to whatever shapes that server already has.
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Awaitable, Callable, Sequence
 from datetime import datetime
 from functools import wraps
+from time import perf_counter
 from typing import TYPE_CHECKING, Annotated, Protocol
 
 from mcp.server.fastmcp import FastMCP
@@ -25,6 +27,8 @@ from pydantic import Field
 
 from mail_mcp.protocol import payloads as wire
 from mail_mcp.protocol.errors import AccessDeniedError, MailServerError, ProtocolError
+
+_logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:  # pragma: no cover - imported for typing only
     from ygo74.agent_runtime.domains.mcpserver.http_binding import McpHttpBinding
@@ -139,7 +143,8 @@ class SingleMailbox:
         """Return the mailbox, provided the caller asked for the right one."""
         if owner == self._owner:
             return self._mailbox
-        raise AccessDeniedError(f"mailbox of {owner!r} is not served here")
+        _logger.warning("mailbox access denied: requested owner does not match configured mailbox")
+        raise AccessDeniedError("requested mailbox is not served here")
 
 
 def reporting[**P, R](tool: Callable[P, Awaitable[R]]) -> Callable[P, Awaitable[R]]:
@@ -151,10 +156,35 @@ def reporting[**P, R](tool: Callable[P, Awaitable[R]]) -> Callable[P, Awaitable[
 
     @wraps(tool)
     async def guarded(*args: P.args, **kwargs: P.kwargs) -> R:
+        tool_name = tool.__name__
+        started = perf_counter()
+        _logger.debug("MCP tool started: tool=%s", tool_name)
         try:
-            return await tool(*args, **kwargs)
+            result = await tool(*args, **kwargs)
         except MailServerError as error:
+            _logger.warning(
+                "MCP tool failed: tool=%s error=%s code=%s duration_ms=%.1f",
+                tool_name,
+                type(error).__name__,
+                error.code.value,
+                (perf_counter() - started) * 1000,
+            )
             raise ToolError(error.reported()) from error
+        except Exception as error:
+            _logger.exception(
+                "MCP tool failed unexpectedly: tool=%s error=%s duration_ms=%.1f",
+                tool_name,
+                type(error).__name__,
+                (perf_counter() - started) * 1000,
+                exc_info=False,
+            )
+            raise
+        _logger.debug(
+            "MCP tool completed: tool=%s duration_ms=%.1f",
+            tool_name,
+            (perf_counter() - started) * 1000,
+        )
+        return result
 
     return guarded
 
@@ -191,7 +221,13 @@ class MailToolSurface:
         """Serve the tools over stdio until the client disconnects."""
         self._server.run()
 
-    def run_http(self, authentication: McpServerAuthentication, *, binding: McpHttpBinding | None = None) -> None:
+    def run_http(
+        self,
+        authentication: McpServerAuthentication,
+        *,
+        binding: McpHttpBinding | None = None,
+        log_level: str = "info",
+    ) -> None:
         """Serve the tools over streamable HTTP, to callers that prove who they are.
 
         The transport, the authentication chain, the open health probe and the OAuth
@@ -211,7 +247,7 @@ class MailToolSurface:
             binding=binding or Binding(host=self._server.settings.host, port=self._server.settings.port),
             resource_url=authentication.resource_url,
         )
-        host.serve(self._server)
+        host.serve(self._server, log_level=log_level)
 
     def _register_read(self) -> None:
         """Expose the tools that never change anything."""

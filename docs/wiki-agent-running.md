@@ -124,6 +124,9 @@ to `false` deliberately. The full reasoning is in
 Everything above drives one person at a console. To let LibreChat - or another
 agent - talk to it, run the OpenAI-compatible service instead:
 
+The steps from the native LangGraph console to managed HTTP hosting are in
+[BYOA: develop with LangGraph, then integrate](./wiki-agent.md#byoa-develop-with-langgraph-then-integrate).
+
 ```powershell
 $env:WIKI_AGENT_HTTP_API_KEY = "demo-key"
 .\.venvs\wiki-agent\Scripts\python.exe -m uvicorn `
@@ -351,7 +354,8 @@ skills or the agent.
 
 1. Write a class implementing `WikiTools`, translating that server's shapes into
    domain models. Fence every piece of third-party free text as `UntrustedText`.
-2. Register it in `ai_agent_lab.wiki.mcp.dialects.WikiDialectRegistry`.
+2. Register it in the runtime `DialectRegistry` supplied by
+   `ai_agent_lab.wiki.mcp.dialects.create_dialect_registry()`.
 3. Deliver `config/mcp/<server>.yaml` declaring the transport, the dialect, the
    capabilities the server really has, and the name it gives to each tool.
 

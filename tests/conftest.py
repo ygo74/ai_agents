@@ -74,8 +74,7 @@ def deterministic_backend(monkeypatch):
     live mail server, even by accident.
     """
     monkeypatch.setenv("MAIL_AGENT_MODE", "mock")
-    monkeypatch.setenv("MAIL_MCP_SERVER", "local")
-    for name in ("MAIL_MCP_OAUTH_CLIENT_ID", "MAIL_MCP_OAUTH_CLIENT_SECRET"):
+    for name in ("MAIL_MCP_HTTP_AUTHORIZATION", "MAIL_MCP_OAUTH_CLIENT_SECRET"):
         monkeypatch.delenv(name, raising=False)
 
 

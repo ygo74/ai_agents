@@ -22,19 +22,21 @@ from ygo74.agent_runtime.domains.security.security_errors import PermissionDenie
 from ygo74.agent_runtime.domains.security.untrusted import untrusted
 from ygo74.agent_runtime.domains.security.user_context import UserContext
 
-from ai_agent_lab.mail.catalog import MailToolCatalog, MailToolName
-from ai_agent_lab.mail.config.mailbox_directory import ConfiguredMailboxOwnerDirectory
+from ai_agent_lab.mail.application.operations import MailToolCatalog
+from ai_agent_lab.mail.application.skills.analysis import MailReplyOutput
+from ai_agent_lab.mail.application.skills.gating import GatedMailOperationRunner
+from ai_agent_lab.mail.application.skills.management_skill import MailManagementSkill
+from ai_agent_lab.mail.application.skills.reply_skill import MailReplySkill
+from ai_agent_lab.mail.application.skills.send_skill import SendMailSkill
 from ai_agent_lab.mail.domain.errors import NoReplyRecipientError
 from ai_agent_lab.mail.domain.models import EmailAddress, MailDraft
+from ai_agent_lab.mail.domain.operation_names import MailToolName
 from ai_agent_lab.mail.domain.origins import MailOrigin
 from ai_agent_lab.mail.domain.permissions import MailPermission
-from ai_agent_lab.mail.inmemory.reasoner import ScriptedTextReasoner
-from ai_agent_lab.mail.security_floor import MailSecurityFloor
-from ai_agent_lab.mail.skills.analysis import MailReplyOutput
-from ai_agent_lab.mail.skills.gating import GatedMailOperationRunner
-from ai_agent_lab.mail.skills.management_skill import MailManagementSkill
-from ai_agent_lab.mail.skills.reply_skill import MailReplySkill, ReplyRecipientPlanner
-from ai_agent_lab.mail.skills.send_skill import SendMailSkill
+from ai_agent_lab.mail.domain.policies.security_floor import MailSecurityFloor
+from ai_agent_lab.mail.domain.services.reply_recipient_planner import ReplyRecipientPlanner
+from ai_agent_lab.mail.infrastructure.configuration.mailbox_directory import ConfiguredMailboxOwnerDirectory
+from ai_agent_lab.mail.infrastructure.inmemory.reasoner import ScriptedTextReasoner
 
 REPLY_ANSWER = {"subject": "Re: Project Alpha - architecture review", "body": "Agreed. I will review it tomorrow."}
 
@@ -387,7 +389,7 @@ class TestMailManagementSkill:
         assert audit.records_for(MailToolName.ARCHIVE_MAIL.value)[0].outcome is AuditOutcome.BLOCKED
 
     async def test_records_a_failed_operation(self, management_skill, audit, owner):
-        from ai_agent_lab.mail.mail_errors import MailNotFoundError
+        from ai_agent_lab.mail.application.errors import MailNotFoundError
 
         request = management_skill.build_confirmation_request(MailToolName.ARCHIVE_MAIL, "absent", owner)
         decision = ConfirmationDecision(request_id=request.request_id, approved=True, decided_by="owner")
