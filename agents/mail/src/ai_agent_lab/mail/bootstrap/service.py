@@ -21,13 +21,20 @@ from fastapi import FastAPI
 from ygo74.agent_runtime.domains.auth.apikey_authenticator import StaticApiKeyUserResolver
 from ygo74.agent_runtime.domains.auth.auth_context import ResolvedUser
 from ygo74.agent_runtime.domains.auth.authentication_policy import AuthenticationPolicy
-from ygo74.agent_runtime.domains.auth.jwt_authenticator import JwksKeyResolver, JwtValidationConfig
+from ygo74.agent_runtime.domains.auth.jwt_authenticator import (
+    DiscoveredJwksKeyResolver,
+    JwksKeyResolver,
+    JwtValidationConfig,
+)
+from ygo74.agent_runtime.domains.auth.oidc_discovery import OidcDiscovery
 from ygo74.agent_runtime.domains.contracts.agent_definition import AgentDefinition
 from ygo74.agent_runtime.domains.discovery.agent_descriptor import AgentDescriptor
 from ygo74.agent_runtime.domains.discovery.discovery_configuration import DiscoveryConfiguration
 from ygo74.agent_runtime.domains.discovery.manifest_descriptor import AdvertisedSecurity
 from ygo74.agent_runtime.domains.endpoints.hosting_factory import EndpointSurface
 from ygo74.agent_runtime.domains.endpoints.managed_worker import ManagedAgentWorker, WorkerSettings
+from ygo74.agent_runtime.domains.http.asgi_lifecycle import AsgiShutdownRegistrar
+from ygo74.agent_runtime.domains.http.client_lifecycle import SyncHttpClientOwner
 
 from ai_agent_lab.core.observability.logging_config import setup_logging
 from ai_agent_lab.mail.adapters.http.entrypoint import (
@@ -79,7 +86,8 @@ def build_app(*, base_path: Path | None = None, env_file: Path | None = None) ->
     factory = MailConversationFactory(composition)
     # The same active credential configuration drives both request auth and the
     # descriptor, so discovery cannot advertise a scheme this service rejects.
-    jwt_validation = _jwt_validation(http)
+    oidc_http = SyncHttpClientOwner() if http.oidc_issuer else None
+    jwt_validation = _jwt_validation(http, oidc_http)
     api_key_resolver = _api_key_resolver(http, settings)
     if jwt_validation is not None:
         authentication = AuthenticationPolicy.jwt(jwt_validation)
@@ -108,7 +116,10 @@ def build_app(*, base_path: Path | None = None, env_file: Path | None = None) ->
         ),
         factory.build,
     )
-    return worker.build_app(title="Mail Agent")
+    app = worker.build_app(title="Mail Agent")
+    if oidc_http is not None:
+        AsgiShutdownRegistrar.register(app, oidc_http.close, startup=oidc_http.start)
+    return app
 
 
 def _refuse_an_open_service(http: MailAgentHttpSettings) -> None:
@@ -145,7 +156,10 @@ def _descriptor(
     ).build()
 
 
-def _jwt_validation(http: MailAgentHttpSettings) -> JwtValidationConfig | None:
+def _jwt_validation(
+    http: MailAgentHttpSettings,
+    http_client_owner: SyncHttpClientOwner | None = None,
+) -> JwtValidationConfig | None:
     """Build the token validation an OIDC deployment needs.
 
     Returning nothing when no issuer is configured is what keeps the API-key
@@ -167,7 +181,18 @@ def _jwt_validation(http: MailAgentHttpSettings) -> JwtValidationConfig | None:
         required_claims=("sub", "exp", "iss", "aud"),
         issuer=http.oidc_issuer,
         audience=http.oidc_audience,
-        key_resolver=JwksKeyResolver(jwks_url=http.jwks_url()),
+        key_resolver=(
+            JwksKeyResolver(
+                jwks_url=http.jwks_url_override,
+                http_client_owner=http_client_owner,
+                service_identity=http.oidc_issuer,
+            )
+            if http.jwks_url_override
+            else DiscoveredJwksKeyResolver(
+                issuer=http.oidc_issuer,
+                discovery=OidcDiscovery(http_client_owner=http_client_owner),
+            )
+        ),
         roles_claim_path=http.roles_claim_path,
     )
 

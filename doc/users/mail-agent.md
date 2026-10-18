@@ -183,6 +183,18 @@ MAIL_AGENT_MODE=mcp
 MCP_MAIL_OBO_CLIENT_SECRET=<private-client-secret>
 ```
 
+Each Mail HTTP worker creates one OIDC HTTP client during application startup.
+Discovery and signing-key refreshes reuse that client, which closes after the
+worker releases its conversations. Startup creates the pool without contacting
+Keycloak; the first token validation loads discovery and signing keys. An
+explicit `MAIL_AGENT_HTTP_JWKS_URL` skips discovery but uses the same lifecycle.
+TLS verification remains enabled.
+
+MCP uses separate asynchronous pools: the runtime reuses one pool per MCP
+connection for its sessions and delegated token exchange, then closes it when
+the connection is released. This is not a single global pool across all agent
+conversations. Caller tokens remain request-scoped, not shared client headers.
+
 Configure the server's private `.env_mcp_server` separately:
 
 ```dotenv
@@ -283,9 +295,24 @@ alone is not proof of identity propagation. Never log the tokens themselves.
 | `delegated token exchange is not configured` | The linked runtime has only the exchange port, not the required generic implementation |
 | Mail returns 401 | Incoming issuer, `mail-agent` audience, expiry, keys, and trusted TLS certificate |
 | Exchange returns `invalid_client` | Requesting client ID, secret, and client authentication method |
+| Keycloak logs `invalid_token` with `subject_token validation failure` | Keycloak rejected the subject token before exchange authorization. Log out of LibreChat and sign in again to obtain a fresh access token and active Keycloak session, especially after restarting Keycloak. Do not send the OIDC ID token. Local signature validation does not prove the Keycloak session is still active. |
 | Exchange rejects the request | Standard exchange enabled, requester present in subject `aud`, target mapper/effective scopes, realm and client policies |
 | MCP returns 401 | Exchanged token issuer, `mail-mcp` audience, expiry, keys, and certificate trust |
 | Mailbox owner is not served | `--owner` must match the authenticated user's `sub` |
+
+For `subject_token validation failure`, first repeat the independent exchange
+test with a newly issued **access token**. If it still fails, inspect the token
+locally: verify the exact realm issuer, expiry, token type, and that its user and
+session still exist in Keycloak. Never paste the token into logs, chat, or an
+online decoder. The runtime sends the verified inbound token unchanged as
+`subject_token`; it does not mint or repair that token.
+
+An audience mapper or missing exchange permission normally fails a later
+exchange check. Do not disable signature or session checks to bypass this error.
+The runtime logs the token endpoint HTTP status and an allowlisted OAuth error
+code, not the provider's free-form description. Keycloak's event error and the
+OAuth response code can differ (for example `invalid_token` in the event and
+`invalid_request` in the response).
 
 Also check that an expired/wrong-audience token is rejected, and that replaying
 the original LibreChat token directly to MCP is rejected when it lacks

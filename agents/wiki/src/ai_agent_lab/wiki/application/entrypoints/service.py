@@ -30,7 +30,12 @@ from langchain_core.language_models import BaseChatModel
 from ygo74.agent_runtime.domains.auth.apikey_authenticator import StaticApiKeyUserResolver
 from ygo74.agent_runtime.domains.auth.auth_context import ResolvedUser
 from ygo74.agent_runtime.domains.auth.authentication_policy import AuthenticationPolicy
-from ygo74.agent_runtime.domains.auth.jwt_authenticator import JwksKeyResolver, JwtValidationConfig
+from ygo74.agent_runtime.domains.auth.jwt_authenticator import (
+    DiscoveredJwksKeyResolver,
+    JwksKeyResolver,
+    JwtValidationConfig,
+)
+from ygo74.agent_runtime.domains.auth.oidc_discovery import OidcDiscovery
 from ygo74.agent_runtime.domains.configuration.environment import EnvironmentFile
 from ygo74.agent_runtime.domains.contracts.agent_definition import AgentDefinition, AgentFactoryContext
 from ygo74.agent_runtime.domains.discovery.agent_descriptor import AgentDescriptor
@@ -38,6 +43,8 @@ from ygo74.agent_runtime.domains.discovery.discovery_configuration import Discov
 from ygo74.agent_runtime.domains.discovery.manifest_descriptor import AdvertisedSecurity
 from ygo74.agent_runtime.domains.endpoints.hosting_factory import EndpointSurface
 from ygo74.agent_runtime.domains.endpoints.managed_worker import WorkerSettings
+from ygo74.agent_runtime.domains.http.asgi_lifecycle import AsgiShutdownRegistrar
+from ygo74.agent_runtime.domains.http.client_lifecycle import SyncHttpClientOwner
 from ygo74.agent_runtime.integrations.langchain import LangGraphRunnable
 from ygo74.agent_runtime.integrations.langchain.worker import LangGraphWorker
 
@@ -87,7 +94,8 @@ def build_app(
     # Computed once and used twice: the authenticator chain is configured from
     # these, and the descriptor is derived from them, so discovery cannot
     # advertise a scheme this service does not accept.
-    jwt_validation = _jwt_validation(http)
+    oidc_http = SyncHttpClientOwner() if http.uses_oidc else None
+    jwt_validation = _jwt_validation(http, oidc_http)
     api_key_resolver = _api_key_resolver(http, settings)
 
     if jwt_validation is not None:
@@ -108,7 +116,7 @@ def build_app(
         tools=tuple(skill.operation for skill in composition.manifest().skills),
         control_point="wiki-confirmation-policy",
     )
-    return LangGraphWorker(
+    app = LangGraphWorker(
         definition,
         WorkerSettings(
             deployment_id="wiki-agent",
@@ -124,6 +132,9 @@ def build_app(
         ),
         conversation_factory=factory.build,
     ).build_app()
+    if oidc_http is not None:
+        AsgiShutdownRegistrar.register(app, oidc_http.close, startup=oidc_http.start)
+    return app
 
 
 @asynccontextmanager
@@ -174,7 +185,10 @@ def _descriptor(
     ).build()
 
 
-def _jwt_validation(http: WikiAgentHttpSettings) -> JwtValidationConfig | None:
+def _jwt_validation(
+    http: WikiAgentHttpSettings,
+    http_client_owner: SyncHttpClientOwner | None = None,
+) -> JwtValidationConfig | None:
     """Build the token validation an OIDC deployment needs.
 
     Returning nothing when no issuer is configured is what keeps the API-key
@@ -187,7 +201,18 @@ def _jwt_validation(http: WikiAgentHttpSettings) -> JwtValidationConfig | None:
         required_claims=("sub", "exp", "iss", "aud"),
         issuer=http.oidc_issuer,
         audience=http.oidc_audience,
-        key_resolver=JwksKeyResolver(jwks_url=http.jwks_url()),
+        key_resolver=(
+            JwksKeyResolver(
+                jwks_url=http.jwks_url_override,
+                http_client_owner=http_client_owner,
+                service_identity=http.oidc_issuer,
+            )
+            if http.jwks_url_override
+            else DiscoveredJwksKeyResolver(
+                issuer=http.oidc_issuer,
+                discovery=OidcDiscovery(http_client_owner=http_client_owner),
+            )
+        ),
         roles_claim_path=http.roles_claim_path,
     )
 

@@ -26,6 +26,11 @@ owns route registration, the identity-scoped cache, readiness and shutdown. An
 OIDC issuer selects JWT validation and takes precedence over the demonstration
 API key; without an issuer, the configured key is used.
 
+Each worker creates one OIDC HTTP client at startup and shares it between
+discovery and JWKS retrieval. These reads occur on the first token validation;
+an explicit `WIKI_AGENT_HTTP_JWKS_URL` skips discovery. The client closes after
+the worker releases its conversations.
+
 | Owned by the runtime library | Owned here |
 |---|---|
 | `POST /v1/chat/completions`, `GET /v1/models` | Which caller a request is attributed to |

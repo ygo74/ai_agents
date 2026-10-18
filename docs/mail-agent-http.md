@@ -20,7 +20,9 @@ the Mail entrypoint and descriptor, exposes Chat Completions, applies exactly
 one authentication policy, then enables authenticated model discovery. An
 OIDC issuer selects JWT validation and takes precedence over the demonstration
 API key; set `MAIL_AGENT_HTTP_JWKS_URL` when the issuer's JWKS endpoint is not
-discoverable or to avoid discovery during startup. OIDC clients send
+discoverable or to skip discovery. The worker creates its shared OIDC HTTP client
+at startup; discovery and JWKS retrieval occur on the first token validation.
+The client closes after the worker releases its conversations. OIDC clients send
 `Authorization: Bearer <token>`.
 
 What this repository owns is what that library deliberately leaves to the
