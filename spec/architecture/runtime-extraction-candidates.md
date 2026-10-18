@@ -276,7 +276,7 @@ The two earlier extraction concerns are addressed by the existing domain APIs:
 
 ### Gated operation runner
 
-*Sources: `mail/skills/gating.py`, `wiki/skills/gating.py` · Target: `domains/humanapproval/` · portable*
+*Sources: `mail/skills/gating.py`, `wiki/application/skills/gating.py` · Target: `domains/humanapproval/` · portable*
 
 68 % identical, and it is the security path itself: permission check, confirmation policy, execution,
 audit record. Both agents state in their docstring that this exists "so that no write skill can forget a
@@ -462,7 +462,7 @@ framework adapters.
 
 ### The session loop
 
-`mail/application/session.py` and `wiki/application/session.py` import `agent_framework` and LangGraph
+`mail/application/session.py` and `wiki/adapters/langchain/session.py` import `agent_framework` and LangGraph
 respectively. The implementation must stay per framework.
 
 The **policy** they apply is shared: bound the number of approval rounds, bound

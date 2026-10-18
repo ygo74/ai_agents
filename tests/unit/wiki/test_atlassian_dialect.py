@@ -20,12 +20,12 @@ from ygo74.agent_runtime.domains.mcp.binding import McpServerBinding, McpTranspo
 from ygo74.agent_runtime.domains.security.untrusted import UntrustedText
 from ygo74.agent_runtime.domains.security.user_context import UserContext
 
-from ai_agent_lab.wiki.catalog import WikiToolName
+from ai_agent_lab.wiki.domain.operation_names import WikiToolName
 from ai_agent_lab.wiki.domain.enums import WikiContentFormat, WikiSortOrder
 from ai_agent_lab.wiki.domain.models import WikiSearchRequest
-from ai_agent_lab.wiki.mcp.atlassian.client import AtlassianWikiTools, CqlQueryBuilder
-from ai_agent_lab.wiki.tools_port import WikiTools
-from ai_agent_lab.wiki.wiki_errors import (
+from ai_agent_lab.wiki.infrastructure.mcp.atlassian.client import AtlassianWikiTools, CqlQueryBuilder
+from ai_agent_lab.wiki.application.ports.wiki_tools import WikiTools
+from ai_agent_lab.wiki.domain.tool_errors import (
     WikiAccessDeniedError,
     WikiConcurrentEditError,
     WikiNotFoundError,

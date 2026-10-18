@@ -49,7 +49,7 @@ or a comparison between the two frameworks measures two deployments instead.
 ## BYOA: develop with LangGraph, then integrate
 
 The Wiki Agent is built with LangChain's public `create_agent(...)` API in
-[`application/composition.py`](../agents/wiki/src/ai_agent_lab/wiki/application/composition.py).
+[`application/composition.py`](../agents/wiki/src/ai_agent_lab/wiki/bootstrap/composition.py).
 Use the existing console entry point while changing the graph, tools or prompt:
 
 ```python

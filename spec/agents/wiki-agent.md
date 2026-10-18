@@ -87,5 +87,5 @@ See the [Wiki HTTP and conversation guide](../../docs/wiki-agent-http.md), the
 [Wiki user guide](../../docs/wiki-agent.md), [LangGraph integration](../integrations/langchain-langgraph.md),
 and [MCP server boundaries](../integrations/mcp-server-hosting.md). The
 delivered inventory is in [`agent.yaml`](../../config/agents/wiki/agent.yaml);
-tool posture is defined by [`catalog.py`](../../agents/wiki/src/ai_agent_lab/wiki/catalog.py)
-and [`security_floor.py`](../../agents/wiki/src/ai_agent_lab/wiki/security_floor.py).
+tool posture is defined by [`operations.py`](../../agents/wiki/src/ai_agent_lab/wiki/application/operations.py)
+and [`security_floor.py`](../../agents/wiki/src/ai_agent_lab/wiki/domain/policies/security_floor.py).

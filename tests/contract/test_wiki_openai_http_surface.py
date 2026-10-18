@@ -21,13 +21,13 @@ import pytest
 from fastapi.testclient import TestClient
 from tests.support.langgraph_fakes import ScriptedChatModel, ToolCall, calls, says
 
-from ai_agent_lab.wiki.application.entrypoints.service import (
+from ai_agent_lab.wiki.bootstrap.service import (
     AGENT_ID,
     WikiServiceConfigurationError,
     build_app,
 )
-from ai_agent_lab.wiki.catalog import WikiToolName
-from ai_agent_lab.wiki.skills.analysis import AnswerOutput
+from ai_agent_lab.wiki.domain.operation_names import WikiToolName
+from ai_agent_lab.wiki.application.skills.analysis import AnswerOutput
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 

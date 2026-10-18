@@ -31,7 +31,7 @@ from ygo74.agent_runtime.domains.security.operations import (
 from ygo74.agent_runtime.domains.security.user_context import UserContext
 
 from ai_agent_lab.langgraph.approval import REJECT, PendingToolApproval
-from ai_agent_lab.wiki.application.approval.tickets import WikiTicketApprovalResolver
+from ai_agent_lab.wiki.adapters.langchain.approval import WikiTicketApprovalResolver
 from ai_agent_lab.wiki.domain.permissions import WikiPermission
 
 CONVERSATION = "conv-wiki-http-1"

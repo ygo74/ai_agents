@@ -129,17 +129,6 @@ FRAMEWORK_ADAPTERS: dict[str, frozenset[str]] = {
     "ai_agent_lab.langgraph": frozenset({"langchain", "langchain_core", "langchain_openai", "langgraph"}),
 }
 
-# Wiki retains its existing layering; Mail's application is no longer its
-# composition root.
-WIKI_LAYERS: dict[str, frozenset[str]] = {
-    "domain": frozenset(),
-    "config": frozenset({"domain"}),
-    "mcp": frozenset({"domain"}),
-    "skills": frozenset({"domain", "mcp"}),
-    "capabilities": frozenset({"domain", "mcp", "skills"}),
-    "inmemory": frozenset({"domain"}),
-    "application": frozenset({"domain", "config", "mcp", "skills", "capabilities", "inmemory"}),
-}
 MAIL_LAYERS: dict[str, frozenset[str]] = {
     "domain": frozenset(),
     "application": frozenset({"domain"}),
@@ -147,6 +136,7 @@ MAIL_LAYERS: dict[str, frozenset[str]] = {
     "adapters": frozenset({"domain", "application", "infrastructure", "bootstrap"}),
     "bootstrap": frozenset({"domain", "application", "infrastructure", "adapters"}),
 }
+WIKI_LAYERS = MAIL_LAYERS
 AGENT_LAYERS = {
     "ai_agent_lab.mail": MAIL_LAYERS,
     "ai_agent_lab.wiki": WIKI_LAYERS,
@@ -156,10 +146,9 @@ MAIL_REMOVED_APPLICATION_MODULES = frozenset(
     for name in ("__main__", "cli_entrypoint", "native", "authorise", "discover", "entrypoints", "approval")
 )
 
-# Modules sitting directly in an agent package rather than in a sub-layer. They
-# are the ports and the policies the layers agree on, so they import nothing but
-# the domain.
-AGENT_ROOT_MODULES = frozenset({"catalog", "mail_errors", "wiki_errors", "security_floor", "tools_port"})
+# Agent-specific modules now live in their declared layers rather than directly
+# below the package root.
+AGENT_ROOT_MODULES = frozenset()
 
 AGENT_FRAMEWORK_ROOTS = frozenset(
     {"agent_framework", "langchain", "langchain_core", "langchain_openai", "langgraph", "crewai"}
@@ -187,14 +176,14 @@ ENTERPRISE_SDK_ROOTS = frozenset(
 # Agent layers that must stay free of any agentic framework.
 LAYERS_WITHOUT_FRAMEWORKS = {
     "ai_agent_lab.mail": frozenset({"domain", "application", "infrastructure"}),
-    "ai_agent_lab.wiki": frozenset({"domain", "mcp", "skills", "capabilities", "inmemory", "config"}),
+    "ai_agent_lab.wiki": frozenset({"domain", "application", "infrastructure"}),
 }
 
 # Agent layers that must not name a transport or a vendor SDK. `mcp` is excluded:
 # the dialects are the adapters, and speaking MCP is their job.
 LAYERS_WITHOUT_SDKS = {
     "ai_agent_lab.mail": frozenset({"domain", "application"}),
-    "ai_agent_lab.wiki": frozenset({"domain", "skills", "capabilities", "inmemory"}),
+    "ai_agent_lab.wiki": frozenset({"domain", "application"}),
 }
 
 # `ygo74-agent-runtime` is a foundation dependency now that it owns the security
@@ -502,9 +491,9 @@ def test_a_domain_layer_runs_without_a_web_stack():
         import ai_agent_lab.mail.adapters.capabilities.write_capabilities
         import ai_agent_lab.mail.domain.models
         import ai_agent_lab.mail.application.skills.send_skill
-        import ai_agent_lab.wiki.capabilities.write_capabilities
+        import ai_agent_lab.wiki.adapters.capabilities.write_capabilities
         import ai_agent_lab.wiki.domain.models
-        import ai_agent_lab.wiki.skills.answer_skill
+        import ai_agent_lab.wiki.application.skills.answer_skill
 
         loaded = sorted(name for name in sys.modules if name in {"fastapi", "starlette", "uvicorn"})
         print(",".join(loaded))

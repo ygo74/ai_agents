@@ -12,9 +12,9 @@ from ygo74.agent_runtime.domains.security.user_context import UserContext
 from ai_agent_lab.wiki.domain.models import WikiPage, WikiSpace
 from ai_agent_lab.wiki.domain.origins import WikiOrigin
 from ai_agent_lab.wiki.domain.permissions import WikiPermission
-from ai_agent_lab.wiki.inmemory.dataset import WikiDatasetLoader
-from ai_agent_lab.wiki.inmemory.wiki import PageEntry, SpaceEntry, Wiki
-from ai_agent_lab.wiki.inmemory.wiki_tools import InMemoryWikiTools
+from ai_agent_lab.wiki.infrastructure.inmemory.dataset import WikiDatasetLoader
+from ai_agent_lab.wiki.infrastructure.inmemory.wiki import PageEntry, SpaceEntry, Wiki
+from ai_agent_lab.wiki.infrastructure.inmemory.wiki_tools import InMemoryWikiTools
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[3]
 SAMPLE_WIKI = REPOSITORY_ROOT / "data" / "wiki" / "sample_wiki.json"

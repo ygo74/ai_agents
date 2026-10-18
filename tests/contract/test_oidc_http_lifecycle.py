@@ -15,7 +15,7 @@ from tests.support.langgraph_fakes import ScriptedChatModel
 from ygo74.agent_runtime.domains.contracts.manifests import AgentManifest
 
 from ai_agent_lab.mail.bootstrap import service as mail_service
-from ai_agent_lab.wiki.application.entrypoints import service as wiki_service
+from ai_agent_lab.wiki.bootstrap import service as wiki_service
 
 ROOT = Path(__file__).resolve().parents[2]
 ISSUER = "https://issuer.example.test"

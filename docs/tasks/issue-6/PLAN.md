@@ -456,3 +456,106 @@ validations et l’historique Git restent séparés dans chaque dépôt.
   18 tests Mail passent; Ruff et Ruff format passent sur les fichiers Python
   modifiés. Le contrôle Ruff global relève 36 problèmes dans des exemples
   inchangés, hors périmètre de l’amendement.
+
+## Amendement du PLAN — alignement de la structure Wiki sur Mail
+
+**Issue et SPEC :** issue #6, amendement de structure Wiki approuvé le
+2026-10-18 dans `docs/tasks/issue-6/SPEC.md`.
+
+**Objectif :** réorganiser le package Wiki en couches cohérentes avec Mail,
+conserver les comportements Wiki et ses usages actuels des API génériques du
+runtime. Le seul dépôt de code visé est `ai_agents`; le travail reste dans le
+worktree et sur la branche `refactor/6-generic-conversation-and-mcp`.
+
+### Étape 1 — établir le plan de déplacement et les frontières
+
+- **Composants :** sources `agents/wiki/src/ai_agent_lab/wiki`, imports de
+  `agents`, `tests`, scripts, documentation, `pyproject.toml` et règles
+  d’architecture.
+- **Changement :** attribuer chaque module à `adapters`, `application`,
+  `bootstrap`, `domain` ou `infrastructure` en suivant les frontières déjà
+  utilisées par Mail. Distinguer le nom stable `WikiToolName`, le catalogue de
+  politiques d’opérations et ses règles `WikiSecurityFloor` afin de ne pas
+  déplacer les décisions métier vers l’infrastructure.
+- **Validation :** revue de l’inventaire d’imports et des frontières avant les
+  déplacements; confirmer que les modules MCP et LangGraph du runtime restent
+  les implémentations utilisées.
+
+### Étape 2 — déplacer les modules Wiki selon leur responsabilité
+
+- **Composants :** `capabilities`, `skills`, `tools_port.py`, `catalog.py`,
+  `security_floor.py`, `config`, `inmemory`, `mcp`, ainsi que les sous-modules
+  de `application`.
+- **Changement :** organiser les adaptateurs de capacités, CLI, HTTP et
+  LangChain/LangGraph sous `adapters`; garder ports, compétences, confirmations
+  et opérations applicatives sous `application`; placer composition, factories,
+  fournisseur d’outils et service sous `bootstrap`; déplacer configuration,
+  backends en mémoire, politique/client/dialectes MCP sous `infrastructure`;
+  garder les modèles et politiques métier dans `domain`. Le choix précis de
+  fichier pour les classes `WikiToolName`, `WikiToolCatalog`,
+  `DeliveredWikiOperations`, résolveur d’approbation et erreurs sera fixé par
+  leurs dépendances effectives pendant la mise en œuvre, sans changer leur
+  responsabilité.
+- **Validation :** vérifier les imports relatifs et absolus ainsi que la
+  frontière de dépendance : domaine sans frameworks ni SDK, application sans
+  transports, infrastructure sans framework agentique.
+
+### Étape 3 — migrer consommateurs, points d’entrée et documentation
+
+- **Composants :** `agents/wiki/pyproject.toml`, tests unitaires/intégration/
+  contrat/sécurité et `tests/architecture/test_distribution_boundaries.py`;
+  `.env.example`, Docker/configuration, `README.md`, guides Wiki et documents
+  d’architecture/intégration qui citent les chemins déplacés.
+- **Changement :** mettre à jour imports, script `wiki-agent`, règles des
+  couches et références documentaires. Supprimer les anciens modules et
+  dossiers une fois les consommateurs déplacés. Modifier les tests existants
+  uniquement pour suivre les nouveaux imports et les nouvelles frontières.
+- **Validation :** recherche statique des anciens chemins dans le dépôt et
+  vérification du script installé et du périmètre Hatch.
+
+### Étape 4 — contrôles finaux et revue des diffs
+
+- **Composants :** tous les fichiers Wiki modifiés et le diff du worktree.
+- **Changement :** vérifier que le renommage n’introduit pas de changements de
+  comportement, dépendances runtime ou Mail hors périmètre.
+- **Validation prévue :** Ruff sur les fichiers Python modifiés, vérification
+  de types ciblée si disponible, `compileall`, recherche des anciens imports et
+  `git diff --check`. Les suites de tests ne sont pas ajoutées ni exécutées
+  dans ce plan.
+
+## Risques et décisions
+
+- Les modules Wiki concentrent actuellement des imports circulaires possibles
+  entre composition, compétences, confirmation et outils. Effectuer les
+  déplacements en petits groupes et préserver les ports existants.
+- Les règles `tests/architecture/test_distribution_boundaries.py` codent les
+  noms de couches actuels; les changer au même moment que le package évite une
+  période où elles décrivent une architecture obsolète.
+- Plusieurs documents décrivent explicitement les anciens chemins. Les mettre
+  à jour avec les modules pour ne pas laisser des guides inexacts.
+- Pas de shim d’import historique sauf nécessité révélée par un consommateur
+  externe identifié; aucun consommateur public externe n’est actuellement
+  documenté.
+
+## Critères de fin
+
+- Les modules Wiki sont rangés dans les couches approuvées, les chemins
+  historiques ne sont plus importés et les points d’entrée se résolvent.
+- Les imports du runtime générique, les contrats HTTP et les politiques Wiki
+  restent inchangés.
+- Les règles d’architecture et la documentation reflètent la nouvelle
+  organisation.
+- Les contrôles statiques prévus sont rapportés avec leurs résultats réels;
+  aucun test non exécuté n’est déclaré réussi.
+
+### Résultats réels — 2026-10-18
+
+- `python3 -m compileall -q agents/wiki/src/ai_agent_lab/wiki` passe.
+- `git -c core.whitespace=cr-at-eol diff --check` passe.
+- Les recherches statiques ne trouvent plus d’imports vers les anciens chemins
+  Wiki, de dépendance framework/transport dans `domain` ou `application`, ni de
+  dépendance LangChain/LangGraph dans `infrastructure`.
+- Ruff et mypy ne sont pas installés dans l’environnement; ces contrôles n’ont
+  donc pas pu être exécutés.
+- Aucune suite de tests n’a été exécutée, conformément au périmètre de
+  validation approuvé.

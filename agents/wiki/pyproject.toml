@@ -35,7 +35,7 @@ http = [
 ]
 
 [project.scripts]
-wiki-agent = "ai_agent_lab.wiki.application.cli_entrypoint:main"
+wiki-agent = "ai_agent_lab.wiki.adapters.cli.entrypoint:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/ai_agent_lab"]

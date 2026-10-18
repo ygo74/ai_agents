@@ -33,7 +33,7 @@ For a local API-key-protected Wiki Agent, configure mock mode and start Uvicorn:
 $env:WIKI_AGENT_MODE = "mock"
 $env:WIKI_AGENT_HTTP_API_KEY = "<local-demo-key>"
 .\.venvs\wiki-agent\Scripts\python.exe -m uvicorn `
-  "ai_agent_lab.wiki.application.entrypoints.service:build_app" --factory --port 8124
+  "ai_agent_lab.wiki.bootstrap.service:build_app" --factory --port 8124
 ```
 
 Send a request in another terminal:

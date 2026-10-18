@@ -130,7 +130,7 @@ The steps from the native LangGraph console to managed HTTP hosting are in
 ```powershell
 $env:WIKI_AGENT_HTTP_API_KEY = "demo-key"
 .\.venvs\wiki-agent\Scripts\python.exe -m uvicorn `
-  "ai_agent_lab.wiki.application.entrypoints.service:build_app" --factory --port 8124
+  "ai_agent_lab.wiki.bootstrap.service:build_app" --factory --port 8124
 ```
 
 A confirmation cannot hold an HTTP request open, so a gated write ends its turn
@@ -321,7 +321,7 @@ and no identity provider in front of it. Serving several people means minting an
 on-behalf-of token for the authenticated caller and supplying it per request.
 
 That is a change to one class — `WikiUserCredentials` in
-`agents/wiki/src/ai_agent_lab/wiki/mcp/authorization.py`. Nothing above the MCP
+`agents/wiki/src/ai_agent_lab/wiki/infrastructure/mcp/authorization.py`. Nothing above the MCP
 boundary notices: not the dialect, not the skills, not the agent. The seam is
 there on purpose.
 
@@ -355,7 +355,7 @@ skills or the agent.
 1. Write a class implementing `WikiTools`, translating that server's shapes into
    domain models. Fence every piece of third-party free text as `UntrustedText`.
 2. Register it in the runtime `DialectRegistry` supplied by
-   `ai_agent_lab.wiki.mcp.dialects.create_dialect_registry()`.
+   `ai_agent_lab.wiki.infrastructure.mcp.dialects.create_dialect_registry()`.
 3. Deliver `config/mcp/<server>.yaml` declaring the transport, the dialect, the
    capabilities the server really has, and the name it gives to each tool.
 

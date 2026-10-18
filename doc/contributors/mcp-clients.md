@@ -68,9 +68,9 @@ declared tool as an authorization grant. Keep returned free text marked as
 untrusted content before reasoning uses it.
 
 Sources: [Mail MCP adapters](../../agents/mail/src/ai_agent_lab/mail/infrastructure/mcp/),
-[Wiki MCP adapters](../../agents/wiki/src/ai_agent_lab/wiki/mcp/),
+[Wiki MCP adapters](../../agents/wiki/src/ai_agent_lab/wiki/infrastructure/mcp/),
 [Mail provider](../../agents/mail/src/ai_agent_lab/mail/bootstrap/mail_tools_provider.py),
-and [Wiki provider](../../agents/wiki/src/ai_agent_lab/wiki/application/wiki_tools_provider.py).
+and [Wiki provider](../../agents/wiki/src/ai_agent_lab/wiki/bootstrap/wiki_tools_provider.py).
 Tests: [Mail dialect registry](../../tests/unit/test_mail_dialect_registry.py),
 [Atlassian dialect](../../tests/unit/wiki/test_atlassian_dialect.py),
 [Mail MCP contract](../../tests/contract/test_mcp_mail_tools_contract.py),

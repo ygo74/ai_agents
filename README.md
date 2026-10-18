@@ -50,8 +50,8 @@ agents/                          the products
   core/       ai_agent_lab.core       chat-provider choices and Azure credentials
   maf/        ai_agent_lab.maf        Microsoft Agent Framework adapter
   langgraph/  ai_agent_lab.langgraph  LangChain / LangGraph adapter
-  mail/       ai_agent_lab.mail       mail domain, skills, capabilities, composition root
-  wiki/       ai_agent_lab.wiki       wiki domain, skills, capabilities, composition root
+  mail/       ai_agent_lab.mail       adapters, application, bootstrap, domain, infrastructure
+  wiki/       ai_agent_lab.wiki       adapters, application, bootstrap, domain, infrastructure
 mcp-servers/                     auxiliaries, shipped separately
   protocol/       mail_mcp.protocol   wire payloads, tool names, error codes
   gmail/          mail_mcp.gmail      mail MCP server on the Gmail REST API

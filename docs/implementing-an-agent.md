@@ -87,7 +87,7 @@ should be allowed to ask for it.
 This is first because every later step depends on it and because it is the one
 answer a language model must never be able to influence.
 
-Look at [`wiki/security_floor.py`](../agents/wiki/src/ai_agent_lab/wiki/security_floor.py)
+Look at [`wiki/domain/policies/security_floor.py`](../agents/wiki/src/ai_agent_lab/wiki/domain/policies/security_floor.py)
 to see what the output of this thinking looks like: `update_page` and
 `delete_page` may never be presented as milder than they are, whatever a
 delivered configuration says — while `create_page` and `add_comment` are
@@ -169,7 +169,7 @@ but the `SecurityFloor` from step 0 is what it may never go below. Both the
 confirmation gate and the audit trail read the same catalogue, which is what
 keeps them from disagreeing.
 
-**Worked examples:** [`wiki/catalog.py`](../agents/wiki/src/ai_agent_lab/wiki/catalog.py),
+**Worked examples:** [`wiki/application/operations.py`](../agents/wiki/src/ai_agent_lab/wiki/application/operations.py),
 [`mail/application/operations.py`](../agents/mail/src/ai_agent_lab/mail/application/operations.py).
 
 ---
@@ -195,7 +195,7 @@ then compose them for implementations. The lab runs against Confluence Cloud and
 the target is Data Center; they differ in authentication, REST version and half
 their endpoints, and none of that reaches above this line.
 
-**Worked examples:** [`wiki/tools_port.py`](../agents/wiki/src/ai_agent_lab/wiki/tools_port.py),
+**Worked examples:** [`wiki/application/ports/wiki_tools.py`](../agents/wiki/src/ai_agent_lab/wiki/application/ports/wiki_tools.py),
 [`mail/application/ports/mail_tools.py`](../agents/mail/src/ai_agent_lab/mail/application/ports/mail_tools.py).
 
 ---
@@ -225,8 +225,8 @@ directly. It calls tools exposed by an MCP server. That boundary is what lets th
 credential live in a different container from the agent, which is the whole shape
 of [deployment.md](deployment.md).
 
-**Worked examples:** [`wiki/inmemory/`](../agents/wiki/src/ai_agent_lab/wiki/inmemory),
-[`wiki/mcp/`](../agents/wiki/src/ai_agent_lab/wiki/mcp).
+**Worked examples:** [`wiki/infrastructure/inmemory/`](../agents/wiki/src/ai_agent_lab/wiki/infrastructure/inmemory),
+[`wiki/infrastructure/mcp/`](../agents/wiki/src/ai_agent_lab/wiki/infrastructure/mcp).
 
 ---
 
@@ -240,7 +240,7 @@ Keep deterministic work deterministic. Filtering, sorting, date arithmetic and
 rule-based decisions belong in code. Ask the model only for what it is genuinely
 better at — which is reading and writing prose.
 
-**Worked examples:** [`wiki/capabilities/`](../agents/wiki/src/ai_agent_lab/wiki/capabilities),
+**Worked examples:** [`wiki/adapters/capabilities/`](../agents/wiki/src/ai_agent_lab/wiki/adapters/capabilities),
 [`mail/adapters/capabilities/`](../agents/mail/src/ai_agent_lab/mail/adapters/capabilities).
 
 ---
@@ -260,7 +260,7 @@ Register them as `SkillDescriptor` in a `SkillRegistry`. The registry is what th
 framework adapter turns into tools, and what discovery turns into the advertised
 capability list.
 
-**Worked examples:** [`wiki/skills/`](../agents/wiki/src/ai_agent_lab/wiki/skills),
+**Worked examples:** [`wiki/application/skills/`](../agents/wiki/src/ai_agent_lab/wiki/application/skills),
 [`mail/application/skills/`](../agents/mail/src/ai_agent_lab/mail/application/skills).
 
 ---
@@ -282,7 +282,7 @@ Two traps worth naming, both found the hard way:
   directly lets somebody resume another person's conversation by guessing it.
   Derive it from the authenticated subject *and* the conversation, so the half the
   caller controls is only half. See
-  [`wiki/application/composition.py`](../agents/wiki/src/ai_agent_lab/wiki/application/composition.py).
+  [`wiki/bootstrap/composition.py`](../agents/wiki/src/ai_agent_lab/wiki/bootstrap/composition.py).
 - **Build the agent with the framework's own API.** There is no house wrapper to
   learn: a developer reads `create_agent(...)` and finds the public
   documentation of that call. What this repository owns is what makes skills
@@ -312,7 +312,7 @@ And the reason for all of it: **a model must never be the authority on whether a
 side effect happens.** A chat API has no side channel to hold a turn open on, so
 the ticket is not a limitation of the transport — it is the design.
 
-**Worked example:** [`wiki/application/confirmation_presenter.py`](../agents/wiki/src/ai_agent_lab/wiki/application/confirmation_presenter.py).
+**Worked example:** [`wiki/application/confirmations/presenter.py`](../agents/wiki/src/ai_agent_lab/wiki/application/confirmations/presenter.py).
 
 ---
 
@@ -363,7 +363,7 @@ Derive the advertised security from the *real* configuration with
 `AdvertisedSecurity.of(...)` rather than writing it out by hand, so discovery
 cannot advertise a scheme the service does not accept.
 
-**Worked examples:** [`wiki/application/entrypoints/service.py`](../agents/wiki/src/ai_agent_lab/wiki/application/entrypoints/service.py),
+**Worked examples:** [`wiki/bootstrap/service.py`](../agents/wiki/src/ai_agent_lab/wiki/bootstrap/service.py),
 [`mail/bootstrap/service.py`](../agents/mail/src/ai_agent_lab/mail/bootstrap/service.py),
 and [mail-agent-http.md](mail-agent-http.md) / [wiki-agent-http.md](wiki-agent-http.md).
 

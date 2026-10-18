@@ -36,7 +36,7 @@ from ai_agent_lab.mail.domain.permissions import MailPermission
 from ai_agent_lab.mail.domain.policies.security_floor import MailSecurityFloor
 from ai_agent_lab.mail.infrastructure.mcp.configuration import load_binding as load_mail_binding
 from ai_agent_lab.mail.infrastructure.mcp.errors import McpBindingError
-from ai_agent_lab.wiki.mcp.configuration import load_binding as load_wiki_binding
+from ai_agent_lab.wiki.infrastructure.mcp.configuration import load_binding as load_wiki_binding
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 

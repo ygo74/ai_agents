@@ -215,6 +215,90 @@ explicitement injectée par l’hôte reste possible comme override. Cela conser
 la transmission du jeton vérifié de l’utilisateur tout en plaçant la
 configuration de chaque client MCP avec la définition du serveur.
 
+## Amendement approuvé — alignement de la structure de l’agent Wiki sur Mail
+
+**Approbation :** l’utilisateur a approuvé cet amendement le 2026-10-18.
+
+### Objectif
+
+Appliquer à l’agent Wiki la séparation de responsabilités introduite dans Mail
+par `refactoring mail-agent`, en adaptant les frontières au framework
+LangChain/LangGraph plutôt qu’en recopiant les adaptateurs MAF. Cette
+refactorisation porte sur l’organisation du code et ses imports ; le
+comportement métier, les contrats HTTP et les décisions de sécurité restent
+inchangés.
+
+### État existant
+
+Wiki utilise déjà les contrats MCP génériques du runtime (`McpServerBinding`,
+`McpConnection` et `DialectRegistry`) et les fonctions LangChain/LangGraph
+managées (`LangGraphSession` et `LangGraphWorker`). Le service Wiki utilise
+également le propriétaire de client HTTP synchrone partagé pour les flux OIDC.
+Il n’est donc pas prévu de réimplémenter ni de migrer ces mécanismes à nouveau.
+
+La structure actuelle laisse cependant plusieurs responsabilités au niveau
+racine de `wiki` ou dans `application` : `capabilities`, `config`, `inmemory`,
+`mcp`, `skills`, `tools_port`, `catalog.py`, `security_floor.py`, les
+entrypoints et la composition. Mail distingue maintenant les adaptateurs,
+l’application, le bootstrap, le domaine et l’infrastructure.
+
+### Périmètre dans `ai_agents`
+
+- Organiser le Wiki autour de `adapters`, `application`, `bootstrap`, `domain`
+  et `infrastructure`, selon les frontières et conventions de Mail.
+- Déplacer les capacités et conversions d’outils sous `adapters/capabilities`,
+  les compétences et ports applicatifs sous `application`, les usines et
+  compositions sous `bootstrap`, les paramètres et fournisseurs concrets sous
+  `infrastructure`, et les politiques/services métier sous `domain`.
+- Placer les surfaces CLI et HTTP sous leurs adaptateurs respectifs et isoler
+  l’intégration propre à LangChain/LangGraph des règles métier Wiki.
+- Déplacer la configuration MCP Wiki, ses politiques d’autorisation, son
+  registre de dialectes et ses clients Atlassian/natifs sous
+  `infrastructure/mcp`. Continuer à utiliser les contrats MCP du runtime.
+- Garder l’admission des outils, l’isolation du `thread_id`, les tickets et
+  leur résolution, le ledger, les rendus, les filtres lecture seule et les
+  autres politiques Wiki dans `ai_agents`.
+- Mettre à jour tous les imports internes, scripts d’entrée, configurations,
+  tests et documents touchés par les déplacements. Supprimer les anciens
+  emplacements une fois leurs consommateurs migrés ; ne pas ajouter de couches
+  de compatibilité sans nécessité établie.
+
+### Hors périmètre
+
+- Modifier le dépôt `ai-enterprise-agent-runtime` ou y ajouter de nouvelles
+  fonctionnalités.
+- Modifier le comportement, les politiques de sécurité, les noms de
+  configuration, les formats YAML MCP, les endpoints HTTP ou les sorties
+  observables du Wiki.
+- Réorganiser à nouveau Mail ou déplacer les outils métier Wiki dans le runtime.
+- Remplacer `create_agent`, `LangGraphSession`, `LangGraphWorker`, les contrats
+  MCP génériques ou le client HTTP partagé déjà adoptés.
+
+### Critères d’acceptation
+
+1. La structure de paquets Wiki sépare clairement adaptateurs, application,
+   bootstrap, domaine et infrastructure, avec les responsabilités LangChain/
+   LangGraph laissées à l’intégration dédiée.
+2. Les imports, points d’entrée et fichiers de configuration référencent les
+   nouveaux emplacements ; aucun ancien module déplacé ne reste nécessaire.
+3. Le Wiki continue d’utiliser les API MCP et LangChain/LangGraph génériques
+   déjà adoptées, sans en créer d’implémentation locale concurrente.
+4. Les contrats et décisions Wiki restent identiques : identité et
+   `thread_id`, autorisation par utilisateur, injection de variables stdio,
+   retrait des capacités d’écriture, confirmation, découverte et surfaces
+   HTTP.
+5. Les fichiers de tests et de documentation concernés sont adaptés aux
+   nouveaux imports et aux frontières de paquets.
+
+### Contraintes et questions ouvertes
+
+- Conserver le worktree et la branche `refactor/6-generic-conversation-and-mcp`
+  indiqués par l’utilisateur ; ne pas préparer une autre branche ni réécrire
+  les changements historiques déjà présents.
+- Aucune question de comportement n’est ouverte à ce stade. Le détail des
+  déplacements de modules et les validations à exécuter seront établis dans
+  le PLAN après approbation de cet amendement.
+
 ## Amendement approuvé — échange RFC 8693 fourni par le runtime
 
 La source RFC 8693 générique et le type de settings résolus
