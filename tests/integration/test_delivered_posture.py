@@ -23,10 +23,10 @@ from pathlib import Path
 import pytest
 from tests.support.maf_fakes import ScriptedChatClient, says
 
-from ai_agent_lab.mail.application.composition import MailAgentCompositionRoot
-from ai_agent_lab.mail.catalog import MailToolName
-from ai_agent_lab.mail.config.settings import MailAgentSettings
-from ai_agent_lab.mail.inmemory.reasoner import ScriptedTextReasoner
+from ai_agent_lab.mail.bootstrap.composition import MailAgentCompositionRoot
+from ai_agent_lab.mail.domain.operation_names import MailToolName
+from ai_agent_lab.mail.infrastructure.configuration.settings import MailAgentSettings
+from ai_agent_lab.mail.infrastructure.inmemory.reasoner import ScriptedTextReasoner
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 
@@ -40,6 +40,7 @@ operation:
   risk: MEDIUM
   permission: mail:manage
   confirmation_required: true
+mcp_server: gmail-http
 mcp_tools:
   - apply_label
   - list_labels

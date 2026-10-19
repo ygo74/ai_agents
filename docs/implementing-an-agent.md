@@ -4,8 +4,9 @@ This is the order in which an agent is actually built here, and the reason each
 step comes where it does. The Mail Agent and the Wiki Agent are the worked
 examples: everything below points at real files in one or both of them.
 
-Two agents exist, on two different frameworks, and they share almost all of their
-structure. That is not a coincidence — it is the result of putting the
+Two agents exist, on two different frameworks, and they share the same boundary
+principles. Mail now uses explicit domain, application, infrastructure, adapter
+and bootstrap layers; Wiki keeps its existing layout. This is the result of putting the
 cross-cutting concerns in [`ygo74-agent-runtime`](https://pypi.org/project/ygo74-agent-runtime/)
 and keeping the framework at the very edge. A third agent should feel like
 filling in a shape that already exists.
@@ -27,6 +28,54 @@ belongs in the library; anything that encodes what your domain means belongs in
 your agent.** When you find yourself about to write a second copy of something,
 that is the signal it was a library concern.
 
+## BYOA: build the agent first, add runtime hosting later
+
+Bring Your Own Agent means that the agent remains a normal agent from its
+framework. You create its instructions, model and tools with the framework's
+public API. The runtime is added when you need shared HTTP hosting and
+conversation services; it does not replace `Agent(...)` or LangChain's
+`create_agent(...)`.
+
+```text
+Develop:    framework agent -> framework tools -> console or direct invocation
+Integrate:  trusted agent factory -> agent definition -> managed runtime worker -> HTTP
+```
+
+The console commands already provide a development entry point in this
+repository:
+
+```powershell
+python -m ai_agent_lab.mail.adapters.cli
+wiki-agent
+```
+
+They run the MAF Mail Agent and the LangGraph Wiki Agent without starting the
+HTTP service. This is the normal place to iterate on an agent turn and its
+framework behaviour. It does **not** mean these complete agents have no runtime
+dependencies: their shared domain, permissions, confirmation and MCP code uses
+the runtime's common packages. The separate offline MAF example in the runtime
+repository (`docs/examples/python-agentframework-fastapi/developer_app.py`)
+shows a small native agent that can run with no runtime package installed.
+
+When the agent is ready for managed HTTP hosting, keep the framework agent and
+add the application integration:
+
+1. Export a trusted factory for the native agent and describe its tools and
+   control point in `AgentDefinition`.
+2. Build a conversation factory when the application needs per-user state,
+   confirmation tickets, result rendering or resource cleanup.
+3. Give the definition, worker settings and conversation factory to the
+   framework integration. It adds the shared routes, authentication,
+   discovery, conversation cache and shutdown handling.
+4. Keep domain permissions, tool policies and approval decisions in the agent
+   application. Do not put them in an HTTP handler or select the agent factory
+   from a request.
+
+The concrete paths are different at the framework edge: Mail uses the MAF
+`Agent` with `ManagedAgentWorker`; Wiki keeps its LangGraph graph and uses
+`LangGraphWorker`. See the BYOA sections in [mail-agent.md](mail-agent.md) and
+[wiki-agent.md](wiki-agent.md), and the HTTP guides for their service settings.
+
 ---
 
 ## Step 0 — Decide what the agent is *not* allowed to do
@@ -38,7 +87,7 @@ should be allowed to ask for it.
 This is first because every later step depends on it and because it is the one
 answer a language model must never be able to influence.
 
-Look at [`wiki/security_floor.py`](../agents/wiki/src/ai_agent_lab/wiki/security_floor.py)
+Look at [`wiki/domain/policies/security_floor.py`](../agents/wiki/src/ai_agent_lab/wiki/domain/policies/security_floor.py)
 to see what the output of this thinking looks like: `update_page` and
 `delete_page` may never be presented as milder than they are, whatever a
 delivered configuration says — while `create_page` and `add_comment` are
@@ -120,8 +169,8 @@ but the `SecurityFloor` from step 0 is what it may never go below. Both the
 confirmation gate and the audit trail read the same catalogue, which is what
 keeps them from disagreeing.
 
-**Worked examples:** [`wiki/catalog.py`](../agents/wiki/src/ai_agent_lab/wiki/catalog.py),
-[`mail/catalog.py`](../agents/mail/src/ai_agent_lab/mail/catalog.py).
+**Worked examples:** [`wiki/application/operations.py`](../agents/wiki/src/ai_agent_lab/wiki/application/operations.py),
+[`mail/application/operations.py`](../agents/mail/src/ai_agent_lab/mail/application/operations.py).
 
 ---
 
@@ -146,8 +195,8 @@ then compose them for implementations. The lab runs against Confluence Cloud and
 the target is Data Center; they differ in authentication, REST version and half
 their endpoints, and none of that reaches above this line.
 
-**Worked examples:** [`wiki/tools_port.py`](../agents/wiki/src/ai_agent_lab/wiki/tools_port.py),
-[`mail/tools_port.py`](../agents/mail/src/ai_agent_lab/mail/tools_port.py).
+**Worked examples:** [`wiki/application/ports/wiki_tools.py`](../agents/wiki/src/ai_agent_lab/wiki/application/ports/wiki_tools.py),
+[`mail/application/ports/mail_tools.py`](../agents/mail/src/ai_agent_lab/mail/application/ports/mail_tools.py).
 
 ---
 
@@ -160,17 +209,24 @@ leak upward into an interface the fixture also has to satisfy.
 
 **Then the MCP implementation.** This is the only place that knows a protocol
 exists. The library provides `McpConnection`, `McpServerBinding`,
-`McpServerBindingLoader`, `DialectRegistry` and `PinnedScopeOAuthProvider`, so
+`McpServerBindingLoader`, `McpServerConfigurationLoader`, `DialectRegistry`
+and `McpOAuthProviderFactory`, so
 what you write is the mapping between your domain models and the tool payloads —
 not the transport.
+
+Mail uses
+[`MailMcpConnectionFactory`](../agents/mail/src/ai_agent_lab/mail/infrastructure/mcp/connection.py)
+to apply runtime YAML timeout, resolved headers and network options. Its OAuth
+provider comes from the runtime factory; it has no separate OAuth or bearer
+settings implementation. See [Mail MCP ownership](../doc/contributors/mail-agent.md#mcp-dialect-ownership).
 
 An agent **never** calls Confluence, Gmail, a database or an enterprise API
 directly. It calls tools exposed by an MCP server. That boundary is what lets the
 credential live in a different container from the agent, which is the whole shape
 of [deployment.md](deployment.md).
 
-**Worked examples:** [`wiki/inmemory/`](../agents/wiki/src/ai_agent_lab/wiki/inmemory),
-[`wiki/mcp/`](../agents/wiki/src/ai_agent_lab/wiki/mcp).
+**Worked examples:** [`wiki/infrastructure/inmemory/`](../agents/wiki/src/ai_agent_lab/wiki/infrastructure/inmemory),
+[`wiki/infrastructure/mcp/`](../agents/wiki/src/ai_agent_lab/wiki/infrastructure/mcp).
 
 ---
 
@@ -184,8 +240,8 @@ Keep deterministic work deterministic. Filtering, sorting, date arithmetic and
 rule-based decisions belong in code. Ask the model only for what it is genuinely
 better at — which is reading and writing prose.
 
-**Worked examples:** [`wiki/capabilities/`](../agents/wiki/src/ai_agent_lab/wiki/capabilities),
-[`mail/capabilities/`](../agents/mail/src/ai_agent_lab/mail/capabilities).
+**Worked examples:** [`wiki/adapters/capabilities/`](../agents/wiki/src/ai_agent_lab/wiki/adapters/capabilities),
+[`mail/adapters/capabilities/`](../agents/mail/src/ai_agent_lab/mail/adapters/capabilities).
 
 ---
 
@@ -204,8 +260,8 @@ Register them as `SkillDescriptor` in a `SkillRegistry`. The registry is what th
 framework adapter turns into tools, and what discovery turns into the advertised
 capability list.
 
-**Worked examples:** [`wiki/skills/`](../agents/wiki/src/ai_agent_lab/wiki/skills),
-[`mail/skills/`](../agents/mail/src/ai_agent_lab/mail/skills).
+**Worked examples:** [`wiki/application/skills/`](../agents/wiki/src/ai_agent_lab/wiki/application/skills),
+[`mail/application/skills/`](../agents/mail/src/ai_agent_lab/mail/application/skills).
 
 ---
 
@@ -226,7 +282,7 @@ Two traps worth naming, both found the hard way:
   directly lets somebody resume another person's conversation by guessing it.
   Derive it from the authenticated subject *and* the conversation, so the half the
   caller controls is only half. See
-  [`wiki/application/composition.py`](../agents/wiki/src/ai_agent_lab/wiki/application/composition.py).
+  [`wiki/bootstrap/composition.py`](../agents/wiki/src/ai_agent_lab/wiki/bootstrap/composition.py).
 - **Build the agent with the framework's own API.** There is no house wrapper to
   learn: a developer reads `create_agent(...)` and finds the public
   documentation of that call. What this repository owns is what makes skills
@@ -256,7 +312,7 @@ And the reason for all of it: **a model must never be the authority on whether a
 side effect happens.** A chat API has no side channel to hold a turn open on, so
 the ticket is not a limitation of the transport — it is the design.
 
-**Worked example:** [`wiki/application/confirmation_presenter.py`](../agents/wiki/src/ai_agent_lab/wiki/application/confirmation_presenter.py).
+**Worked example:** [`wiki/application/confirmations/presenter.py`](../agents/wiki/src/ai_agent_lab/wiki/application/confirmations/presenter.py).
 
 ---
 
@@ -307,8 +363,8 @@ Derive the advertised security from the *real* configuration with
 `AdvertisedSecurity.of(...)` rather than writing it out by hand, so discovery
 cannot advertise a scheme the service does not accept.
 
-**Worked examples:** [`wiki/application/entrypoints/service.py`](../agents/wiki/src/ai_agent_lab/wiki/application/entrypoints/service.py),
-[`mail/application/entrypoints/service.py`](../agents/mail/src/ai_agent_lab/mail/application/entrypoints/service.py),
+**Worked examples:** [`wiki/bootstrap/service.py`](../agents/wiki/src/ai_agent_lab/wiki/bootstrap/service.py),
+[`mail/bootstrap/service.py`](../agents/mail/src/ai_agent_lab/mail/bootstrap/service.py),
 and [mail-agent-http.md](mail-agent-http.md) / [wiki-agent-http.md](wiki-agent-http.md).
 
 ---

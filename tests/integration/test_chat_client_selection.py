@@ -23,8 +23,8 @@ from ai_agent_lab.maf.chat_client import (
     ChatClientConfigurationError,
     MafChatClientFactory,
 )
-from ai_agent_lab.mail.application.chat_client import ConfiguredChatClientFactory
-from ai_agent_lab.mail.config.settings import (
+from ai_agent_lab.mail.bootstrap.chat_client import ConfiguredChatClientFactory
+from ai_agent_lab.mail.infrastructure.configuration.settings import (
     AzureCredentialMode,
     ChatClientSettings,
     ChatProvider,
@@ -38,8 +38,8 @@ AZURE_DEPLOYMENT = "gpt-4o-mini-deployment"
 def isolated_environment(monkeypatch, tmp_path):
     """Run every case against an explicit environment, never the developer's.
 
-    The settings read a ``.env`` file by default; the working directory is moved
-    so a local one cannot decide the outcome of a test.
+    Host entrypoints load environment files before constructing settings.
+    These cases construct settings directly from isolated process variables.
     """
     for name in (
         "AGENT_CHAT_PROVIDER",

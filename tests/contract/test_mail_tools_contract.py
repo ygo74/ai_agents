@@ -1,6 +1,6 @@
 """Conformance suite for the mail MCP contract.
 
-Any implementation of :class:`~ai_agent_lab.mail.tools_port.MailTools` must
+Any implementation of :class:`~ai_agent_lab.mail.application.ports.mail_tools.MailTools` must
 satisfy these tests. They are written against the contract only, so the same
 suite will validate the real MCP client once the Mail MCP server exists: subclass
 :class:`MailToolsContractTests` and override the ``mail_tools`` fixture.
@@ -15,6 +15,8 @@ from tests.conftest import make_message
 from ygo74.agent_runtime.domains.security.untrusted import untrusted
 from ygo74.agent_runtime.domains.security.user_context import UserContext
 
+from ai_agent_lab.mail.application.errors import MailAccessDeniedError, MailNotFoundError
+from ai_agent_lab.mail.application.ports.mail_tools import MailTools
 from ai_agent_lab.mail.domain.enums import MailSortOrder
 from ai_agent_lab.mail.domain.models import (
     EmailAddress,
@@ -24,9 +26,7 @@ from ai_agent_lab.mail.domain.models import (
 )
 from ai_agent_lab.mail.domain.origins import MailOrigin
 from ai_agent_lab.mail.domain.permissions import MailPermission
-from ai_agent_lab.mail.inmemory.mail_tools import InMemoryMailTools, Mailbox
-from ai_agent_lab.mail.mail_errors import MailAccessDeniedError, MailNotFoundError
-from ai_agent_lab.mail.tools_port import MailTools
+from ai_agent_lab.mail.infrastructure.inmemory.mail_tools import InMemoryMailTools, Mailbox
 
 OWNER = UserContext(user_id="owner", session_id="s1", permissions=MailPermission.declared())
 INTRUDER = UserContext(user_id="intruder", session_id="s2", permissions=MailPermission.declared())

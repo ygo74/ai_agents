@@ -19,11 +19,17 @@ Routes, OpenAI request shapes, JWT validation and discovery come from
 [`ygo74-agent-runtime`](https://github.com/ygo74/ai-enterprise-agent-runtime). We
 do not reimplement them.
 
-The service composes these through the runtime's fluent `HostingFactory`: it
-registers the Wiki entrypoint and descriptor, exposes Chat Completions, applies
-one authentication policy, then enables authenticated model discovery. An OIDC
-issuer selects JWT validation and takes precedence over the demonstration API
-key; without an issuer, the configured key is used.
+The service uses the runtime LangGraph worker facade over its existing managed
+worker: it registers the Wiki descriptor, exposes Chat Completions, applies one
+authentication policy, and enables authenticated model discovery. The worker
+owns route registration, the identity-scoped cache, readiness and shutdown. An
+OIDC issuer selects JWT validation and takes precedence over the demonstration
+API key; without an issuer, the configured key is used.
+
+Each worker creates one OIDC HTTP client at startup and shares it between
+discovery and JWKS retrieval. These reads occur on the first token validation;
+an explicit `WIKI_AGENT_HTTP_JWKS_URL` skips discovery. The client closes after
+the worker releases its conversations.
 
 | Owned by the runtime library | Owned here |
 |---|---|
@@ -36,6 +42,13 @@ The shared serving foundation is now provided by `ygo74-agent-runtime`,
 including the authenticated caller, endpoint contracts, discovery, approvals
 and leased conversation cache. `ai_agent_lab.core` no longer contains a serving
 layer.
+
+`WikiAgentSession` delegates invocation, streaming and bounded LangGraph
+interrupt cleanup to `ygo74-agent-runtime-langchain`. The advanced conversation
+factory keeps the Wiki `thread_id_of` identity partition, ticket resolver,
+confirmation ledger, renderer, authorization policy and MCP resources in the
+application. The runtime worker does not create a second cache or move those
+domain decisions into a generic binding.
 
 | Provided by the library | Responsibility |
 |---|---|
@@ -50,11 +63,18 @@ What is specific to this agent is small, and deliberately so:
 ## Running it
 
 ```powershell
-$env:WIKI_AGENT_MODE = "mock"
-$env:WIKI_AGENT_HTTP_API_KEY = "demo-key"
-.\.venvs\wiki-agent\Scripts\python.exe -m uvicorn `
-  "ai_agent_lab.wiki.application.entrypoints.service:build_app" --factory --port 8124
+.\.venvs\wiki-agent\Scripts\python.exe -m ai_agent_lab.wiki.adapters.http.server `
+  --env-file .env_wiki_agent_http --port 8124
 ```
+
+Put the required settings in `.env_wiki_agent_http`, including
+`WIKI_AGENT_MODE=mock` and `WIKI_AGENT_HTTP_API_KEY=demo-key`. To use another
+configuration, pass its path to `--env-file`. The default is `.env`; values
+already present in the process environment take precedence over file values.
+
+The launcher loads the selected file before starting Uvicorn and keeps its path
+available to reload workers. A path explicitly provided with `--env-file` must
+exist.
 
 ```powershell
 curl -Method POST http://127.0.0.1:8124/v1/chat/completions `
@@ -155,8 +175,11 @@ hashes the authenticated subject *together with* the conversation - the half a
 caller controls is only ever half.
 
 State is bounded and expires, and eviction closes the MCP session the runtime
-holds. Against a real Confluence that matters: a process that exits without
-closing them leaves sessions looking active long after they are not.
+holds. The runtime's generic `HttpConversationEngine` handles command parsing
+and reply assembly. The Wiki factory and LangGraph session adapter retain the
+subject-derived `thread_id` and framework state translation. Against a real
+Confluence it matters that eviction closes sessions rather than leaving them
+looking active after the caller has gone.
 
 > Each conversation gets its own `InMemorySaver`. That is right for a
 > proof of concept - one runtime per conversation, closed on eviction - but a

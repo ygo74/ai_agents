@@ -14,7 +14,7 @@ env/
 
 # Secrets and local configuration - NEVER commit
 .env
-.env.*
+.env*
 !.env.example
 credentials.json
 token.json

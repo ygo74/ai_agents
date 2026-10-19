@@ -1,0 +1,17 @@
+# Isolated test deployment ONLY. Do not replace the user's active configuration.
+# Start a mock-mail worker on the host's port 8123; retain its provider memory.
+version: 1.2.8
+endpoints:
+  custom:
+    - name: 'Mail continuity test'
+      apiKey: '${MAIL_AGENT_HTTP_API_KEY}'
+      baseURL: 'http://host.docker.internal:8123/v1'
+      models:
+        default: ['mail-agent']
+        fetch: false
+      headers:
+        x-api-key: '${MAIL_AGENT_HTTP_API_KEY}'
+        X-Conversation-Id: '{{LIBRECHAT_BODY_CONVERSATIONID}}'
+      titleConvo: false
+      modelDisplayLabel: 'Mail continuity test'
+      dropParams: ['user', 'stop', 'temperature', 'top_p', 'presence_penalty', 'frequency_penalty']

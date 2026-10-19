@@ -13,19 +13,19 @@ from tests.support.maf_fakes import ScriptedChatClient, ToolCall, calls, says
 from ygo74.agent_runtime.domains.security.audit import AuditOutcome
 
 from ai_agent_lab.maf.approval import MafApprovalTranslator
-from ai_agent_lab.mail.application.approval.console import ConsoleApprovalResolver
-from ai_agent_lab.mail.application.composition import MailAgentCompositionRoot
-from ai_agent_lab.mail.application.console import Console, ConsoleConfirmationPrompt
-from ai_agent_lab.mail.application.session import MailAgentSession
-from ai_agent_lab.mail.capabilities.write_capabilities import DRAFT_MAIL_REPLY
-from ai_agent_lab.mail.catalog import MailToolName
-from ai_agent_lab.mail.config.settings import MailAgentSettings
-from ai_agent_lab.mail.inmemory.reasoner import ScriptedTextReasoner
-from ai_agent_lab.mail.skills.analysis import (
+from ai_agent_lab.mail.adapters.capabilities.write_capabilities import DRAFT_MAIL_REPLY
+from ai_agent_lab.mail.adapters.cli.approval import ConsoleApprovalResolver
+from ai_agent_lab.mail.adapters.cli.console import Console, ConsoleConfirmationPrompt
+from ai_agent_lab.mail.adapters.maf.session import MailAgentSession
+from ai_agent_lab.mail.application.skills.analysis import (
     MailActionsOutput,
     MailReplyOutput,
     MailSummaryOutput,
 )
+from ai_agent_lab.mail.bootstrap.composition import MailAgentCompositionRoot
+from ai_agent_lab.mail.domain.operation_names import MailToolName
+from ai_agent_lab.mail.infrastructure.configuration.settings import MailAgentSettings
+from ai_agent_lab.mail.infrastructure.inmemory.reasoner import ScriptedTextReasoner
 
 SUMMARY_ANSWER = {
     "summary": "John asks for a review of the Project Alpha architecture document before Friday.",

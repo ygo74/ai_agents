@@ -35,26 +35,28 @@ from ygo74.agent_runtime.domains.humanapproval.unattended import UnattendedAppro
 from ygo74.agent_runtime.domains.security.audit import InMemoryAuditTrail
 from ygo74.agent_runtime.domains.security.permissions import PermissionRegistry
 
-from ai_agent_lab.wiki.application.confirmation_presenter import (
-    UnknownGatedWikiToolError,
-    WikiConfirmationPresenter,
-)
-from ai_agent_lab.wiki.application.skills_factory import WikiSkills, WikiSkillsFactory
-from ai_agent_lab.wiki.capabilities.write_capabilities import (
+from ai_agent_lab.wiki.adapters.capabilities.write_capabilities import (
     DRAFT_PAGE_CONTENT,
     WikiWriteCapabilities,
 )
-from ai_agent_lab.wiki.catalog import DeliveredWikiOperations, WikiToolName
+from ai_agent_lab.wiki.application.confirmations.presenter import (
+    UnknownGatedWikiToolError,
+    WikiConfirmationPresenter,
+)
+from ai_agent_lab.wiki.application.operations import DeliveredWikiOperations
+from ai_agent_lab.wiki.application.skills.analysis import PageDraftOutput
+from ai_agent_lab.wiki.application.skills.bundle import WikiSkills
+from ai_agent_lab.wiki.application.skills.context import WikiContextBuilder
+from ai_agent_lab.wiki.application.skills.freshness_skill import PageFreshnessDetector
+from ai_agent_lab.wiki.application.skills.gating import GatedWikiOperationRunner
+from ai_agent_lab.wiki.bootstrap.skills_factory import WikiSkillsFactory
 from ai_agent_lab.wiki.domain.errors import WikiDraftNotFoundError
+from ai_agent_lab.wiki.domain.operation_names import WikiToolName
 from ai_agent_lab.wiki.domain.permissions import WikiPermission
-from ai_agent_lab.wiki.inmemory.draft_store import InMemoryWikiDraftStore
-from ai_agent_lab.wiki.inmemory.wiki import PageEntry
-from ai_agent_lab.wiki.inmemory.wiki_tools import InMemoryWikiTools
-from ai_agent_lab.wiki.security_floor import WikiSecurityFloor
-from ai_agent_lab.wiki.skills.analysis import PageDraftOutput
-from ai_agent_lab.wiki.skills.context import WikiContextBuilder
-from ai_agent_lab.wiki.skills.freshness_skill import PageFreshnessDetector
-from ai_agent_lab.wiki.skills.gating import GatedWikiOperationRunner
+from ai_agent_lab.wiki.domain.policies.security_floor import WikiSecurityFloor
+from ai_agent_lab.wiki.infrastructure.inmemory.draft_store import InMemoryWikiDraftStore
+from ai_agent_lab.wiki.infrastructure.inmemory.wiki import PageEntry
+from ai_agent_lab.wiki.infrastructure.inmemory.wiki_tools import InMemoryWikiTools
 
 DRAFTED_BODY = "A body the model composed."
 

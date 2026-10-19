@@ -11,7 +11,9 @@ used is reported now rather than during a conversation.
 
 from __future__ import annotations
 
+import argparse
 import asyncio
+from pathlib import Path
 
 from mail_mcp.gmail.api import GmailApiClient
 from mail_mcp.gmail.credentials import GmailCredentials, GmailCredentialSettings
@@ -39,7 +41,10 @@ class GmailConsent:
 
 def main() -> None:
     """Entry point of the ``mail-mcp-gmail-authorise`` command."""
-    EnvironmentFile().load()
+    parser = argparse.ArgumentParser(description="Authorise the Gmail MCP server against Google.")
+    parser.add_argument("--env-file", type=Path, help="Environment file to load (default: .env).")
+    arguments = parser.parse_args()
+    EnvironmentFile(arguments.env_file).load()
     settings = GmailCredentialSettings()
     settings.require_client()
 

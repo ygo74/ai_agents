@@ -11,30 +11,38 @@ Nothing here opens a connection: only the delivered binding is read.
 
 from __future__ import annotations
 
+import shutil
 from pathlib import Path
 
 import pytest
 from tests.support.maf_fakes import ScriptedChatClient, says
 
-from ai_agent_lab.mail.application.composition import MailAgentCompositionRoot
-from ai_agent_lab.mail.catalog import MailToolName
-from ai_agent_lab.mail.config.settings import MailAgentSettings
-from ai_agent_lab.mail.inmemory.mail_tools import InMemoryMailTools
-from ai_agent_lab.mail.inmemory.reasoner import ScriptedTextReasoner
+from ai_agent_lab.mail.bootstrap.composition import MailAgentCompositionRoot
+from ai_agent_lab.mail.domain.operation_names import MailToolName
+from ai_agent_lab.mail.infrastructure.configuration.settings import MailAgentSettings
+from ai_agent_lab.mail.infrastructure.inmemory.mail_tools import InMemoryMailTools
+from ai_agent_lab.mail.infrastructure.inmemory.reasoner import ScriptedTextReasoner
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 
 ANALYSIS_TOOLS = frozenset({"summarise_mail", "classify_mail", "extract_mail_actions", "draft_mail_reply"})
 
 
-def exposed(monkeypatch, *, mode: str, server: str) -> frozenset[str]:
+def exposed(monkeypatch, tmp_path: Path, *, mode: str, server: str) -> frozenset[str]:
     """Return the tool names the agent would offer for a given backend.
 
     The mail tools are supplied here, so selecting a server whose dialect is not
     implemented yet still exercises what the agent would advertise.
     """
     monkeypatch.setenv("MAIL_AGENT_MODE", mode)
-    monkeypatch.setenv("MAIL_MCP_SERVER", server)
+    root = tmp_path / "config"
+    shutil.copytree(REPOSITORY_ROOT / "config", root)
+    for path in (root / "skills" / "mail").glob("*/skill.yaml"):
+        path.write_text(
+            path.read_text(encoding="utf-8").replace("mcp_server: gmail-http", f"mcp_server: {server}"),
+            encoding="utf-8",
+        )
+    monkeypatch.setenv("YGO74_AGENT_RUNTIME_CONFIG_DIR", str(root))
     runtime = MailAgentCompositionRoot(
         MailAgentSettings(),
         ScriptedChatClient([says("nothing to do")]),
@@ -48,8 +56,8 @@ def exposed(monkeypatch, *, mode: str, server: str) -> frozenset[str]:
 class TestMockExposesEverything:
     """The deterministic dataset serves the whole contract."""
 
-    def test_every_capability_is_offered(self, monkeypatch):
-        names = exposed(monkeypatch, mode="mock", server="local")
+    def test_every_capability_is_offered(self, monkeypatch, tmp_path):
+        names = exposed(monkeypatch, tmp_path, mode="mock", server="local")
 
         assert {name.value for name in MailToolName} <= names
         assert names >= ANALYSIS_TOOLS
@@ -58,8 +66,8 @@ class TestMockExposesEverything:
 class TestLocalServerExposesEverything:
     """A server implementing the contract natively hides nothing."""
 
-    def test_sending_is_offered(self, monkeypatch):
-        names = exposed(monkeypatch, mode="mcp", server="local")
+    def test_sending_is_offered(self, monkeypatch, tmp_path):
+        names = exposed(monkeypatch, tmp_path, mode="mcp", server="local")
 
         assert MailToolName.SEND_MAIL.value in names
         assert MailToolName.GET_MAIL.value in names
@@ -69,24 +77,24 @@ class TestGmailExposesWhatItCanServe:
     """The official Gmail server has real gaps, and the agent respects them."""
 
     @pytest.mark.security
-    def test_sending_is_not_offered(self, monkeypatch):
+    def test_sending_is_not_offered(self, monkeypatch, tmp_path):
         """The official server has no send tool, so the agent never offers one.
 
         Offering it would let the model propose an irreversible action that no
         backend could carry out.
         """
-        names = exposed(monkeypatch, mode="mcp", server="gmail")
+        names = exposed(monkeypatch, tmp_path, mode="mcp", server="gmail")
 
         assert MailToolName.SEND_MAIL.value not in names
 
-    def test_per_message_retrieval_is_offered(self, monkeypatch):
+    def test_per_message_retrieval_is_offered(self, monkeypatch, tmp_path):
         """The live server has get_message, although the published guide omits it."""
-        names = exposed(monkeypatch, mode="mcp", server="gmail")
+        names = exposed(monkeypatch, tmp_path, mode="mcp", server="gmail")
 
         assert MailToolName.GET_MAIL.value in names
 
-    def test_what_gmail_serves_is_still_offered(self, monkeypatch):
-        names = exposed(monkeypatch, mode="mcp", server="gmail")
+    def test_what_gmail_serves_is_still_offered(self, monkeypatch, tmp_path):
+        names = exposed(monkeypatch, tmp_path, mode="mcp", server="gmail")
 
         assert MailToolName.GET_THREAD.value in names
         assert MailToolName.SEARCH_MAIL.value in names
@@ -94,26 +102,26 @@ class TestGmailExposesWhatItCanServe:
         assert MailToolName.ARCHIVE_MAIL.value in names
 
     @pytest.mark.security
-    def test_label_deletion_is_not_offered(self, monkeypatch):
+    def test_label_deletion_is_not_offered(self, monkeypatch, tmp_path):
         """The official server can create a label but not delete one.
 
         This is the sharpest illustration of why capabilities are declared per
         server: the same agent, the same skills and the same configuration
         offer label deletion against our own Gmail server and withhold it here.
         """
-        names = exposed(monkeypatch, mode="mcp", server="gmail")
+        names = exposed(monkeypatch, tmp_path, mode="mcp", server="gmail")
 
         assert MailToolName.CREATE_LABEL.value in names
         assert MailToolName.DELETE_LABEL.value not in names
 
-    def test_label_deletion_is_offered_by_our_own_gmail_server(self, monkeypatch):
-        names = exposed(monkeypatch, mode="mcp", server="gmail-api")
+    def test_label_deletion_is_offered_by_our_own_gmail_server(self, monkeypatch, tmp_path):
+        names = exposed(monkeypatch, tmp_path, mode="mcp", server="gmail-api")
 
         assert MailToolName.CREATE_LABEL.value in names
         assert MailToolName.DELETE_LABEL.value in names
 
-    def test_analysis_capabilities_never_depend_on_a_server(self, monkeypatch):
+    def test_analysis_capabilities_never_depend_on_a_server(self, monkeypatch, tmp_path):
         """Summarising and classifying run on retrieved content, not on a tool."""
-        names = exposed(monkeypatch, mode="mcp", server="gmail")
+        names = exposed(monkeypatch, tmp_path, mode="mcp", server="gmail")
 
         assert names >= ANALYSIS_TOOLS

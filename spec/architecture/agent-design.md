@@ -50,30 +50,33 @@ SkillDescriptor
 `input_model` and `invoke` come from the code. `SkillDescriptor.from_manifest`
 is where the two meet.
 
-The descriptor is the single contract a framework adapter needs. Adding
-LangChain or CrewAI support means writing one adapter that reads descriptors and
-building that framework's agent in its own idiomatic way - no business code is
-duplicated, and no agent abstraction is imposed.
+The descriptor is the shared contract used by framework adapters. The Mail
+agent maps it to Microsoft Agent Framework tools; the Wiki agent builds its
+LangChain graph with the framework's public APIs. Framework integration does
+not duplicate skill behavior or impose a repository-owned agent abstraction.
 
 ## 3. Framework adapter responsibilities
 
-A framework adapter translates between repository abstractions and framework
-conventions. For Microsoft Agent Framework 1.17:
+A framework adapter translates between repository contracts and framework
+conventions. The current adapters have different responsibilities:
 
-| Repository concept          | Microsoft Agent Framework 1.17            |
-|-----------------------------|-------------------------------------------|
-| `AgentManifest`             | arguments of `agent_framework.Agent`      |
-| `SkillDescriptor`           | `agent_framework.FunctionTool` (`@tool`)  |
-| confirmation required       | `approval_mode="always_require"`          |
-| confirmation orchestration  | `ToolApprovalMiddleware` + `AgentSession` |
-| pending confirmation        | `AgentResponse.user_input_requests`       |
-| confirmation answer         | `Content.from_function_approval_response` |
-| `TextReasoner`              | a chat client `get_response` call         |
+| Responsibility | Mail / Microsoft Agent Framework | Wiki / LangChain and LangGraph |
+|---|---|---|
+| Build the agent | `agent_framework.Agent` and `FunctionTool` | `create_agent` and Wiki's graph composition |
+| Suspend a protected tool | `approval_mode="always_require"` and `AgentSession` | `HumanInTheLoopMiddleware` and graph interrupts |
+| Resume a pending action | Agent Framework approval response content | LangGraph `Command` through the runtime binding |
+| HTTP conversation hosting | Runtime conversation engine with the Mail session | Runtime managed worker with the Wiki conversation factory |
+| Neutral result and stream conversion | Runtime Agent Framework integration | Runtime LangChain integration |
 
-The adapter must not contain domain rules. It maps types and wires middleware.
-Building the agent is left to the composition root, in plain framework code.
-The port is `ygo74.agent_runtime.domains.reasoning.ports.TextReasoner`;
-framework implementations stay in this repository's adapters.
+Application adapters supply the domain-specific skill, resolver, and policy
+behavior. The runtime LangChain integration owns native invocation and output
+conversion, while the Wiki composition root owns the graph and tool admission.
+The framework-neutral `TextReasoner` port is
+`ygo74.agent_runtime.domains.reasoning.ports.TextReasoner`; framework
+implementations stay in this repository's adapters.
+
+See [LangChain and LangGraph in the Wiki agent](../integrations/langchain-langgraph.md)
+for the Wiki flow and ownership boundary.
 
 > API note: this repository targets the GA API of Microsoft Agent Framework
 > (`Agent`, `AgentResponse`, `Message`, `Content`, `@tool`, `AgentSession`).

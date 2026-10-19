@@ -8,8 +8,8 @@ import pytest
 from ygo74.agent_runtime.domains.security.user_context import UserContext
 
 from ai_agent_lab.mail.domain.permissions import MailPermission
-from ai_agent_lab.mail.inmemory.dataset import MailDatasetError, MailDatasetLoader
-from ai_agent_lab.mail.inmemory.mail_tools import InMemoryMailTools
+from ai_agent_lab.mail.infrastructure.inmemory.dataset import MailDatasetError, MailDatasetLoader
+from ai_agent_lab.mail.infrastructure.inmemory.mail_tools import InMemoryMailTools
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 SAMPLE_DATASET = REPOSITORY_ROOT / "data" / "mail" / "sample_mailbox.json"

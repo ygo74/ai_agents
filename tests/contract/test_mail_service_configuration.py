@@ -21,7 +21,7 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
-from ai_agent_lab.mail.application.entrypoints.service import (
+from ai_agent_lab.mail.bootstrap.service import (
     MailServiceConfigurationError,
     build_app,
 )

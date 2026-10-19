@@ -15,8 +15,8 @@ requires-python = ">=3.12"
 dependencies = [
     "ai-agent-lab-core",
     "mcp>=1.24,<2",
-    "ygo74-agent-runtime-agents[configuration]>=0.6",
-    "ygo74-agent-runtime-security>=0.6",
+    "ygo74-agent-runtime-agents[configuration,mcp]>=0.8.1,<2",
+    "ygo74-agent-runtime-security>=0.8.1,<2",
 ]
 
 [project.optional-dependencies]
@@ -29,13 +29,13 @@ native = ["wiki-mcp-protocol"]
 # Serving the agent over HTTP. See the Mail Agent's pyproject for why the
 # runtime library is a range rather than an exact pin.
 http = [
-    "ygo74-agent-runtime-agents>=0.6",
+    "ygo74-agent-runtime-agents>=0.8.1,<2",
     "fastapi>=0.115",
     "uvicorn[standard]>=0.30",
 ]
 
 [project.scripts]
-wiki-agent = "ai_agent_lab.wiki.application.cli_entrypoint:main"
+wiki-agent = "ai_agent_lab.wiki.adapters.cli.entrypoint:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/ai_agent_lab"]

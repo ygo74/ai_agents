@@ -23,20 +23,20 @@ from ygo74.agent_runtime.domains.auth.agent_principal import AgentPrincipal
 from ygo74.agent_runtime.domains.security.prompt_envelope import PromptEnvelopeBuilder
 from ygo74.agent_runtime.domains.security.user_context import UserContext
 
-from ai_agent_lab.wiki.application.composition import thread_id_of
-from ai_agent_lab.wiki.capabilities.results import (
+from ai_agent_lab.wiki.adapters.capabilities.results import (
     WIKI_UNTRUSTED_SOURCE,
     WikiToolResultRenderer,
 )
+from ai_agent_lab.wiki.application.skills.analysis import AnswerOutput, PageSummaryOutput, WikiAnalysisMapper
+from ai_agent_lab.wiki.application.skills.answer_skill import DocumentationAnswerSkill
+from ai_agent_lab.wiki.application.skills.context import WikiContextBuilder
+from ai_agent_lab.wiki.application.skills.errors import UngroundedWikiResultError
+from ai_agent_lab.wiki.bootstrap.composition import thread_id_of
 from ai_agent_lab.wiki.domain.models import WikiSearchRequest
 from ai_agent_lab.wiki.domain.permissions import WikiPermission
-from ai_agent_lab.wiki.inmemory.dataset import WikiDatasetLoader
-from ai_agent_lab.wiki.inmemory.wiki_tools import InMemoryWikiTools
-from ai_agent_lab.wiki.skills.analysis import AnswerOutput, PageSummaryOutput, WikiAnalysisMapper
-from ai_agent_lab.wiki.skills.answer_skill import DocumentationAnswerSkill
-from ai_agent_lab.wiki.skills.context import WikiContextBuilder
-from ai_agent_lab.wiki.skills.errors import UngroundedWikiResultError
-from ai_agent_lab.wiki.wiki_errors import WikiAccessDeniedError
+from ai_agent_lab.wiki.domain.tool_errors import WikiAccessDeniedError
+from ai_agent_lab.wiki.infrastructure.inmemory.dataset import WikiDatasetLoader
+from ai_agent_lab.wiki.infrastructure.inmemory.wiki_tools import InMemoryWikiTools
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 SAMPLE_WIKI = REPOSITORY_ROOT / "data" / "wiki" / "sample_wiki.json"
@@ -249,9 +249,9 @@ class TestConfirmationBypass:
             ToolOperationDescriptor,
         )
 
-        from ai_agent_lab.wiki.catalog import WikiToolName
+        from ai_agent_lab.wiki.domain.operation_names import WikiToolName
         from ai_agent_lab.wiki.domain.permissions import WikiPermission
-        from ai_agent_lab.wiki.security_floor import WikiSecurityFloor
+        from ai_agent_lab.wiki.domain.policies.security_floor import WikiSecurityFloor
 
         floor = WikiSecurityFloor().build()
 
@@ -319,7 +319,7 @@ class TestWritesAskedForByAPage:
         from ygo74.agent_runtime.domains.configuration.manifests import AgentManifestLoader, SkillManifestLoader
         from ygo74.agent_runtime.domains.security.permissions import PermissionRegistry
 
-        from ai_agent_lab.wiki.security_floor import WikiSecurityFloor
+        from ai_agent_lab.wiki.domain.policies.security_floor import WikiSecurityFloor
 
         manifest = AgentManifestLoader(
             ConfigurationDirectory.resolve(base_path=REPOSITORY_ROOT),
@@ -349,7 +349,7 @@ class TestDraftSubstitution:
 
     def test_the_publishing_capabilities_accept_only_a_reference(self):
         """A body supplied at publish time would not be the one approved."""
-        from ai_agent_lab.wiki.capabilities.tool_inputs import PageDraftInput
+        from ai_agent_lab.wiki.adapters.capabilities.tool_inputs import PageDraftInput
 
         assert set(PageDraftInput.model_fields) == {"draft_reference"}
 
@@ -359,7 +359,7 @@ class TestDraftSubstitution:
         from ai_agent_lab.wiki.domain.errors import WikiDraftNotFoundError
         from ai_agent_lab.wiki.domain.models import WikiPageDraft
         from ai_agent_lab.wiki.domain.origins import WikiOrigin
-        from ai_agent_lab.wiki.inmemory.draft_store import InMemoryWikiDraftStore
+        from ai_agent_lab.wiki.infrastructure.inmemory.draft_store import InMemoryWikiDraftStore
 
         store = InMemoryWikiDraftStore()
         mine = UserContext(user_id="diana", session_id="s", permissions=WikiPermission.declared())

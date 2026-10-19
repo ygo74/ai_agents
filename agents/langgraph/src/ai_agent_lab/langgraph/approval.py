@@ -30,6 +30,9 @@ from ygo74.agent_runtime.domains.humanapproval.confirmation import (
     ConfirmationRequest,
 )
 from ygo74.agent_runtime.domains.security.user_context import UserContext
+from ygo74.agent_runtime.integrations.langchain import LangGraphPendingApproval as PendingToolApproval
+
+__all__ = ["LangGraphApprovalTranslator", "PendingToolApproval"]
 
 _logger = logging.getLogger(__name__)
 
@@ -48,30 +51,6 @@ ALLOWED_DECISIONS: tuple[DecisionType, ...] = ("approve", "reject")
 
 APPROVE: DecisionType = "approve"
 REJECT: DecisionType = "reject"
-
-
-class PendingToolApproval:
-    """One suspended tool call waiting for the user's answer."""
-
-    def __init__(self, action: Mapping[str, Any]) -> None:
-        self._action = action
-
-    @property
-    def tool_name(self) -> str:
-        """Name of the capability the model wants to run."""
-        return str(self._action.get("name", ""))
-
-    @property
-    def arguments(self) -> Mapping[str, Any]:
-        """Arguments the model proposed, always a mapping."""
-        raw = self._action.get("args")
-        return dict(raw) if isinstance(raw, Mapping) else {}
-
-    def answer(self, *, approved: bool) -> dict[str, Any]:
-        """Build the framework decision carrying the user's answer."""
-        if approved:
-            return {"type": APPROVE}
-        return {"type": REJECT, "message": "The user declined this operation."}
 
 
 class LangGraphApprovalTranslator:
@@ -113,7 +92,7 @@ class LangGraphApprovalTranslator:
         )
         if approvals:
             _logger.info("Found %d pending tool approval(s) in interrupt payload", len(approvals))
-            _logger.debug("Pending approvals summary: %s", [(a.tool_name, a.arguments) for a in approvals])
+            _logger.debug("Pending approvals tool names: %s", [a.tool_name for a in approvals])
         return approvals
 
     @staticmethod

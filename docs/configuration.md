@@ -15,10 +15,21 @@ config/
     agent.yaml          identity and the capabilities offered, in order
     AGENT.md            system instructions
   skills/mail/<tool>/
-    skill.yaml          identity, security posture, MCP tools allowed
+    skill.yaml          identity, security posture, MCP server and tools allowed
     SKILL.md            reasoning instructions (capabilities driven by a model)
-  mcp/mail.yaml         logical tool name -> deployed MCP server tool name
+  mcp/gmail-http.yaml   runtime connection settings and Mail tool binding
 ```
+
+## Application logging
+
+Mail Agent and Wiki Agent use the shared Python logging configuration. Set
+`LOG_LEVEL` to `DEBUG`, `INFO`, `WARNING`, `ERROR` or `CRITICAL`; it defaults to
+`INFO`. The agent-specific `MAIL_AGENT_LOG_LEVEL` and `WIKI_AGENT_LOG_LEVEL`
+remain available as fallbacks. The Wiki CLI's `--log-level` option takes
+precedence over both environment settings. A newly configured root logger writes
+timestamped records to stdout; when the host already configured handlers, they
+are retained and their levels are updated. In `DEBUG` mode, `httpx` and
+`httpcore` stay at `INFO` to limit transport noise.
 
 ## What is configuration, and what is not
 
@@ -48,6 +59,7 @@ operation:
   risk: LOW                         # LOW | MEDIUM | HIGH
   permission: mail:read
   confirmation_required: false
+mcp_server: gmail-http               # shared by every delivered Mail skill
 mcp_tools:
   - get_mail
   - get_thread
@@ -106,7 +118,7 @@ There are two related but distinct concepts:
    its tool name, description, security posture, permitted logical MCP tools
    and, when needed, reasoning instructions in `SKILL.md`.
 2. A **Python domain skill**, such as
-   `agents/mail/src/ai_agent_lab/mail/skills/classification_skill.py`,
+   `agents/mail/src/ai_agent_lab/mail/application/skills/classification_skill.py`,
    implements the business behavior. It receives typed collaborators through
    dependency injection and does not know which MCP server is behind them.
 
@@ -118,6 +130,7 @@ config/agents/mail/agent.yaml
     |
     +--> config/skills/mail/classify_mail/skill.yaml
     |       +--> security metadata and tool description
+    |       +--> mcp_server: gmail-http
     |       +--> mcp_tools: [get_mail]
     |
     +--> config/skills/mail/classify_mail/SKILL.md
@@ -168,10 +181,10 @@ The distinction is intentional:
 skill.yaml / SKILL.md
     = delivery, model-facing description, security and reasoning instructions
 
-mail/skills/*.py
+mail/application/skills/*.py
     = typed, reusable domain behavior
 
-mail/capabilities/*.py
+mail/adapters/capabilities/*.py
     = binding from the delivered capability to the domain skill
 
 framework adapter
@@ -215,8 +228,8 @@ Skills name logical tools. A deployed server exposes whatever names its authors
 chose.
 
 ```yaml
-# config/mcp/mail.yaml
-server: mail
+# excerpt from config/mcp/gmail-http.yaml
+server: gmail-http
 tools:
   search_mail: search_mail          # a Gmail server might expose gmail_search
   get_mail: get_mail
@@ -224,6 +237,51 @@ tools:
 
 The binding is checked against the catalogue at load time: a server that does not
 cover the contract fails immediately, not on the first request a user makes.
+
+### Mail connection settings
+
+`MAIL_AGENT_MODE` chooses `mock` or `mcp`. In MCP mode, Mail requires every
+delivered skill to name the same `mcp_server`. All delivered Mail skills
+currently use `gmail-http`; missing or conflicting references are rejected.
+There is no environment-based server selection or fallback.
+
+The shared runtime's `McpServerConfigurationLoader` owns the connection
+settings in `config/mcp/<server>.yaml`: authentication, headers,
+`request_timeout_seconds`, transport and network options. Mail owns the typed
+tool contract and dialect mapping. These are not agent HTTP authentication
+settings and do not change mailbox permissions or confirmation rules.
+
+The delivered `gmail-http` binding uses the literal URL
+`http://127.0.0.1:9100/mcp`, `authentication_mode: oauth_on_behalf_of`, and the
+`mail-mcp` audience. The Mail Agent exchanges a verified inbound Keycloak access
+token for an MCP token through the shared runtime; it does not forward the caller's
+original token. Configure the agent's inbound OIDC validation. The runtime
+builds its RFC 8693 source from the settings in the MCP server YAML: token
+endpoint, client ID, audience and scopes. Keep only
+`MCP_MAIL_OBO_CLIENT_SECRET` in the private Mail environment file, referenced
+from YAML as `${MCP_MAIL_OBO_CLIENT_SECRET}`. Configure the MCP server to
+validate JWTs from the same issuer with audience `mail-mcp`. The server also
+requires `MAIL_MCP_RESOURCE_URL`. See the [Keycloak setup](../doc/users/mail-agent.md#connect-the-authenticated-caller-to-gmail-through-mcp).
+
+A shared API key remains an explicit alternative for deployments that do not need
+caller identity propagation; it is not the delivered default. In that mode, use a
+private copy of the binding and matching client/server secrets as described in
+[Mail MCP setup](mail-mcp-servers.md).
+
+Only designated secret references resolve environment variables. Set URLs,
+client IDs, timeout and other non-secret values directly in YAML. This does not
+enable general YAML interpolation.
+
+For the official Google binding, `config/mcp/gmail.yaml` owns
+`authentication_oauth`: replace its literal client ID
+`configure-in-google-cloud`, keep `${MAIL_MCP_OAUTH_CLIENT_SECRET}` as the
+secret reference, and configure callback port, scopes and token file there.
+Mail's `discover --server` and `authorise --server` use this same runtime
+configuration; `authorise` defaults to `gmail`. The `GMAIL_OAUTH_*` variables
+for our own Gmail API server remain server settings only.
+
+See [Mail MCP setup](mail-mcp-servers.md) for a complete example and
+[deployment](deployment.md) for the container URL override.
 
 ## Reusing the same configuration elsewhere
 

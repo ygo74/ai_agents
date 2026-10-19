@@ -24,13 +24,13 @@ from ygo74.agent_runtime.domains.humanapproval.tickets import (
 )
 
 from ai_agent_lab.maf.approval import MafApprovalTranslator
-from ai_agent_lab.mail.application.approval.tickets import TicketApprovalResolver
-from ai_agent_lab.mail.application.composition import MailAgentCompositionRoot
-from ai_agent_lab.mail.application.session import MailAgentSession
-from ai_agent_lab.mail.capabilities.results import MailToolResultRenderer
-from ai_agent_lab.mail.catalog import MailToolName
-from ai_agent_lab.mail.config.settings import MailAgentSettings
-from ai_agent_lab.mail.inmemory.reasoner import ScriptedTextReasoner
+from ai_agent_lab.mail.adapters.capabilities.results import MailToolResultRenderer
+from ai_agent_lab.mail.adapters.maf.session import MailAgentSession
+from ai_agent_lab.mail.adapters.maf.tickets import TicketApprovalResolver
+from ai_agent_lab.mail.bootstrap.composition import MailAgentCompositionRoot
+from ai_agent_lab.mail.domain.operation_names import MailToolName
+from ai_agent_lab.mail.infrastructure.configuration.settings import MailAgentSettings
+from ai_agent_lab.mail.infrastructure.inmemory.reasoner import ScriptedTextReasoner
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 CONVERSATION = "conv-http-1"

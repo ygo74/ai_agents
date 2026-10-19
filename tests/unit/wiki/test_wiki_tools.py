@@ -13,16 +13,16 @@ import pytest
 from tests.unit.wiki.conftest import make_page, make_space, make_wiki
 from ygo74.agent_runtime.domains.security.user_context import UserContext
 
+from ai_agent_lab.wiki.application.ports.wiki_tools import WikiTools
 from ai_agent_lab.wiki.domain.enums import WikiPageStatus, WikiSortOrder
 from ai_agent_lab.wiki.domain.models import WikiSearchRequest
-from ai_agent_lab.wiki.inmemory.wiki import PageEntry, SpaceEntry
-from ai_agent_lab.wiki.inmemory.wiki_tools import InMemoryWikiTools
-from ai_agent_lab.wiki.tools_port import WikiTools
-from ai_agent_lab.wiki.wiki_errors import (
+from ai_agent_lab.wiki.domain.tool_errors import (
     WikiAccessDeniedError,
     WikiConcurrentEditError,
     WikiNotFoundError,
 )
+from ai_agent_lab.wiki.infrastructure.inmemory.wiki import PageEntry, SpaceEntry
+from ai_agent_lab.wiki.infrastructure.inmemory.wiki_tools import InMemoryWikiTools
 
 
 class TestContract:

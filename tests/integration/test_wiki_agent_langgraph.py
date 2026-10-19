@@ -22,19 +22,18 @@ from tests.support.langgraph_fakes import (
 from ygo74.agent_runtime.domains.auth.agent_principal import AgentPrincipal
 from ygo74.agent_runtime.domains.security.audit import AuditOutcome
 
-from ai_agent_lab.langgraph.approval import LangGraphApprovalTranslator
-from ai_agent_lab.wiki.application.composition import (
+from ai_agent_lab.wiki.adapters.capabilities.read_capabilities import ANSWER_FROM_WIKI, SUMMARISE_PAGE
+from ai_agent_lab.wiki.adapters.capabilities.write_capabilities import DRAFT_PAGE_CONTENT
+from ai_agent_lab.wiki.adapters.cli.console import ConsoleApprovalResolver
+from ai_agent_lab.wiki.adapters.langchain.session import WikiAgentSession
+from ai_agent_lab.wiki.application.skills.analysis import AnswerOutput, PageDraftOutput
+from ai_agent_lab.wiki.bootstrap.composition import (
     WikiAgentCompositionRoot,
     WikiAgentRuntime,
     thread_id_of,
 )
-from ai_agent_lab.wiki.application.console import ConsoleApprovalResolver
-from ai_agent_lab.wiki.application.session import WikiAgentSession
-from ai_agent_lab.wiki.capabilities.read_capabilities import ANSWER_FROM_WIKI, SUMMARISE_PAGE
-from ai_agent_lab.wiki.capabilities.write_capabilities import DRAFT_PAGE_CONTENT
-from ai_agent_lab.wiki.catalog import WikiToolName
-from ai_agent_lab.wiki.config.settings import WikiAgentMode, WikiAgentSettings
-from ai_agent_lab.wiki.skills.analysis import AnswerOutput, PageDraftOutput
+from ai_agent_lab.wiki.domain.operation_names import WikiToolName
+from ai_agent_lab.wiki.infrastructure.configuration.settings import WikiAgentMode, WikiAgentSettings
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 
@@ -213,6 +212,16 @@ class TestCapabilityExposure:
         source = REPOSITORY_ROOT / "config"
         for folder in ("agents", "skills"):
             _copy_tree(source / folder, root / folder)
+        agent_yaml = root / "agents" / "wiki" / "agent.yaml"
+        agent_yaml.write_text(
+            re.sub(
+                r"^mcp_server:.*$",
+                "mcp_server: partial",
+                agent_yaml.read_text(encoding="utf-8"),
+                flags=re.MULTILINE,
+            ),
+            encoding="utf-8",
+        )
         (root / "mcp").mkdir(parents=True, exist_ok=True)
         tools = "\n".join(f"  {name}: {name}" for name in capabilities)
         switch = f"read_only_variable: {read_only_variable}\n" if read_only_variable else ""
@@ -394,7 +403,6 @@ def build_session(runtime: WikiAgentRuntime, console: RecordingConsole) -> WikiA
     return WikiAgentSession(
         runtime,
         ConsoleApprovalResolver(console, runtime.presenter, runtime.confirmation_ledger, runtime.user),
-        LangGraphApprovalTranslator(),
     )
 
 

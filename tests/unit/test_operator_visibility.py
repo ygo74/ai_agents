@@ -27,12 +27,12 @@ from ygo74.agent_runtime.domains.security.operations import OperationType, RiskL
 from ygo74.agent_runtime.domains.security.user_context import UserContext
 
 from ai_agent_lab.maf.tool_adapter import SkillToolAdapter
-from ai_agent_lab.mail.application.cli_entrypoint import MailAgentCli
-from ai_agent_lab.mail.application.console import Console
-from ai_agent_lab.mail.capabilities.results import MailToolResultRenderer
-from ai_agent_lab.mail.capabilities.tool_inputs import MessageInput
+from ai_agent_lab.mail.adapters.capabilities.results import MailToolResultRenderer
+from ai_agent_lab.mail.adapters.capabilities.tool_inputs import MessageInput
+from ai_agent_lab.mail.adapters.cli.console import Console
+from ai_agent_lab.mail.adapters.cli.entrypoint import MailAgentCli
 from ai_agent_lab.mail.domain.permissions import MailPermission
-from ai_agent_lab.mail.security_floor import MailSecurityFloor
+from ai_agent_lab.mail.domain.policies.security_floor import MailSecurityFloor
 
 OWNER = UserContext(user_id="owner", session_id="s", permissions=MailPermission.declared())
 
@@ -171,7 +171,7 @@ def _tool_that_succeeds():
     """A tool whose capability runs."""
 
     async def invoke(payload, user):
-        from ai_agent_lab.mail.capabilities.results import OperationAcknowledged
+        from ai_agent_lab.mail.adapters.capabilities.results import OperationAcknowledged
 
         return OperationAcknowledged(tool_name="apply_label", message_id="m-1", detail="done")
 

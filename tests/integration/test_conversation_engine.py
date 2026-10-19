@@ -19,17 +19,18 @@ import pytest
 from tests.support.maf_fakes import ScriptedChatClient, ToolCall, calls, says
 from ygo74.agent_runtime.domains.auth.agent_principal import AgentPrincipal
 from ygo74.agent_runtime.domains.contracts.conversation import ConversationTurn
+from ygo74.agent_runtime.domains.contracts.stream_events import ContentEvent, TerminalEvent, TextDelta
 from ygo74.agent_runtime.domains.sessions.conversation_cache import ConversationRuntimeCache
 
-from ai_agent_lab.mail.application.composition import MailAgentCompositionRoot
-from ai_agent_lab.mail.application.entrypoints.conversation import (
+from ai_agent_lab.mail.bootstrap.composition import MailAgentCompositionRoot
+from ai_agent_lab.mail.bootstrap.conversation import (
     MailConversation,
     MailConversationEngine,
     MailConversationFactory,
 )
-from ai_agent_lab.mail.catalog import MailToolName
-from ai_agent_lab.mail.config.settings import MailAgentSettings
-from ai_agent_lab.mail.inmemory.reasoner import ScriptedTextReasoner
+from ai_agent_lab.mail.domain.operation_names import MailToolName
+from ai_agent_lab.mail.infrastructure.configuration.settings import MailAgentSettings
+from ai_agent_lab.mail.infrastructure.inmemory.reasoner import ScriptedTextReasoner
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 
@@ -82,6 +83,88 @@ async def labels_of(cache, message_id: str, principal: AgentPrincipal = ADA) -> 
         return message.label_ids
 
 
+@pytest.mark.parametrize("modes", [(False, False), (True, True), (False, True), (True, False)])
+async def test_provider_followup_preserves_selected_message_and_confirmation(modes):
+    """Characterize provider links and exact gates, not a real model's interpretation.
+
+    Args:
+        modes: Native response modes for proposal and classification follow-up.
+    """
+    import inspect
+
+    from agent_framework import ResponseStream
+
+    class ProviderScriptedClient(ScriptedChatClient):
+        """Script provider storage while retaining the real native approval loop."""
+
+        STORES_BY_DEFAULT = True
+
+        def _inner_get_response(self, *, messages, stream, options, **kwargs):
+            """Return a provider continuation on every completed scripted response.
+
+            Args:
+                messages: Controlled SDK input.
+                stream: Native response mode.
+                options: Effective provider options.
+                kwargs: Additional SDK parameters.
+            """
+            continuations.append(options.get("conversation_id"))
+            result = super()._inner_get_response(messages=messages, stream=stream, options=options, **kwargs)
+            handle = f"resp_controlled_{len(continuations)}"
+
+            def complete(response):
+                """Attach the controlled provider's final history handle.
+
+                Args:
+                    response: Completed native ChatResponse.
+                """
+                response.conversation_id = handle
+                return response
+
+            if isinstance(result, ResponseStream):
+                return result.with_result_hook(complete)
+
+            async def response():
+                """Finalize the normal-mode provider response."""
+                assert inspect.isawaitable(result)
+                return complete(await result)
+
+            return response()
+
+    continuations = []
+    model = ProviderScriptedClient([
+        says("| Sélection du 04/10/2026 au 10/10/2026 | Catégorie existante |\n"
+             f"| {MESSAGE_ID} | {LABEL_ID} |"),
+        calls(ToolCall(MailToolName.APPLY_LABEL.value, {"message_id": MESSAGE_ID, "label_id": LABEL_ID})),
+        says("Awaiting your confirmation."),
+    ])
+    factory = MailConversationFactory(MailAgentCompositionRoot(
+        gated_settings(), model, reasoner=ScriptedTextReasoner({}), base_path=REPOSITORY_ROOT,
+    ))
+    cache = ConversationRuntimeCache(factory.build, MailConversationFactory.close)
+    engine = MailConversationEngine(cache)
+    try:
+        for message, stream in zip(
+            ("Nous sommes le 10/10/2026. Propose un classement de la sélection.",
+             "peux tu classer les mails dans les categories existantes"),
+            modes, strict=True,
+        ):
+            if stream:
+                events = [event async for event in engine.stream(turn(message))]
+                assert isinstance(events[-1], TerminalEvent)
+            else:
+                await engine.respond(turn(message))
+        assert continuations == [None, "resp_controlled_1", "resp_controlled_2"]
+        async with cache.lease(ADA, "conv-1") as conversation:
+            pending = conversation.store.pending(subject=ADA.subject, conversation_id="conv-1")
+            assert len(pending) == 1
+            assert pending[0].arguments == {"message_id": MESSAGE_ID, "label_id": LABEL_ID}
+        assert LABEL_ID not in await labels_of(cache, MESSAGE_ID)
+        assert cache.live_conversations == 1
+    finally:
+        await cache.aclose()
+
+
 class TestAnOrdinaryTurn:
     """A question is answered and nothing is silently changed."""
 
@@ -99,6 +182,35 @@ class TestAnOrdinaryTurn:
 
         assert reply.pending_confirmations == ()
         assert not reply.awaits_confirmation
+
+
+class TestStreamingTurn:
+    async def test_it_streams_maf_text_updates(self):
+        engine, client, _cache = build_engine([says("I found two messages from John.")])
+
+        events = [event async for event in engine.stream(turn("anything from John?"))]
+
+        deltas = [event.text for event in events if isinstance(event, TextDelta)]
+        assert "".join(deltas) == "I found two messages from John."
+        assert len(deltas) > 1
+        assert isinstance(events[-1], TerminalEvent)
+        assert client.stream_modes == [True]
+
+    async def test_a_gated_tool_stays_pending_during_streaming(self):
+        engine, client, cache = build_engine(labelling_script())
+
+        events = [event async for event in engine.stream(turn("file the Project Alpha message under Finance"))]
+        streamed_text = "".join(
+            event.content.text if isinstance(event, ContentEvent) else event.text
+            for event in events
+            if isinstance(event, (ContentEvent, TextDelta))
+        )
+
+        assert "CONFIRM" in streamed_text
+        assert "cfm-" in streamed_text
+        assert LABEL_ID not in await labels_of(cache, MESSAGE_ID)
+        assert client.stream_modes == [True, True]
+        assert isinstance(events[-1], TerminalEvent)
 
 
 @pytest.mark.security

@@ -46,6 +46,60 @@ The model settings — `AGENT_CHAT_PROVIDER`, `OPENAI_*`, `AZURE_OPENAI_*` — a
 the same ones the Mail Agent reads. Both agents must run against the same model,
 or a comparison between the two frameworks measures two deployments instead.
 
+## BYOA: develop with LangGraph, then integrate
+
+The Wiki Agent is built with LangChain's public `create_agent(...)` API in
+[`application/composition.py`](../agents/wiki/src/ai_agent_lab/wiki/bootstrap/composition.py).
+Use the existing console entry point while changing the graph, tools or prompt:
+
+```python
+from langchain.agents import create_agent
+
+async def run_agent(chat_model, search_wiki):
+    graph = create_agent(
+        model=chat_model,
+        tools=[search_wiki],
+        system_prompt="Answer from the wiki.",
+    )
+    return await graph.ainvoke(
+        {"messages": [{"role": "user", "content": "Find the Apollo plan."}]}
+    )
+```
+
+Here the developer supplies the model and tool, then creates and invokes the
+graph with LangChain/LangGraph directly. `search_wiki` is an application tool.
+
+```powershell
+wiki-agent
+```
+
+This starts a framework conversation without the HTTP worker. It is enough for
+normal agent development and for trying the Wiki Agent against the mock or MCP
+backend. The full Wiki Agent still uses shared runtime packages for its
+permissions, confirmation policy, conversation contracts and MCP lifecycle.
+Removing those packages would mean replacing those shared services, not just
+removing HTTP hosting. A second standalone entry point for the full Wiki Agent
+would duplicate its security and approval code, so the existing console entry
+point is the right place to develop it.
+
+When the graph is ready to serve over HTTP, the integration adds the hosting
+parts around it:
+
+1. Keep `create_agent(...)` and the Wiki tools in the Wiki composition root.
+2. Expose the trusted `build_graph` factory and register it in
+   `AgentDefinition` with the Wiki descriptor, tools and control point.
+3. Use `WikiConversationFactory` to attach the identity-scoped thread ID, ticket
+   resolver, confirmation ledger and result renderer for each conversation.
+4. Give that factory and operator settings to `LangGraphWorker`. It provides
+   the managed HTTP routes, authentication, discovery, conversation cache and
+   shutdown lifecycle. `WikiAgentSession` uses the runtime LangGraph binding to
+   invoke and stream the existing graph.
+
+The runtime handles graph execution and shared hosting. Wiki keeps its tool
+admission, permissions, ticket rules and user-specific conversation identity.
+The command line and HTTP commands are in
+[wiki-agent-running.md](wiki-agent-running.md).
+
 ## The three things this agent is careful about
 ### 1. An answer must be grounded, or say that it is not
 

@@ -17,21 +17,22 @@ tree rather than looking for it on an index.
 
 ``--runtime-source`` links a runtime checkout instead of using the published
 release. That library is developed alongside this repository, and publishing a
-release to try a fix is a slow way to find out it was the wrong fix. Since 0.1.0 it
-is three distributions, and all three are linked together: they pin each other by
-exact version, so linking a subset makes pip fetch published copies over the working
-ones.
+release to try a fix is a slow way to find out it was the wrong fix. The shared
+runtime distributions are linked together; each agent environment also links only
+its framework adapter (LangChain for Wiki, Agent Framework for Mail).
 
 One caveat worth knowing before it costs an hour. **An editable install is invisible
 to mypy.** setuptools installs an import hook, and mypy only walks the directories on
 ``sys.path``, so a linked checkout type-checks as if it were not there - every type
 it exposes silently becomes ``Any``, at exactly the boundary that carries the
-security model. Either point ``MYPYPATH`` at the three distribution roots (all on
-one line, separated by ``;`` on Windows and ``:`` elsewhere)::
+security model. Point ``MYPYPATH`` at the linked distribution roots (all on one
+line, separated by ``;`` on Windows and ``:`` elsewhere)::
 
     <checkout>/packages/python/security
     <checkout>/packages/python/agents
     <checkout>/packages/python/mcpserver
+    <checkout>/packages/python/agentframework  # Mail Agent only
+    <checkout>/packages/python/langchain       # Wiki Agent only
 
 or install built wheels instead, which is what CI and a deployment do.
 """
@@ -81,10 +82,9 @@ DEVELOPMENT_TOOLS = (
     "httpx>=0.27",
 )
 
-# Where the Python distributions sit inside a runtime checkout. The repository is
-# multi-language, and since 0.1.0 its Python side is split so that a host installs
-# the machinery it runs: an MCP server has no agent and no discovery descriptor, but
-# it has exactly the same question to answer about who is calling.
+# Where the Python distributions sit inside a runtime checkout. Shared runtime
+# projects are linked for each environment; framework adapters are selected by the
+# Environment so Mail and Wiki do not install each other's framework dependencies.
 RUNTIME_PACKAGES = Path("packages/python")
 RUNTIME_DISTRIBUTIONS = ("security", "agents", "mcpserver")
 
@@ -98,6 +98,7 @@ class Environment:
     distributions: tuple[Path, ...]
     development_tools: bool = False
     notes: tuple[str, ...] = field(default=())
+    runtime_adapters: tuple[str, ...] = ()
 
 
 ENVIRONMENTS: dict[str, Environment] = {
@@ -120,18 +121,21 @@ ENVIRONMENTS: dict[str, Environment] = {
             GMAIL,
         ),
         development_tools=True,
+        runtime_adapters=("agentframework", "langchain"),
     ),
     "mail-agent": Environment(
         name="mail-agent",
         description="The Mail Agent, on Microsoft Agent Framework.",
         distributions=(MAIL_PROTOCOL, CORE, MAF, MAIL, MAIL_REFERENCE),
         notes=("No LangChain package enters this environment.",),
+        runtime_adapters=("agentframework",),
     ),
     "wiki-agent": Environment(
         name="wiki-agent",
         description="The Wiki Agent, on LangChain / LangGraph.",
         distributions=(WIKI_PROTOCOL, CORE, LANGGRAPH, WIKI, WIKI_REFERENCE),
         notes=("No agent-framework package enters this environment.",),
+        runtime_adapters=("langchain",),
     ),
     "mail-mcp-gmail": Environment(
         name="mail-mcp-gmail",
@@ -204,28 +208,29 @@ def _missing_distributions(environment: Environment) -> list[Path]:
     return [path for path in environment.distributions if not (ROOT / path / "pyproject.toml").is_file()]
 
 
-def _runtime_distributions(checkout: Path) -> list[Path]:
-    """Locate the installable Python projects inside a runtime checkout.
+def _runtime_distributions(checkout: Path, environment: Environment) -> list[Path]:
+    """Locate the runtime projects needed by one environment in dependency order.
 
     Several layouts are accepted - the repository root, the `packages/python`
     directory, or one distribution directly - because being wrong about which one to
     pass is a five-minute detour and the answer is knowable from the filesystem.
-
-    They are returned in dependency order. `agents` and `mcpserver` both pin
-    `security` by exact version, so installing it last would have pip fetch a
-    published copy over the working one.
     """
     resolved = checkout.expanduser().resolve()
+    required = (*RUNTIME_DISTRIBUTIONS, *environment.runtime_adapters)
 
     for root in (resolved / RUNTIME_PACKAGES, resolved):
-        found = [root / name for name in RUNTIME_DISTRIBUTIONS if (root / name / "pyproject.toml").is_file()]
-        if found:
-            return found
+        if not any((root / name / "pyproject.toml").is_file() for name in required):
+            continue
+        missing = [name for name in required if not (root / name / "pyproject.toml").is_file()]
+        if missing:
+            names = ", ".join(missing)
+            raise SystemExit(f"runtime checkout {root} is missing required Python distributions: {names}")
+        return [root / name for name in required]
 
     if (resolved / "pyproject.toml").is_file():
         return [resolved]
 
-    expected = ", ".join(RUNTIME_DISTRIBUTIONS)
+    expected = ", ".join(required)
     raise SystemExit(
         f"no installable Python project under {resolved}: expected {RUNTIME_PACKAGES}/{{{expected}}}"
     )
@@ -288,7 +293,7 @@ def main() -> None:
     # Before the distributions, so pip finds the requirement already satisfied
     # and leaves the working copy alone rather than replacing it with a wheel.
     if arguments.runtime_source is not None:
-        for distribution in _runtime_distributions(arguments.runtime_source):
+        for distribution in _runtime_distributions(arguments.runtime_source, environment):
             print(f"\n== linked {distribution.name} from {distribution}")
             installer.install("--editable", str(distribution))
 

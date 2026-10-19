@@ -64,5 +64,5 @@ EXPOSE 8124
 HEALTHCHECK --interval=30s --timeout=6s --start-period=25s --retries=3 \
     CMD ["python", "/app/healthcheck.py", "http://127.0.0.1:8124/v1/models"]
 
-ENTRYPOINT ["uvicorn", "ai_agent_lab.wiki.application.entrypoints.service:build_app", "--factory"]
+ENTRYPOINT ["uvicorn", "ai_agent_lab.wiki.bootstrap.service:build_app", "--factory"]
 CMD ["--host", "0.0.0.0", "--port", "8124"]

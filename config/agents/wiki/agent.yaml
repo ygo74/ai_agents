@@ -8,6 +8,8 @@ description: >-
   which documentation has gone stale, and — on explicit request and after confirmation —
   drafts and publishes pages and comments.
 
+mcp_server: mcp-atlassian
+
 # Capabilities offered to the model, in this order. Each name is a package
 # delivered under config/skills/wiki/. Removing a name removes the capability.
 #
