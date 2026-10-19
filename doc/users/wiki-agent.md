@@ -13,8 +13,12 @@ then start it with `WIKI_AGENT_MODE=mock`:
 ```powershell
 $env:WIKI_AGENT_MODE = "mock"
 $env:WIKI_AGENT_USER_ID = "diana"
-.\.venvs\wiki-agent\Scripts\wiki-agent.exe
+.\.venvs\wiki-agent\Scripts\wiki-agent.exe --env-file .env_wiki_agent_http
 ```
+
+Use `--env-file <path>` to load a different configuration file; the default is
+`.env`. In VS Code, the Wiki Agent launch profiles ask which file to use. The
+selected file is also kept when the HTTP server reloads.
 
 Ask:
 

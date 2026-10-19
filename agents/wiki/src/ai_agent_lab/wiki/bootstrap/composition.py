@@ -197,7 +197,12 @@ class WikiAgentCompositionRoot:
             "Calling WikiToolsProvider.build() to assemble wiki tools backend (mode=%s)...",
             self._settings.mode.value,
         )
-        provider = WikiToolsProvider(self._settings, WikiDatasetLoader(), user_id=self._principal.subject)
+        provider = WikiToolsProvider(
+            self._settings,
+            WikiDatasetLoader(),
+            user_id=self._principal.subject,
+            manifest=manifest,
+        )
         wiki_tools = self._wiki_tools_override or provider.build(base_path=self._base_path)
         _logger.info("Calling WikiAgentCompositionRoot._skills() to assemble domain capabilities...")
         skills = self._skills(manifest, wiki_tools, policy, audit)

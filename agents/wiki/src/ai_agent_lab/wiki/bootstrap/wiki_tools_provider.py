@@ -8,11 +8,14 @@ from collections.abc import Mapping
 from pathlib import Path
 
 from ygo74.agent_runtime.domains.configuration.directory import ConfigurationDirectory
+from ygo74.agent_runtime.domains.contracts.manifests import AgentManifest
 from ygo74.agent_runtime.domains.mcp.binding import McpConnection, McpServerBinding
 from ygo74.agent_runtime.domains.mcp.dialects import DialectRegistry
 from ygo74.agent_runtime.domains.security.user_context import UserContext
 
+from ai_agent_lab.wiki.application.ports.wiki_tools import WikiTools
 from ai_agent_lab.wiki.domain.operation_names import WikiToolName
+from ai_agent_lab.wiki.domain.tool_errors import WikiToolUnavailableError
 from ai_agent_lab.wiki.infrastructure.configuration.settings import (
     WikiAgentMode,
     WikiAgentSettings,
@@ -23,8 +26,7 @@ from ai_agent_lab.wiki.infrastructure.inmemory.wiki_tools import InMemoryWikiToo
 from ai_agent_lab.wiki.infrastructure.mcp.authorization import WikiAuthorization, authorization_for
 from ai_agent_lab.wiki.infrastructure.mcp.configuration import capabilities_in, load_binding, with_resolved_stdio_environment
 from ai_agent_lab.wiki.infrastructure.mcp.dialects import DialectContext, create_dialect_registry
-from ai_agent_lab.wiki.application.ports.wiki_tools import WikiTools
-from ai_agent_lab.wiki.domain.tool_errors import WikiToolUnavailableError
+from ai_agent_lab.wiki.infrastructure.mcp.errors import McpBindingError
 
 _logger = logging.getLogger(__name__)
 
@@ -52,6 +54,8 @@ class WikiToolsProvider:
         dataset_loader: WikiDatasetLoader,
         *,
         user_id: str = "",
+        manifest: AgentManifest | None = None,
+        server: str | None = None,
         mcp_settings: WikiMcpSettings | None = None,
         dialects: DialectRegistry[WikiTools, [McpConnection, DialectContext]] | None = None,
         environment: Mapping[str, str] | None = None,
@@ -60,9 +64,24 @@ class WikiToolsProvider:
         self._dataset_loader = dataset_loader
         self._user_id = user_id or settings.user_id
         self._mcp_settings = mcp_settings or WikiMcpSettings()
+        self._server = server or (self.server_for(manifest) if manifest is not None else self._mcp_settings.server)
         self._dialects = dialects or create_dialect_registry()
         self._environment = dict(environment if environment is not None else os.environ)
         self._connection: McpConnection | None = None
+
+    @staticmethod
+    def server_for(manifest: AgentManifest) -> str:
+        """Select the wiki MCP server declared by the agent manifest.
+
+        The delivered ``config/agents/wiki/agent.yaml`` names the bound server
+        under ``mcp_server``, the same place every delivered skill's MCP tools
+        resolve a default from. A manifest naming none is refused here rather
+        than falling back to a hard-coded default, which would silently bind a
+        different server than the one the configuration declares.
+        """
+        if not manifest.mcp_server:
+            raise McpBindingError("Wiki Agent manifest must declare mcp_server in agent.yaml")
+        return manifest.mcp_server
 
     def build(self, *, base_path: Path | None = None) -> WikiTools:
         """Return the wiki tools matching the configured mode."""
@@ -70,7 +89,7 @@ class WikiToolsProvider:
         _logger.debug(
             "WikiToolsProvider settings: user_id=%s, server=%s, auth_scheme=%s",
             self._user_id,
-            self._mcp_settings.server,
+            self._server,
             self._mcp_settings.auth_scheme.value,
         )
         if self._settings.mode is WikiAgentMode.MOCK:
@@ -91,7 +110,7 @@ class WikiToolsProvider:
         caps = capabilities_in(self._binding(base_path), self._environment)
         _logger.debug(
             "MCP binding '%s' capabilities count=%d: %s",
-            self._mcp_settings.server,
+            self._server,
             len(caps),
             [c.value for c in caps],
         )
@@ -176,4 +195,4 @@ class WikiToolsProvider:
     def _binding(self, base_path: Path | None) -> McpServerBinding[WikiToolName]:
         """Load the delivered description of the bound server."""
         directory = ConfigurationDirectory.resolve(base_path=base_path)
-        return load_binding(directory, self._mcp_settings.server)
+        return load_binding(directory, self._server)

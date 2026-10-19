@@ -63,11 +63,18 @@ What is specific to this agent is small, and deliberately so:
 ## Running it
 
 ```powershell
-$env:WIKI_AGENT_MODE = "mock"
-$env:WIKI_AGENT_HTTP_API_KEY = "demo-key"
-.\.venvs\wiki-agent\Scripts\python.exe -m uvicorn `
-  "ai_agent_lab.wiki.bootstrap.service:build_app" --factory --port 8124
+.\.venvs\wiki-agent\Scripts\python.exe -m ai_agent_lab.wiki.adapters.http.server `
+  --env-file .env_wiki_agent_http --port 8124
 ```
+
+Put the required settings in `.env_wiki_agent_http`, including
+`WIKI_AGENT_MODE=mock` and `WIKI_AGENT_HTTP_API_KEY=demo-key`. To use another
+configuration, pass its path to `--env-file`. The default is `.env`; values
+already present in the process environment take precedence over file values.
+
+The launcher loads the selected file before starting Uvicorn and keeps its path
+available to reload workers. A path explicitly provided with `--env-file` must
+exist.
 
 ```powershell
 curl -Method POST http://127.0.0.1:8124/v1/chat/completions `

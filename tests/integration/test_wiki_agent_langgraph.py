@@ -212,6 +212,16 @@ class TestCapabilityExposure:
         source = REPOSITORY_ROOT / "config"
         for folder in ("agents", "skills"):
             _copy_tree(source / folder, root / folder)
+        agent_yaml = root / "agents" / "wiki" / "agent.yaml"
+        agent_yaml.write_text(
+            re.sub(
+                r"^mcp_server:.*$",
+                "mcp_server: partial",
+                agent_yaml.read_text(encoding="utf-8"),
+                flags=re.MULTILINE,
+            ),
+            encoding="utf-8",
+        )
         (root / "mcp").mkdir(parents=True, exist_ok=True)
         tools = "\n".join(f"  {name}: {name}" for name in capabilities)
         switch = f"read_only_variable: {read_only_variable}\n" if read_only_variable else ""

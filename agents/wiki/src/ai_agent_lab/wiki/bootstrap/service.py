@@ -36,7 +36,6 @@ from ygo74.agent_runtime.domains.auth.jwt_authenticator import (
     JwtValidationConfig,
 )
 from ygo74.agent_runtime.domains.auth.oidc_discovery import OidcDiscovery
-from ygo74.agent_runtime.domains.configuration.environment import EnvironmentFile
 from ygo74.agent_runtime.domains.contracts.agent_definition import AgentDefinition, AgentFactoryContext
 from ygo74.agent_runtime.domains.discovery.agent_descriptor import AgentDescriptor
 from ygo74.agent_runtime.domains.discovery.discovery_configuration import DiscoveryConfiguration
@@ -53,6 +52,7 @@ from ai_agent_lab.wiki.adapters.http.entrypoint import WikiAgentDescriptorFactor
 from ai_agent_lab.wiki.bootstrap.chat_model import build_chat_model
 from ai_agent_lab.wiki.bootstrap.composition import WikiAgentCompositionRoot
 from ai_agent_lab.wiki.bootstrap.conversation import WikiConversationFactory
+from ai_agent_lab.wiki.infrastructure.configuration.environment import WikiEnvironmentFile
 from ai_agent_lab.wiki.infrastructure.configuration.http_settings import WikiAgentHttpSettings
 from ai_agent_lab.wiki.infrastructure.configuration.settings import WikiAgentSettings
 
@@ -75,9 +75,10 @@ def build_app(
     *,
     base_path: Path | None = None,
     chat_model: BaseChatModel | None = None,
+    env_file: Path | None = None,
 ) -> FastAPI:
     """Assemble the HTTP service from the environment."""
-    EnvironmentFile().load()
+    WikiEnvironmentFile().load(env_file)
     settings = WikiAgentSettings()
     http = WikiAgentHttpSettings.load()
     setup_logging(default_level=settings.log_level)

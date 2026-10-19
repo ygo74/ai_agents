@@ -5,10 +5,10 @@ from __future__ import annotations
 import logging
 
 from langchain_core.language_models import BaseChatModel
-from ygo74.agent_runtime.domains.configuration.environment import EnvironmentFile
 
 from ai_agent_lab.core.config.azure_credentials import AzureIdentityCredentialProvider
 from ai_agent_lab.langgraph.chat_model import AzureOpenAIRoute, LangGraphChatModelFactory
+from ai_agent_lab.wiki.infrastructure.configuration.environment import WikiEnvironmentFile
 from ai_agent_lab.wiki.infrastructure.configuration.settings import ChatModelSettings, ChatProvider
 
 _logger = logging.getLogger(__name__)
@@ -16,7 +16,7 @@ _logger = logging.getLogger(__name__)
 
 def build_chat_model() -> BaseChatModel:
     """Build the configured chat model, OpenAI or Azure OpenAI."""
-    EnvironmentFile().load()
+    WikiEnvironmentFile().load()
     settings = ChatModelSettings()
     factory = LangGraphChatModelFactory()
     _logger.info("Building chat model for provider '%s'...", settings.provider.value)

@@ -155,7 +155,8 @@
       "console": "integratedTerminal",
       "justMyCode": false,
       "cwd": "${workspaceFolder}",
-      "envFile": "${workspaceFolder}/.env",
+      "envFile": "${workspaceFolder}/${input:wikiAgentEnvFile}",
+      "args": ["--env-file", "${input:wikiAgentEnvFile}"],
       "env": {
         "WIKI_AGENT_MODE": "mock",
         "WIKI_AGENT_LOG_LEVEL": "DEBUG",
@@ -171,51 +172,12 @@
       "console": "integratedTerminal",
       "justMyCode": false,
       "cwd": "${workspaceFolder}",
-      "envFile": "${workspaceFolder}/.env",
+      "envFile": "${workspaceFolder}/${input:wikiAgentEnvFile}",
+      "args": ["--env-file", "${input:wikiAgentEnvFile}", "--log-level", "DEBUG"],
       "env": {
         "WIKI_AGENT_MODE": "mcp",
-        "WIKI_MCP_SERVER": "mcp-atlassian",
         "WIKI_MCP_READ_ONLY": "false",
         "WIKI_MCP_TOOLSETS": "confluence_pages,confluence_comments",
-        "WIKI_AGENT_LOG_LEVEL": "DEBUG",
-        "PYTHONUTF8": "1"
-      },
-      "args": [
-        "--log-level",
-        "DEBUG"
-      ]
-    },
-    {
-      "name": "Wiki Agent — Console (mcp-atlassian HTTP)",
-      "type": "debugpy",
-      "request": "launch",
-      "module": "ai_agent_lab.wiki.adapters.cli.entrypoint",
-      "python": "${workspaceFolder}/.venvs/wiki-agent/Scripts/python.exe",
-      "console": "integratedTerminal",
-      "justMyCode": false,
-      "cwd": "${workspaceFolder}",
-      "envFile": "${workspaceFolder}/.env",
-      "env": {
-        "WIKI_AGENT_MODE": "mcp",
-        "WIKI_MCP_SERVER": "mcp-atlassian-http",
-        "WIKI_MCP_AUTH_SCHEME": "basic",
-        "WIKI_AGENT_LOG_LEVEL": "DEBUG",
-        "PYTHONUTF8": "1"
-      }
-    },
-    {
-      "name": "Wiki Agent — Console (reference MCP stdio)",
-      "type": "debugpy",
-      "request": "launch",
-      "module": "ai_agent_lab.wiki.adapters.cli.entrypoint",
-      "python": "${workspaceFolder}/.venvs/wiki-agent/Scripts/python.exe",
-      "console": "integratedTerminal",
-      "justMyCode": false,
-      "cwd": "${workspaceFolder}",
-      "envFile": "${workspaceFolder}/.env",
-      "env": {
-        "WIKI_AGENT_MODE": "mcp",
-        "WIKI_MCP_SERVER": "wiki-local",
         "WIKI_AGENT_LOG_LEVEL": "DEBUG",
         "PYTHONUTF8": "1"
       }
@@ -230,19 +192,13 @@
       "name": "Wiki Agent — HTTP (mock)",
       "type": "debugpy",
       "request": "launch",
-      "module": "uvicorn",
+      "module": "ai_agent_lab.wiki.adapters.http.server",
       "python": "${workspaceFolder}/.venvs/wiki-agent/Scripts/python.exe",
       "console": "integratedTerminal",
       "justMyCode": false,
       "cwd": "${workspaceFolder}",
-      "envFile": "${workspaceFolder}/.env",
-      "args": [
-        "ai_agent_lab.wiki.bootstrap.service:build_app",
-        "--factory",
-        "--port",
-        "8124",
-        "--reload"
-      ],
+      "envFile": "${workspaceFolder}/${input:wikiAgentEnvFile}",
+      "args": ["--env-file", "${input:wikiAgentEnvFile}", "--port", "8124", "--reload"],
       "env": {
         "WIKI_AGENT_MODE": "mock",
         "WIKI_AGENT_HTTP_API_KEY": "demo-key",
@@ -251,28 +207,23 @@
       }
     },
     {
-      // The same service, against a real Confluence over streamable HTTP.
-      // Start the mcp-atlassian container first: see docs/wiki-mcp-servers.md.
+      // The same service, against a real Confluence over stdio (docker run).
+      // Start docker first: see docs/wiki-mcp-servers.md. The container holds
+      // the Confluence credentials (CONFLUENCE_USERNAME/CONFLUENCE_API_TOKEN),
+      // so the agent sends no identity header: WIKI_MCP_AUTH_SCHEME=none.
       "name": "Wiki Agent — HTTP (mcp-atlassian HTTP)",
       "type": "debugpy",
       "request": "launch",
-      "module": "uvicorn",
+      "module": "ai_agent_lab.wiki.adapters.http.server",
       "python": "${workspaceFolder}/.venvs/wiki-agent/Scripts/python.exe",
       "console": "integratedTerminal",
       "justMyCode": false,
       "cwd": "${workspaceFolder}",
-      "envFile": "${workspaceFolder}/.env",
-      "args": [
-        "ai_agent_lab.wiki.bootstrap.service:build_app",
-        "--factory",
-        "--port",
-        "8124",
-        "--reload"
-      ],
+      "envFile": "${workspaceFolder}/${input:wikiAgentEnvFile}",
+      "args": ["--env-file", "${input:wikiAgentEnvFile}", "--port", "8003", "--reload"],
       "env": {
         "WIKI_AGENT_MODE": "mcp",
-        "WIKI_MCP_SERVER": "mcp-atlassian-http",
-        "WIKI_MCP_AUTH_SCHEME": "basic",
+        "WIKI_MCP_AUTH_SCHEME": "none",
         "WIKI_AGENT_HTTP_API_KEY": "demo-key",
         "WIKI_AGENT_LOG_LEVEL": "DEBUG",
         "PYTHONUTF8": "1"
@@ -412,6 +363,12 @@
       "type": "promptString",
       "description": "Mail Agent environment file (relative to the workspace or absolute)",
       "default": ".env_mail_agent_http"
+    },
+    {
+      "id": "wikiAgentEnvFile",
+      "type": "promptString",
+      "description": "Wiki Agent environment file (relative to the workspace or absolute)",
+      "default": ".env_wiki_agent"
     },
     {
       "id": "mailMcpEnvFile",

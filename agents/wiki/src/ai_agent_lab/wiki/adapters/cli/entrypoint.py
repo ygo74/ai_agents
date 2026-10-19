@@ -12,7 +12,6 @@ from pathlib import Path
 
 from langchain_core.language_models import BaseChatModel
 from ygo74.agent_runtime.domains.auth.agent_principal import AgentPrincipal
-from ygo74.agent_runtime.domains.configuration.environment import EnvironmentFile
 from ygo74.agent_runtime.domains.errors import DomainError
 from ygo74.agent_runtime.domains.security.security_errors import SecurityError
 
@@ -21,6 +20,7 @@ from ai_agent_lab.wiki.adapters.cli.console import Console, ConsoleApprovalResol
 from ai_agent_lab.wiki.adapters.langchain.session import WikiAgentSession
 from ai_agent_lab.wiki.bootstrap.chat_model import build_chat_model
 from ai_agent_lab.wiki.bootstrap.composition import WikiAgentCompositionRoot, WikiAgentRuntime
+from ai_agent_lab.wiki.infrastructure.configuration.environment import WikiEnvironmentFile
 from ai_agent_lab.wiki.infrastructure.configuration.settings import WikiAgentSettings
 
 _BANNER = """\
@@ -95,9 +95,9 @@ class WikiAgentCli:
         self._console.write(f"\nAgent > {answer}\n")
 
 
-def _configure_logging(level_name: str | None = None) -> None:
+def _configure_logging(level_name: str | None = None, env_file: Path | None = None) -> None:
     """Configure logging from CLI or agent and shared environment settings."""
-    EnvironmentFile().load()
+    WikiEnvironmentFile().load(env_file)
     setup_logging(
         default_level=WikiAgentSettings().log_level,
         level_name=level_name,
@@ -107,6 +107,7 @@ def _configure_logging(level_name: str | None = None) -> None:
 def _parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     """Parse optional command-line arguments."""
     parser = argparse.ArgumentParser(description="Wiki Agent CLI")
+    parser.add_argument("--env-file", type=Path, help="Environment file to load (default: .env).")
     parser.add_argument(
         "--log-level",
         choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
@@ -122,10 +123,10 @@ def build_cli(
     base_path: Path | None = None,
     chat_model: BaseChatModel | None = None,
     log_level: str | None = None,
+    env_file: Path | None = None,
 ) -> WikiAgentCli:
     """Assemble the command-line application from the environment."""
-    EnvironmentFile().load()
-    _configure_logging(log_level)
+    _configure_logging(log_level, env_file)
     settings = WikiAgentSettings()
     _logger.info("Initializing Wiki Agent CLI (mode=%s, user_id=%s)", settings.mode.value, settings.user_id)
     _logger.debug("Wiki Agent settings: log_level=%s, mock_dataset=%s", settings.log_level, settings.mock_dataset)
@@ -160,8 +161,7 @@ def main(argv: Sequence[str] | None = None) -> None:
     """Entry point of the ``wiki-agent`` console script."""
     _prefer_utf8()
     args = _parse_args(argv)
-    _configure_logging(args.log_level)
-    asyncio.run(build_cli(log_level=args.log_level).run())
+    asyncio.run(build_cli(log_level=args.log_level, env_file=args.env_file).run())
 
 
 def _prefer_utf8() -> None:
