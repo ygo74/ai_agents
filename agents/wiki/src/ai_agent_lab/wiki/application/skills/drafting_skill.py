@@ -16,13 +16,13 @@ from ygo74.agent_runtime.domains.reasoning.ports import ReasoningRequest, TextRe
 from ygo74.agent_runtime.domains.security.untrusted import UntrustedText, untrusted
 from ygo74.agent_runtime.domains.security.user_context import UserContext
 
-from ai_agent_lab.wiki.domain.models import WikiPage, WikiPageDraft
-from ai_agent_lab.wiki.domain.origins import WikiOrigin
-from ai_agent_lab.wiki.domain.permissions import WikiPermission
+from ai_agent_lab.wiki.application.ports.wiki_tools import WikiReadTools
 from ai_agent_lab.wiki.application.skills.analysis import PageDraftOutput
 from ai_agent_lab.wiki.application.skills.context import WikiContextBuilder
 from ai_agent_lab.wiki.application.skills.errors import EmptyPageContentError
-from ai_agent_lab.wiki.application.ports.wiki_tools import WikiReadTools
+from ai_agent_lab.wiki.domain.models import WikiPage, WikiPageDraft
+from ai_agent_lab.wiki.domain.origins import WikiOrigin
+from ai_agent_lab.wiki.domain.permissions import WikiPermission
 
 _SKILL = "PageDraftingSkill"
 

@@ -36,20 +36,20 @@ from ygo74.agent_runtime.domains.security.untrusted import untrusted
 from ygo74.agent_runtime.domains.security.user_context import UserContext
 
 from ai_agent_lab.wiki.application.operations import WikiToolCatalog
-from ai_agent_lab.wiki.domain.operation_names import WikiToolName
-from ai_agent_lab.wiki.domain.errors import WikiDraftNotFoundError
-from ai_agent_lab.wiki.domain.models import WikiPageDraft
-from ai_agent_lab.wiki.domain.origins import WikiOrigin
-from ai_agent_lab.wiki.domain.permissions import WikiPermission
-from ai_agent_lab.wiki.infrastructure.inmemory.draft_store import InMemoryWikiDraftStore
-from ai_agent_lab.wiki.infrastructure.inmemory.wiki import PageEntry
-from ai_agent_lab.wiki.infrastructure.inmemory.wiki_tools import InMemoryWikiTools
-from ai_agent_lab.wiki.domain.policies.security_floor import WikiSecurityFloor
 from ai_agent_lab.wiki.application.skills.authoring_skill import PageAuthoringSkill
 from ai_agent_lab.wiki.application.skills.comment_skill import PageCommentSkill
 from ai_agent_lab.wiki.application.skills.errors import EmptyCommentError, EmptyPageContentError
 from ai_agent_lab.wiki.application.skills.gating import GatedWikiOperationRunner
+from ai_agent_lab.wiki.domain.errors import WikiDraftNotFoundError
+from ai_agent_lab.wiki.domain.models import WikiPageDraft
+from ai_agent_lab.wiki.domain.operation_names import WikiToolName
+from ai_agent_lab.wiki.domain.origins import WikiOrigin
+from ai_agent_lab.wiki.domain.permissions import WikiPermission
+from ai_agent_lab.wiki.domain.policies.security_floor import WikiSecurityFloor
 from ai_agent_lab.wiki.domain.tool_errors import WikiConcurrentEditError, WikiNotFoundError
+from ai_agent_lab.wiki.infrastructure.inmemory.draft_store import InMemoryWikiDraftStore
+from ai_agent_lab.wiki.infrastructure.inmemory.wiki import PageEntry
+from ai_agent_lab.wiki.infrastructure.inmemory.wiki_tools import InMemoryWikiTools
 
 CONFIDENTIAL_BODY = "The compensation review concluded on the sixth of March."
 

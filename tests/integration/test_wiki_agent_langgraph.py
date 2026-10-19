@@ -22,18 +22,18 @@ from tests.support.langgraph_fakes import (
 from ygo74.agent_runtime.domains.auth.agent_principal import AgentPrincipal
 from ygo74.agent_runtime.domains.security.audit import AuditOutcome
 
+from ai_agent_lab.wiki.adapters.capabilities.read_capabilities import ANSWER_FROM_WIKI, SUMMARISE_PAGE
+from ai_agent_lab.wiki.adapters.capabilities.write_capabilities import DRAFT_PAGE_CONTENT
+from ai_agent_lab.wiki.adapters.cli.console import ConsoleApprovalResolver
+from ai_agent_lab.wiki.adapters.langchain.session import WikiAgentSession
+from ai_agent_lab.wiki.application.skills.analysis import AnswerOutput, PageDraftOutput
 from ai_agent_lab.wiki.bootstrap.composition import (
     WikiAgentCompositionRoot,
     WikiAgentRuntime,
     thread_id_of,
 )
-from ai_agent_lab.wiki.adapters.cli.console import ConsoleApprovalResolver
-from ai_agent_lab.wiki.adapters.langchain.session import WikiAgentSession
-from ai_agent_lab.wiki.adapters.capabilities.read_capabilities import ANSWER_FROM_WIKI, SUMMARISE_PAGE
-from ai_agent_lab.wiki.adapters.capabilities.write_capabilities import DRAFT_PAGE_CONTENT
 from ai_agent_lab.wiki.domain.operation_names import WikiToolName
 from ai_agent_lab.wiki.infrastructure.configuration.settings import WikiAgentMode, WikiAgentSettings
-from ai_agent_lab.wiki.application.skills.analysis import AnswerOutput, PageDraftOutput
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 

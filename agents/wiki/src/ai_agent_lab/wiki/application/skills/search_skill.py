@@ -6,6 +6,7 @@ import logging
 
 from ygo74.agent_runtime.domains.security.user_context import UserContext
 
+from ai_agent_lab.wiki.application.ports.wiki_tools import WikiReadTools
 from ai_agent_lab.wiki.domain.errors import EmptySearchRequestError
 from ai_agent_lab.wiki.domain.models import (
     WikiComment,
@@ -17,7 +18,6 @@ from ai_agent_lab.wiki.domain.models import (
     WikiSpace,
 )
 from ai_agent_lab.wiki.domain.permissions import WikiPermission
-from ai_agent_lab.wiki.application.ports.wiki_tools import WikiReadTools
 
 _logger = logging.getLogger(__name__)
 

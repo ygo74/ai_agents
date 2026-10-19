@@ -30,8 +30,8 @@ from ai_agent_lab.wiki.domain.models import (
     WikiSpace,
 )
 from ai_agent_lab.wiki.domain.origins import WikiOrigin
-from ai_agent_lab.wiki.infrastructure.inmemory.wiki import PageEntry, SpaceEntry, Wiki
 from ai_agent_lab.wiki.domain.tool_errors import WikiToolProtocolError
+from ai_agent_lab.wiki.infrastructure.inmemory.wiki import PageEntry, SpaceEntry, Wiki
 
 JsonObject = Mapping[str, Any]
 

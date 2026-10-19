@@ -46,7 +46,6 @@ from ygo74.agent_runtime.domains.mcp.binding import McpConnection, McpServerBind
 from ygo74.agent_runtime.domains.security.untrusted import untrusted
 from ygo74.agent_runtime.domains.security.user_context import UserContext
 
-from ai_agent_lab.wiki.domain.operation_names import WikiToolName
 from ai_agent_lab.wiki.domain.enums import WikiContentFormat, WikiPageStatus, WikiSortOrder
 from ai_agent_lab.wiki.domain.models import (
     MAX_SEARCH_LIMIT,
@@ -60,6 +59,7 @@ from ai_agent_lab.wiki.domain.models import (
     WikiSearchResult,
     WikiSpace,
 )
+from ai_agent_lab.wiki.domain.operation_names import WikiToolName
 from ai_agent_lab.wiki.domain.origins import WikiOrigin
 from ai_agent_lab.wiki.domain.tool_errors import (
     WikiAccessDeniedError,

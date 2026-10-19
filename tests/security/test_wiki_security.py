@@ -23,20 +23,20 @@ from ygo74.agent_runtime.domains.auth.agent_principal import AgentPrincipal
 from ygo74.agent_runtime.domains.security.prompt_envelope import PromptEnvelopeBuilder
 from ygo74.agent_runtime.domains.security.user_context import UserContext
 
-from ai_agent_lab.wiki.bootstrap.composition import thread_id_of
 from ai_agent_lab.wiki.adapters.capabilities.results import (
     WIKI_UNTRUSTED_SOURCE,
     WikiToolResultRenderer,
 )
-from ai_agent_lab.wiki.domain.models import WikiSearchRequest
-from ai_agent_lab.wiki.domain.permissions import WikiPermission
-from ai_agent_lab.wiki.infrastructure.inmemory.dataset import WikiDatasetLoader
-from ai_agent_lab.wiki.infrastructure.inmemory.wiki_tools import InMemoryWikiTools
 from ai_agent_lab.wiki.application.skills.analysis import AnswerOutput, PageSummaryOutput, WikiAnalysisMapper
 from ai_agent_lab.wiki.application.skills.answer_skill import DocumentationAnswerSkill
 from ai_agent_lab.wiki.application.skills.context import WikiContextBuilder
 from ai_agent_lab.wiki.application.skills.errors import UngroundedWikiResultError
+from ai_agent_lab.wiki.bootstrap.composition import thread_id_of
+from ai_agent_lab.wiki.domain.models import WikiSearchRequest
+from ai_agent_lab.wiki.domain.permissions import WikiPermission
 from ai_agent_lab.wiki.domain.tool_errors import WikiAccessDeniedError
+from ai_agent_lab.wiki.infrastructure.inmemory.dataset import WikiDatasetLoader
+from ai_agent_lab.wiki.infrastructure.inmemory.wiki_tools import InMemoryWikiTools
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 SAMPLE_WIKI = REPOSITORY_ROOT / "data" / "wiki" / "sample_wiki.json"

@@ -38,8 +38,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v7.0.0
         with:
-          # The agents target 3.12. The runtime library targets 3.11, but it is
-          # consumed here as a published wheel, not built.
+          # Both the agents and runtime 0.8.1 target Python 3.12.
           python-version: "3.12"
           cache: pip
 
@@ -52,15 +51,15 @@ jobs:
       - name: Lint
         run: python -m ruff check .
 
-      - name: Check out the runtime 0.8.0 release
+      - name: Check out the runtime 0.8.1 release
         uses: actions/checkout@v7.0.1
         with:
           repository: ygo74/ai-enterprise-agent-runtime
-          # Keep type-checking against the released API this migration targets.
-          ref: V0.8.0
+          # Keep type-checking against the minimum released API in the agent metadata.
+          ref: V0.8.1
           path: .runtime-source
 
-      - name: Install the runtime distributions built from 0.8.0
+      - name: Install the runtime distributions built from 0.8.1
         run: >-
           python -m pip install --force-reinstall --no-deps
           .runtime-source/packages/python/security

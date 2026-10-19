@@ -27,9 +27,9 @@ from ygo74.agent_runtime.domains.errors import DomainError
 from ygo74.agent_runtime.domains.humanapproval.confirmation import ConfirmationRequest
 from ygo74.agent_runtime.domains.security.user_context import UserContext
 
+from ai_agent_lab.wiki.application.ports.draft_store import WikiDraftStore
 from ai_agent_lab.wiki.application.skills.bundle import WikiSkills
 from ai_agent_lab.wiki.domain.operation_names import WikiToolName
-from ai_agent_lab.wiki.application.ports.draft_store import WikiDraftStore
 
 
 class UnknownGatedWikiToolError(DomainError):

@@ -16,13 +16,13 @@ from collections.abc import Iterable, Sequence
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from ai_agent_lab.wiki.application.skills.errors import UngroundedWikiResultError
 from ai_agent_lab.wiki.domain.models import (
     WikiAnswer,
     WikiPage,
     WikiPageSummary,
     WikiSourceReference,
 )
-from ai_agent_lab.wiki.application.skills.errors import UngroundedWikiResultError
 
 
 class ReasonerOutput(BaseModel):

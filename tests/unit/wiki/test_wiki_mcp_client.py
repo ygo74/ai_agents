@@ -16,8 +16,14 @@ from ygo74.agent_runtime.domains.mcp.binding import McpConnection, McpServerBind
 from ygo74.agent_runtime.domains.security.untrusted import UntrustedText
 from ygo74.agent_runtime.domains.security.user_context import UserContext
 
-from ai_agent_lab.wiki.domain.operation_names import WikiToolName
+from ai_agent_lab.wiki.application.ports.wiki_tools import WikiTools
 from ai_agent_lab.wiki.domain.models import WikiSearchRequest
+from ai_agent_lab.wiki.domain.operation_names import WikiToolName
+from ai_agent_lab.wiki.domain.tool_errors import (
+    WikiAccessDeniedError,
+    WikiNotFoundError,
+    WikiToolUnavailableError,
+)
 from ai_agent_lab.wiki.infrastructure.mcp.configuration import (
     capabilities_in,
     load_binding,
@@ -26,12 +32,6 @@ from ai_agent_lab.wiki.infrastructure.mcp.configuration import (
 from ai_agent_lab.wiki.infrastructure.mcp.dialects import DialectContext, create_dialect_registry
 from ai_agent_lab.wiki.infrastructure.mcp.errors import McpBindingError
 from ai_agent_lab.wiki.infrastructure.mcp.native.client import McpWikiTools
-from ai_agent_lab.wiki.application.ports.wiki_tools import WikiTools
-from ai_agent_lab.wiki.domain.tool_errors import (
-    WikiAccessDeniedError,
-    WikiNotFoundError,
-    WikiToolUnavailableError,
-)
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[3]
 

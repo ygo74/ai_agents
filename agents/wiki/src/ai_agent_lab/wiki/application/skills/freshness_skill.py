@@ -19,6 +19,8 @@ from datetime import UTC, datetime
 from ygo74.agent_runtime.domains.security.untrusted import UntrustedText
 from ygo74.agent_runtime.domains.security.user_context import UserContext
 
+from ai_agent_lab.wiki.application.ports.wiki_tools import WikiReadTools
+from ai_agent_lab.wiki.application.skills.errors import EmptyPageSelectionError
 from ai_agent_lab.wiki.domain.enums import WikiFreshness
 from ai_agent_lab.wiki.domain.models import (
     WikiFreshnessReport,
@@ -28,8 +30,6 @@ from ai_agent_lab.wiki.domain.models import (
     WikiSearchRequest,
 )
 from ai_agent_lab.wiki.domain.permissions import WikiPermission
-from ai_agent_lab.wiki.application.skills.errors import EmptyPageSelectionError
-from ai_agent_lab.wiki.application.ports.wiki_tools import WikiReadTools
 
 _logger = logging.getLogger(__name__)
 

@@ -559,3 +559,167 @@ worktree et sur la branche `refactor/6-generic-conversation-and-mcp`.
   donc pas pu être exécutés.
 - Aucune suite de tests n’a été exécutée, conformément au périmètre de
   validation approuvé.
+
+## Amendement du PLAN — runtime 0.8.1 et correction CI
+
+**Issue :** #6. **Dépôt :** `ai_agents`.
+**Worktree et branche :** `/data/repos/ai_agents-issue-6`,
+`refactor/6-generic-conversation-and-mcp`.
+
+### Étape 1 — aligner les exigences runtime des distributions agent
+
+- **Fichiers :** `agents/core/pyproject.toml`, `agents/mail/pyproject.toml`,
+  `agents/wiki/pyproject.toml`, `agents/maf/pyproject.toml` et
+  `agents/langgraph/pyproject.toml`.
+- **Changement :** porter les bornes minimales de toutes les dépendances
+  directes `ygo74-agent-runtime-*` à `0.8.1`; conserver des plages compatibles
+  avec les versions majeures actuellement prises en charge, sans pin exact.
+- **Validation :** relire chaque dépendance obligatoire et extra optionnel afin
+  de vérifier qu’aucune référence agent ne garde une borne antérieure.
+
+### Étape 2 — rendre le contrôle qualité cohérent avec les métadonnées
+
+- **Fichier :** `.github/workflows/quality.yml`.
+- **Changement :** remplacer le checkout et l’installation forcée du runtime
+  `V0.8.0` par `V0.8.1`; garder les distributions construites depuis le même
+  tag pour que mypy vérifie l’API correspondant au minimum déclaré dans les
+  paquets agent.
+- **Revue :** vérifier `.github/workflows/images.yml` et les Dockerfiles. Le
+  workflow d’images appelle déjà `quality.yml`, et ses images installent les
+  dépendances depuis les `pyproject.toml`; ne modifier ces fichiers que si la
+  revue trouve une version runtime codée en dur qui diverge.
+
+### Étape 3 — corriger le blocage Ruff rapporté
+
+- **Fichiers :** les 15 modules Wiki signalés par le job 118017101878, sous
+  `agents/wiki/src/ai_agent_lab/wiki/`.
+- **Changement :** corriger uniquement le tri des imports `I001`, sans changer
+  le code exécuté.
+- **Validation :** exécuter `python -m ruff check .` sur tout le dépôt.
+
+### Étape 4 — vérifier les distributions, contrôles et images
+
+- Installer l’environnement de développement propre utilisé par le workflow,
+  puis exécuter Ruff, mypy et `pytest --junitxml=test-results.xml`.
+- Vérifier `pip check`, le parsing des fichiers TOML et la résolution des
+  dépendances déclarées par les cinq distributions agent.
+- Construire localement les images mail, wiki et mail-mcp-gmail si Docker et
+  les dépendances réseau sont disponibles; sinon rapporter explicitement la
+  vérification qui n’a pas pu être reproduite et s’appuyer sur le workflow CI.
+- Revoir `git diff`, l’état du worktree et `git diff --check` avec les fins de
+  ligne CRLF prises en compte.
+
+### Étape 5 — publier les changements validés
+
+- Créer un commit ciblé sur la branche existante, puis pousser cette branche
+  sans force push. Le push mettra à jour la PR #10 associée au run fourni; ne
+  pas ouvrir une PR en double.
+- Confirmer le SHA du commit, la mise à jour distante et l’état des vérifications
+  GitHub Actions avant de conclure.
+
+### Critères de fin
+
+- Toutes les dépendances runtime agent ciblées ont une borne minimale 0.8.1 et
+  le workflow qualité sélectionne le tag correspondant.
+- Ruff ne relève plus d’erreur; les contrôles typage, tests et dépendances
+  réellement exécutés sont rapportés avec leur résultat.
+- Les images ciblées sont construites localement ou leur statut de validation
+  CI est clairement indiqué.
+- Le diff est revu, puis commité et poussé sur la branche existante.
+
+### Risques et limites
+
+- Un workflow local peut ne pas pouvoir reproduire l’accès réseau ou le daemon
+  Docker du runner GitHub; ces limites seront indiquées avant le commit.
+- Le nettoyage Ruff touche plusieurs modules, mais reste limité au tri
+  d’imports déjà identifié par le job CI.
+
+### Résultats de validation — 2026-10-19
+
+- L’installation de l’environnement `dev` dans un venv Python 3.12 réussit et
+  résout les cinq distributions runtime consommées par les agents en version
+  0.8.1.
+- Ruff passe sur tout le dépôt; mypy passe sur 233 fichiers; `pip check` ne
+  trouve pas de dépendance cassée.
+- Les wheels des cinq distributions agent se construisent correctement.
+- La suite complète rapporte 2 332 tests réussis, 843 ignorés et 11 échecs :
+  deux contrôles d’architecture voient des dossiers de bytecode locaux ignorés
+  par Git; les autres relèvent des tests Mail et du secret OBO dont le nom dans
+  `gmail-http.yaml` (`MAIL_AGENT_MCP_OBO_CLIENT_SECRET`) diffère de celui
+  attendu par plusieurs tests et documents (`MCP_MAIL_OBO_CLIENT_SECRET`), et
+  d’une assertion obsolète sur le défaut d’un profil VS Code. La SPEC pour
+  corriger ces écarts et le présent amendement de PLAN ont été approuvés le
+  2026-10-19.
+- Docker n’est pas installé dans l’environnement; les images ne peuvent pas
+  être construites localement. Leur construction reste à vérifier par GitHub
+  Actions après le push.
+
+## Amendement approuvé — corriger les régressions bloquant la suite Mail
+
+**Issue :** #6. **Dépôt :** `ai_agents`.
+**Worktree et branche :** `/data/repos/ai_agents-issue-6`,
+`refactor/6-generic-conversation-and-mcp`.
+
+L’utilisateur a approuvé cet amendement le 2026-10-19.
+
+### Étape 1 — aligner le secret OBO sur le nom documenté
+
+- **Fichiers :** `config/mcp/gmail-http.yaml`,
+  `tests/integration/test_mail_mcp_yaml.py` et
+  `tests/integration/test_mail_environment_selection.py`.
+- **Changement :** utiliser `MCP_MAIL_OBO_CLIENT_SECRET` dans le binding YAML
+  et dans les fixtures de test, conformément à `.env.example` et à la
+  documentation. Les tests qui chargent Gmail HTTP depuis un fichier
+  d’environnement recevront une valeur factice et vérifieront que ce fichier
+  est bien la source de la valeur résolue. Conserver la résolution depuis
+  l’environnement sans ajouter de secret réel au dépôt.
+- **Validation :** exécuter les tests de chargement YAML et d’authentification
+  MCP Mail; vérifier qu’une mauvaise variable ne subsiste que dans les
+  références historiques explicitement pertinentes.
+
+### Étape 2 — corriger l’assertion du profil VS Code
+
+- **Fichier :** `tests/integration/test_mail_environment_selection.py`.
+- **Changement :** faire vérifier par le test les défauts `.env_mail_agent_http`
+  et `.env_mcp_server` déjà déclarés dans `.vscode/launch.json`.
+- **Validation :** exécuter le test des profils de débogage et le module complet
+  de sélection d’environnement Mail.
+
+### Étape 3 — revalider avant publication
+
+- **Contrôles :** Ruff, mypy, `pip check`, parsing TOML, construction des cinq
+  distributions agent, tests ciblés Mail, puis suite complète.
+- **Revue :** examiner les deux échecs d’architecture identifiés séparément
+  dans un arbre de travail propre, afin de distinguer les artefacts ignorés du
+  worktree des défauts reproductibles par CI. Ne pas supprimer de caches locaux
+  préexistants.
+- **Publication :** après les contrôles et la revue du diff, créer un commit
+  ciblé puis pousser la branche existante pour mettre à jour la PR #10, sans
+  force push.
+
+### Critères de fin
+
+- Les neuf échecs Mail constatés sont corrigés sans modifier les comportements
+  d’authentification ni le défaut VS Code.
+- Les contrôles applicables sont exécutés et leurs résultats sont consignés;
+  aucun échec reproductible de CI ne reste inexpliqué.
+- Le diff complet est revu, puis commité et poussé sur la branche existante.
+
+### Risques et limites
+
+- Docker n’est pas disponible localement; la validation des images dépendra des
+  workflows GitHub Actions après le push.
+- Les répertoires `__pycache__` déjà présents sont ignorés par Git et ne doivent
+  pas être supprimés dans le cadre de cette correction.
+
+### Résultats de validation de l’amendement — 2026-10-19
+
+- Les tests ciblés Mail passent : 33 réussis.
+- La suite complète donne 2 341 réussis et 843 ignorés. Deux tests
+  d’architecture échouent uniquement dans ce worktree parce que des dossiers
+  ignorés contenant d’anciens fichiers `__pycache__` occupent les chemins
+  Mail qu’ils vérifient. Un checkout propre confirme ces contrôles : 7 réussis.
+- Ruff passe; mypy ne relève aucun problème sur 233 fichiers source; `pip check`
+  ne trouve pas de dépendance cassée; les six fichiers TOML sont valides.
+- Le build local des images reste indisponible faute de Docker; leur résultat
+  sera vérifié par GitHub Actions après le push.

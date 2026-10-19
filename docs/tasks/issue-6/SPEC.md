@@ -310,3 +310,106 @@ Mail conserve sa composition et son point d’override
 8693. Les applications qui utilisent un mécanisme d’échange spécifique peuvent
 toujours injecter une source ou une factory personnalisée. L’utilisateur a
 approuvé cette modification de frontière entre dépôts le 2026-10-13.
+
+## Amendement approuvé — alignement sur le runtime 0.8.1 et correction CI
+
+### Constat
+
+Le run GitHub Actions `39233525537`, job `118017101878`, échoue dans
+`quality.yml` avant le typage et les tests : Ruff signale 27 erreurs `I001`
+d’ordre d’import dans 15 modules déplacés du Wiki. Le workflow des images
+appelle ce contrôle qualité avant de construire les images.
+
+Indépendamment de cette première erreur, le contrôle qualité force ensuite une
+installation du runtime depuis le tag `V0.8.0`, alors que Mail utilise déjà
+`>=0.8` et que plusieurs autres distributions agent déclarent encore `>=0.6`.
+Le contrôle du runtime et les contraintes déclarées par les agents ne sont donc
+pas alignés sur la version 0.8.1 demandée.
+
+### Périmètre proposé
+
+- Aligner les dépendances directes des distributions sous `agents/` sur le
+  runtime 0.8.1 (packages agents, sécurité et intégrations de framework), en
+  gardant des plages de versions compatibles plutôt qu’un pin exact.
+- Faire vérifier le contrôle qualité contre les distributions du tag `V0.8.1`.
+  Le workflow d’images continuera à consommer les distributions déclarées dans
+  les `pyproject.toml` des paquets installés par les Dockerfiles.
+- Corriger les erreurs Ruff `I001` relevées dans les modules Wiki listés par le
+  run, sans modifier leur comportement.
+- Exécuter les contrôles de qualité et de construction pertinents avant le
+  commit et le push de la branche existante.
+
+### Hors périmètre
+
+- Modifier le dépôt `ai-enterprise-agent-runtime`, ses publications ou ses
+  versions.
+- Changer les APIs, les comportements métier, l’authentification ou la
+  configuration des agents.
+- Modifier les dépendances runtime des serveurs MCP sous `mcp-servers/`, sauf
+  si une incompatibilité directement causée par cette mise à jour est révélée
+  pendant la validation.
+- Modifier ou remplacer les images de déploiement, ou publier une image.
+
+### Critères d’acceptation proposés
+
+1. Chaque dépendance runtime directe des distributions agent utilise une borne
+   minimale compatible avec la version 0.8.1 demandée.
+2. Le contrôle qualité installe le runtime 0.8.1 pour sa vérification de types,
+   et ne sélectionne plus le tag 0.8.0.
+3. `ruff check .` ne signale plus les 27 erreurs constatées dans les modules
+   Wiki.
+4. Les vérifications locales pertinentes du workflow qualité et des images sont
+   exécutées et leurs résultats sont rapportés avant le commit et le push.
+
+### Décisions ouvertes
+
+- Aucune question de comportement n’est ouverte. Le PLAN précisera les
+  distributions et fichiers concernés ainsi que les commandes de validation.
+- L’utilisateur a approuvé cet amendement le 2026-10-19.
+
+## Amendement approuvé — corriger les régressions bloquant la suite Mail
+
+### Constat
+
+La validation complète après l’alignement runtime a trouvé neuf échecs de tests
+Mail en plus des deux échecs de tests d’architecture liés aux répertoires
+`__pycache__` déjà présents dans le worktree. Pour le Mail, le binding de
+`config/mcp/gmail-http.yaml` référence
+`MAIL_AGENT_MCP_OBO_CLIENT_SECRET`, alors que `.env.example`, la documentation
+et les tests définissent `MCP_MAIL_OBO_CLIENT_SECRET`. Un test de profil de
+débogage attend aussi `.env` alors que l’entrée VS Code configure déjà
+`.env_mail_agent_http` comme valeur par défaut.
+
+### Périmètre proposé
+
+- Aligner la référence du secret OBO dans `config/mcp/gmail-http.yaml` et les
+  fixtures de test sur le nom canonique déjà utilisé par la documentation et
+  `.env.example` (`MCP_MAIL_OBO_CLIENT_SECRET`). Les scénarios de test qui
+  chargent cette configuration depuis un fichier d’environnement fourniront une
+  valeur factice sous ce nom et vérifieront qu’elle est résolue depuis le
+  fichier sélectionné. Le secret réel reste fourni par l’environnement et ne
+  doit pas être inscrit dans le YAML.
+- Mettre à jour l’assertion du test de sélection des profils VS Code pour
+  vérifier les défauts existants `.env_mail_agent_http` et `.env_mcp_server`.
+- Ne changer ni la politique OAuth, ni les valeurs de configuration utilisateur,
+  ni le défaut déjà déclaré par VS Code.
+
+### Hors périmètre
+
+- Modifier le runtime ou ses versions, la configuration des autres serveurs
+  MCP, ou la sémantique d’authentification.
+- Changer le défaut de fichier d’environnement VS Code pour satisfaire un test
+  obsolète.
+
+### Critères d’acceptation proposés
+
+1. Le YAML HTTP Gmail, ses fixtures, `.env.example` et la documentation
+   référencent le même nom de variable OBO, sans valeur secrète versionnée.
+2. Le test de profils VS Code vérifie le défaut actuellement configuré.
+3. Les tests ciblés Mail puis la suite complète ne présentent plus les neuf
+   échecs Mail constatés; tout autre échec restant est examiné avant publication.
+
+### Décision
+
+- L’utilisateur a approuvé cet amendement le 2026-10-19. L’implémentation
+  attend l’approbation du PLAN correspondant.

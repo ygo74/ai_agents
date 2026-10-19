@@ -22,6 +22,7 @@ from ygo74.agent_runtime.domains.auth.agent_principal import AgentPrincipal
 from ygo74.agent_runtime.domains.contracts.conversation import ConversationTurn
 from ygo74.agent_runtime.domains.sessions.conversation_cache import ConversationRuntimeCache
 
+from ai_agent_lab.wiki.application.skills.analysis import AnswerOutput
 from ai_agent_lab.wiki.bootstrap.composition import WikiAgentCompositionRoot
 from ai_agent_lab.wiki.bootstrap.conversation import (
     WikiConversation,
@@ -30,7 +31,6 @@ from ai_agent_lab.wiki.bootstrap.conversation import (
 )
 from ai_agent_lab.wiki.domain.operation_names import WikiToolName
 from ai_agent_lab.wiki.infrastructure.configuration.settings import WikiAgentMode, WikiAgentSettings
-from ai_agent_lab.wiki.application.skills.analysis import AnswerOutput
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 

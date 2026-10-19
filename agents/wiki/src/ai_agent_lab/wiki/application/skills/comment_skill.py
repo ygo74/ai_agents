@@ -15,11 +15,11 @@ from ygo74.agent_runtime.domains.humanapproval.confirmation import (
 )
 from ygo74.agent_runtime.domains.security.user_context import UserContext
 
-from ai_agent_lab.wiki.domain.operation_names import WikiToolName
-from ai_agent_lab.wiki.domain.models import WikiComment
+from ai_agent_lab.wiki.application.ports.wiki_tools import WikiCommentTools
 from ai_agent_lab.wiki.application.skills.errors import EmptyCommentError
 from ai_agent_lab.wiki.application.skills.gating import GatedWikiOperationRunner
-from ai_agent_lab.wiki.application.ports.wiki_tools import WikiCommentTools
+from ai_agent_lab.wiki.domain.models import WikiComment
+from ai_agent_lab.wiki.domain.operation_names import WikiToolName
 
 _BODY_PREVIEW_CHARACTERS = 1500
 

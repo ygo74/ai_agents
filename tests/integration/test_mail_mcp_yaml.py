@@ -41,7 +41,7 @@ def test_gmail_http_debug_configuration_launches_the_matching_authenticated_endp
     configuration = load_configuration(
         ConfigurationDirectory(ROOT / "config"),
         "gmail-http",
-        environment={"MAIL_AGENT_MCP_OBO_CLIENT_SECRET": "test-client-secret"},
+        environment={"MCP_MAIL_OBO_CLIENT_SECRET": "test-client-secret"},
     )
     assert debug["module"] == "mail_mcp.gmail.server"
     assert "envFile" not in debug

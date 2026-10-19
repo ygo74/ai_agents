@@ -69,13 +69,13 @@ def test_missing_default_is_optional_but_explicit_file_is_required(loader, tmp_p
 async def test_console_uses_selected_file_through_settings_chat_and_yaml(tmp_path):
     (tmp_path / ".env").write_text(
         "MAIL_AGENT_USER_EMAIL=wrong@example.com\nOPENAI_CHAT_MODEL=wrong-model\n"
-        "MAIL_MCP_HTTP_AUTHORIZATION=wrong-header\n",
+        "MCP_MAIL_OBO_CLIENT_SECRET=wrong-secret\n",
         encoding="utf-8",
     )
     selected = tmp_path / "mail agent.env"
     selected.write_text(
         "MAIL_AGENT_USER_ID=selected-user\nOPENAI_CHAT_MODEL=selected-model\n"
-        "MAIL_MCP_HTTP_AUTHORIZATION=selected-header\n",
+        "MCP_MAIL_OBO_CLIENT_SECRET=fixture-secret\n",
         encoding="utf-8",
     )
     client = ScriptedChatClient([says("ready")])
@@ -85,7 +85,7 @@ async def test_console_uses_selected_file_through_settings_chat_and_yaml(tmp_pat
         assert MailAgentSettings().user_email == "local-user@example.com"
         assert ChatClientSettings().openai_model == "selected-model"
         configuration = load_configuration(ConfigurationDirectory(ROOT / "config"), "gmail-http")
-        assert configuration.headers["Authorization"] == "selected-header"
+        assert configuration.delegated_oauth.client_secret.get_secret_value() == "fixture-secret"
         assert os.environ[ENV_FILE_VARIABLE] == str(selected.resolve())
     finally:
         await cli._runtime.aclose()
@@ -170,7 +170,8 @@ def test_utilities_load_selected_component_file(tmp_path, monkeypatch, utility):
     selected = tmp_path / "utility.env"
     selected.write_text(
         "MAIL_MCP_HTTP_AUTHORIZATION=fixture-header\n"
-        "GMAIL_OAUTH_CLIENT_ID=fixture-client\nGMAIL_OAUTH_CLIENT_SECRET=fixture-secret\n",
+        "GMAIL_OAUTH_CLIENT_ID=fixture-client\nGMAIL_OAUTH_CLIENT_SECRET=fixture-secret\n"
+        "MCP_MAIL_OBO_CLIENT_SECRET=fixture-secret\n",
         encoding="utf-8",
     )
     arguments = ["utility", "--env-file", str(selected)]
@@ -196,8 +197,8 @@ def test_mail_debug_profiles_pass_component_selection_without_preloading_default
     source = (ROOT / ".vscode" / "launch.json").read_text(encoding="utf-8")
     launch = json.loads(re.sub(r"^\s*//.*$", "", source, flags=re.MULTILINE))
     inputs = {item["id"]: item for item in launch["inputs"]}
-    assert inputs["mailAgentEnvFile"]["default"] == ".env"
-    assert inputs["mailMcpEnvFile"]["default"] == ".env"
+    assert inputs["mailAgentEnvFile"]["default"] == ".env_mail_agent_http"
+    assert inputs["mailMcpEnvFile"]["default"] == ".env_mcp_server"
     profiles = [
         item for item in launch["configurations"]
         if item["module"].startswith(("ai_agent_lab.mail.", "mail_mcp.gmail."))

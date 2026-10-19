@@ -24,7 +24,11 @@ from ai_agent_lab.wiki.infrastructure.configuration.settings import (
 from ai_agent_lab.wiki.infrastructure.inmemory.dataset import WikiDatasetLoader
 from ai_agent_lab.wiki.infrastructure.inmemory.wiki_tools import InMemoryWikiTools
 from ai_agent_lab.wiki.infrastructure.mcp.authorization import WikiAuthorization, authorization_for
-from ai_agent_lab.wiki.infrastructure.mcp.configuration import capabilities_in, load_binding, with_resolved_stdio_environment
+from ai_agent_lab.wiki.infrastructure.mcp.configuration import (
+    capabilities_in,
+    load_binding,
+    with_resolved_stdio_environment,
+)
 from ai_agent_lab.wiki.infrastructure.mcp.dialects import DialectContext, create_dialect_registry
 from ai_agent_lab.wiki.infrastructure.mcp.errors import McpBindingError
 

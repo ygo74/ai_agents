@@ -30,8 +30,8 @@ from ai_agent_lab.wiki.domain.models import (
     WikiSpace,
 )
 from ai_agent_lab.wiki.domain.origins import WikiOrigin
-from ai_agent_lab.wiki.infrastructure.inmemory.wiki import PageEntry, Wiki
 from ai_agent_lab.wiki.domain.tool_errors import WikiConcurrentEditError, WikiNotFoundError
+from ai_agent_lab.wiki.infrastructure.inmemory.wiki import PageEntry, Wiki
 
 EXCERPT_LENGTH = 200
 
