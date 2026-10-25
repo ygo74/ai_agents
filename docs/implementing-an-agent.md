@@ -349,19 +349,19 @@ HostingFactory(app).add_agent(
 
 Three decisions to copy rather than reinvent:
 
-- **Refuse to start with no way to identify a caller.** Neither an issuer nor an
-  API key configured means the service cannot tell callers apart — so it stops,
-  loudly, instead of serving one person's data to whoever asks first. Both agents
-  raise a `…ServiceConfigurationError` for exactly this.
-- **The two credentials are mutually exclusive.** An issuer wins and the API key
-  is ignored. A static key left next to a configured realm is the kind of
-  leftover that outlives the demonstration it was added for.
+- **Declare the HTTP boundary in `agent.yaml`.** A hosted agent must select at
+  least one endpoint and exactly one authentication mode. The runtime rejects a
+  missing secret reference or a mismatched JWT/API-key block before serving.
+- **Keep credentials mutually exclusive.** `http.security.mode` selects either
+  `jwt` or `api_key`; the schema forbids carrying both policies at once.
 - **Discovery is authenticated.** Listing the agent lists every capability
   description, which is a map of what the system can be made to do.
 
-Derive the advertised security from the *real* configuration with
-`AdvertisedSecurity.of(...)` rather than writing it out by hand, so discovery
-cannot advertise a scheme the service does not accept.
+The Mail and Wiki services build HTTP settings from their validated manifests
+with `AgentHttpSettingsBuilder` and pass them to `WorkerSettings`. The descriptor
+derives advertised security from those same authenticators, so discovery cannot
+advertise a scheme the service does not accept. The complete key and type
+reference is in [configuration](configuration.md#fixed-manifest-schemas).
 
 **Worked examples:** [`wiki/bootstrap/service.py`](../agents/wiki/src/ai_agent_lab/wiki/bootstrap/service.py),
 [`mail/bootstrap/service.py`](../agents/mail/src/ai_agent_lab/mail/bootstrap/service.py),

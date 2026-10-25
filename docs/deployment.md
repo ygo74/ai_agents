@@ -257,17 +257,26 @@ so do not read `/v1/models` as the list of what will actually run.
 ### Using an identity provider instead of an API key
 
 The API key is a demonstration mode: one key, one caller, no notion of *who*.
-For anything beyond a trial, configure an issuer instead:
+For anything beyond a trial, edit `config/agents/mail/agent.yaml` (and mount
+the updated `config/` into the container):
 
 ```yaml
-      MAIL_AGENT_HTTP_OIDC_ISSUER: https://keycloak.example.com/realms/agents
-      MAIL_AGENT_HTTP_OIDC_AUDIENCE: mail-agent
-      MAIL_AGENT_HTTP_ROLES_CLAIM_PATH: realm_access.roles
+http:
+  endpoints: [chat_completions, responses]
+  security:
+    mode: jwt
+    jwt:
+      issuer: https://keycloak.example.com/realms/agents
+      audience: mail-agent
+      allowed_algorithms: [RS256]
+      required_claims: [sub, exp, iss, aud]
+      roles_claim_path: realm_access.roles
 ```
 
-Once an issuer is configured the API key is ignored — two ways in is one too
-many. The signing keys are discovered from the issuer; name
-`MAIL_AGENT_HTTP_JWKS_URL` only if your provider does not publish discovery.
+The manifest selects one authentication mode, so the API-key declaration is
+replaced when JWT is selected. Signing keys are discovered from the issuer; set
+`jwks_url` in the manifest only when you need an explicit JWKS endpoint. The
+Wiki Agent uses the same structure, with `endpoints: [chat_completions]`.
 
 Permissions then come from the token's roles rather than from a default, which is
 what makes multi-user deployment meaningful. See

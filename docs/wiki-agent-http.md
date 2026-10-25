@@ -20,16 +20,12 @@ Routes, OpenAI request shapes, JWT validation and discovery come from
 do not reimplement them.
 
 The service uses the runtime LangGraph worker facade over its existing managed
-worker: it registers the Wiki descriptor, exposes Chat Completions, applies one
-authentication policy, and enables authenticated model discovery. The worker
-owns route registration, the identity-scoped cache, readiness and shutdown. An
-OIDC issuer selects JWT validation and takes precedence over the demonstration
-API key; without an issuer, the configured key is used.
-
-Each worker creates one OIDC HTTP client at startup and shares it between
-discovery and JWKS retrieval. These reads occur on the first token validation;
-an explicit `WIKI_AGENT_HTTP_JWKS_URL` skips discovery. The client closes after
-the worker releases its conversations.
+worker. It loads `config/agents/wiki/agent.yaml` and passes the manifest's
+`http` section to the runtime, which registers the selected routes and one
+authentication policy. The checked-in configuration exposes Chat Completions
+and uses an API key. To use OIDC, select `mode: jwt` and declare the issuer,
+audience and optional claim paths in the manifest. Send bearer tokens in
+`Authorization: Bearer <access-token>`.
 
 | Owned by the runtime library | Owned here |
 |---|---|
@@ -71,6 +67,10 @@ Put the required settings in `.env_wiki_agent_http`, including
 `WIKI_AGENT_MODE=mock` and `WIKI_AGENT_HTTP_API_KEY=demo-key`. To use another
 configuration, pass its path to `--env-file`. The default is `.env`; values
 already present in the process environment take precedence over file values.
+The key and its caller identity are declared in `config/agents/wiki/agent.yaml`;
+the checked-in subject is `diana`, matching the sample mock user. When using
+mock mode, keep this subject aligned with `WIKI_AGENT_USER_ID`. The manifest
+deliberately does not invent an e-mail address.
 
 The launcher loads the selected file before starting Uvicorn and keeps its path
 available to reload workers. A path explicitly provided with `--env-file` must
@@ -90,12 +90,14 @@ The Mail Agent uses 8123, so both can run at once.
 
 | Variable | Meaning |
 |---|---|
-| `WIKI_AGENT_HTTP_API_KEY` | One key, one caller. For demonstrations only. |
-| `WIKI_AGENT_HTTP_OIDC_ISSUER` | Keycloak realm URL. Once set, the API key is ignored. |
-| `WIKI_AGENT_HTTP_OIDC_AUDIENCE` | Audience the token must carry. Default `wiki-agent`. |
-| `WIKI_AGENT_HTTP_ROLES_CLAIM_PATH` | Where roles live in the token. Default `realm_access.roles`. |
+| `WIKI_AGENT_HTTP_API_KEY` | Secret referenced by the checked-in API-key configuration in `agent.yaml`. |
 | `WIKI_AGENT_HTTP_MAX_CONVERSATIONS` | Ceiling on live conversations. Default 200. |
 | `WIKI_AGENT_HTTP_IDLE_MINUTES` | How long an untouched conversation is kept. Default 30. |
+
+For JWT/OIDC, configure issuer, audience, key source and optional role/group
+claim paths in `agent.yaml`. The previous `WIKI_AGENT_HTTP_OIDC_*` variables
+are no longer used. The complete manifest key reference is documented by the
+runtime's [agent manifest guide](https://github.com/ygo74/ai-enterprise-agent-runtime/blob/main/doc/python/agent-manifest.md#http-keys).
 
 **The service refuses to start with neither.** That is not pedantry on a wiki:
 pages and spaces are restricted per person, so an anonymous caller would be
@@ -103,9 +105,8 @@ served *somebody's* view of the wiki without anyone having decided whose.
 Starting and failing later would be worse - the misconfiguration would surface as
 an odd answer rather than as a refusal to run.
 
-Authentication is always required once it does start. The service uses one
-policy: an OIDC issuer selects bearer-token validation, otherwise the configured
-API key is used. The API key is not accepted as a fallback in OIDC mode.
+Authentication is always required once it does start. The manifest selects
+exactly one policy, and the API key is not accepted as a fallback in JWT mode.
 
 ### A caller needs no e-mail address
 

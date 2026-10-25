@@ -15,15 +15,13 @@ Routes, OpenAI request shapes, JWT validation and discovery come from
 [`ygo74-agent-runtime`](https://github.com/ygo74/ai-enterprise-agent-runtime). We
 do not reimplement them.
 
-The composition root uses the runtime's fluent `HostingFactory`: it registers
-the Mail entrypoint and descriptor, exposes Chat Completions, applies exactly
-one authentication policy, then enables authenticated model discovery. An
-OIDC issuer selects JWT validation and takes precedence over the demonstration
-API key; set `MAIL_AGENT_HTTP_JWKS_URL` when the issuer's JWKS endpoint is not
-discoverable or to skip discovery. The worker creates its shared OIDC HTTP client
-at startup; discovery and JWKS retrieval occur on the first token validation.
-The client closes after the worker releases its conversations. OIDC clients send
-`Authorization: Bearer <token>`.
+The composition root loads the delivered `config/agents/mail/agent.yaml` and
+passes its `http` section to the runtime. That section selects the exposed
+routes and one authentication mode. API-key values and static JWT keys are
+references to environment variables; the secret itself stays outside YAML.
+For OIDC, declare `mode: jwt` and the issuer, audience and optional claims
+settings in the manifest. Requests then use
+`Authorization: Bearer <access-token>`.
 
 What this repository owns is what that library deliberately leaves to the
 application - the same split Microsoft describes for its own hosting helpers:
@@ -47,6 +45,11 @@ $env:MAIL_AGENT_HTTP_API_KEY = "demo-key"
 `bootstrap.service` assembles the host; Mail's HTTP adapter lives in
 `adapters/http/entrypoint.py`. The Mail Docker entrypoint uses the same bootstrap
 path. No legacy application launch path is provided.
+
+The checked-in manifest declares `http.security.api_key.value` as
+`${MAIL_AGENT_HTTP_API_KEY}`. Change `http.security` in that manifest to select
+JWT/OIDC. The complete manifest key reference is documented by the runtime's
+[agent manifest guide](https://github.com/ygo74/ai-enterprise-agent-runtime/blob/main/doc/python/agent-manifest.md#http-keys).
 
 The launcher reads `.env` by default. Add `--env-file .env.mail-agent` to choose
 a component file, and `--reload` for development. It retains that choice in
@@ -111,13 +114,14 @@ installed library and skip, with a reason, whatever it cannot do yet.
 
 | Variable | Meaning |
 |---|---|
-| `MAIL_AGENT_HTTP_API_KEY` | One key, one caller. For demonstrations only. |
-| `MAIL_AGENT_HTTP_OIDC_ISSUER` | Keycloak realm URL. Once set, the API key is ignored. |
-| `MAIL_AGENT_HTTP_OIDC_AUDIENCE` | Audience the token must carry. Default `mail-agent`. |
-| `MAIL_AGENT_HTTP_JWKS_URL` | Optional explicit JWKS endpoint; otherwise resolved from OIDC discovery. |
-| `MAIL_AGENT_HTTP_ROLES_CLAIM_PATH` | Where roles live in the token. Default `realm_access.roles`. |
+| `MAIL_AGENT_HTTP_API_KEY` | Secret referenced by the checked-in API-key configuration in `agent.yaml`. |
 | `MAIL_AGENT_HTTP_MAX_CONVERSATIONS` | Ceiling on live conversations. Default 200. |
 | `MAIL_AGENT_HTTP_IDLE_MINUTES` | How long an untouched conversation is kept. Default 30. |
+
+For JWT/OIDC, put issuer, audience, key source and optional role/group claim
+paths in `agent.yaml`; do not set the retired `MAIL_AGENT_HTTP_OIDC_*` variables.
+See [the Mail identity-provider setup](../doc/users/mail-agent.md#configure-the-two-services)
+for an example.
 
 The service never runs unauthenticated. Without a subject there is nothing to
 partition state by, so a mailbox could not be told from another.

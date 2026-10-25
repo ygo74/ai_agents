@@ -44,9 +44,12 @@ curl -Method POST http://127.0.0.1:8124/v1/chat/completions `
   -Body '{"model":"wiki-agent","messages":[{"role":"user","content":"What is in scope for Apollo?"}]}'
 ```
 
-The service returns an OpenAI-compatible answer. Without the key, the request
-is rejected. The local API key is for development; use the configured OIDC
-issuer for an authenticated deployment.
+The checked-in `config/agents/wiki/agent.yaml` references this environment key
+and maps it to a local subject. The service returns an OpenAI-compatible answer
+and rejects requests without the key. For JWT/OIDC, change that manifest to
+`http.security.mode: jwt` and put the issuer/audience there. See the
+[manifest guide](../../docs/configuration.md#fixed-manifest-schemas) and the
+[HTTP serving guide](../../docs/wiki-agent-http.md).
 
 ## Deploy containers
 

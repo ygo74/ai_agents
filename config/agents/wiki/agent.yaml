@@ -37,3 +37,13 @@ skills:
   - update_page
   - add_comment
   - delete_page
+http:
+  endpoints: [chat_completions]
+  security:
+    mode: api_key
+    api_key:
+      value: ${WIKI_AGENT_HTTP_API_KEY}
+      header_name: X-API-Key
+      user:
+        subject: diana
+        name: Diana

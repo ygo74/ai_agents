@@ -27,3 +27,13 @@ skills:
   - remove_label
   - create_label
   - delete_label
+http:
+  endpoints: [chat_completions, responses]
+  security:
+    mode: api_key
+    api_key:
+      value: ${MAIL_AGENT_HTTP_API_KEY}
+      header_name: X-API-Key
+      user:
+        subject: local-user
+        email: local-user@example.com

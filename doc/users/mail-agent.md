@@ -172,22 +172,37 @@ identity check.
 This setup assumes LibreChat sends a Keycloak **access token** to the Mail Agent
 HTTP API in `Authorization: Bearer <access-token>`. The Mail HTTP host validates
 its issuer and audience before accepting the request. For the provided local
-Keycloak realm, configure the agent environment with the exact issuer URL and an
-audience that is present in the incoming access token (commonly `mail-agent` after
-adding that audience to the Keycloak token mapper):
+Keycloak realm, change the Mail manifest's `http.security` block from `api_key`
+to `jwt`. Use the exact issuer URL and an audience present in the incoming
+access token (commonly `mail-agent` after adding that audience to the Keycloak
+token mapper):
+
+```yaml
+# config/agents/mail/agent.yaml
+http:
+  endpoints: [chat_completions, responses]
+  security:
+    mode: jwt
+    jwt:
+      issuer: https://localhost:8443/realms/localhost_backends
+      audience: mail-agent
+      allowed_algorithms: [RS256]
+      required_claims: [sub, exp, iss, aud]
+      roles_claim_path: realm_access.roles
+```
+
+Keep deployment-only values in the selected environment file:
 
 ```dotenv
-MAIL_AGENT_HTTP_OIDC_ISSUER=https://localhost:8443/realms/localhost_backends
-MAIL_AGENT_HTTP_OIDC_AUDIENCE=mail-agent
 MAIL_AGENT_MODE=mcp
 MCP_MAIL_OBO_CLIENT_SECRET=<private-client-secret>
 ```
 
-Each Mail HTTP worker creates one OIDC HTTP client during application startup.
-Discovery and signing-key refreshes reuse that client, which closes after the
-worker releases its conversations. Startup creates the pool without contacting
-Keycloak; the first token validation loads discovery and signing keys. An
-explicit `MAIL_AGENT_HTTP_JWKS_URL` skips discovery but uses the same lifecycle.
+The Mail HTTP worker creates its OIDC HTTP client lazily when it validates the
+first bearer token. Discovery and signing-key retrieval reuse that client, which
+closes when the worker releases its conversations. The first token validation
+loads discovery and signing keys. An
+If discovery is unavailable, set `jwks_url` in the manifest's `jwt` block.
 TLS verification remains enabled.
 
 MCP uses separate asynchronous pools: the runtime reuses one pool per MCP

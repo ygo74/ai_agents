@@ -12,7 +12,7 @@ speaks, what it is allowed to do or which MCP server it talks to is a delivery o
 ```text
 config/
   agents/mail/
-    agent.yaml          identity and the capabilities offered, in order
+    agent.yaml          identity, ordered capabilities, and optional HTTP hosting
     AGENT.md            system instructions
   skills/mail/<tool>/
     skill.yaml          identity, security posture, MCP server and tools allowed
@@ -91,6 +91,14 @@ package ships Draft 2020-12 schemas as
 `ygo74.agent_runtime.domains.configuration.manifest_inputs` generate these
 schemas and validate the same field sets when the runtime loads YAML. Unknown
 fields and invalid enum values are rejected.
+
+The `http` section declares invocation routes, exactly one authentication mode,
+and optional rate limits. Keep secret values in the process environment and
+reference them from YAML as `${VARIABLE_NAME}`. The runtime's [agent manifest
+reference](https://github.com/ygo74/ai-enterprise-agent-runtime/blob/main/doc/python/agent-manifest.md)
+lists every key, value type, requirement and default. It also explains how to
+install the Red Hat YAML extension and configure VS Code to validate
+`config/agents/**/agent.yaml` against the packaged schema.
 
 Python callers can read the packaged schemas without locating the installed
 wheel themselves:

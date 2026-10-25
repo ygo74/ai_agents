@@ -17,6 +17,7 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
+import httpx
 import pytest
 from fastapi.testclient import TestClient
 from tests.support.langgraph_fakes import ScriptedChatModel, ToolCall, calls, says
@@ -195,7 +196,10 @@ class TestTheServiceRefusesToRunOpen:
         monkeypatch.delenv("WIKI_AGENT_HTTP_API_KEY", raising=False)
         monkeypatch.setenv("WIKI_AGENT_HTTP_API_KEY", "")
 
-        with pytest.raises(WikiServiceConfigurationError, match="needs a caller"):
+        with pytest.raises(
+            WikiServiceConfigurationError,
+            match=r"http\.security\.api_key\.value",
+        ):
             build_app(base_path=REPOSITORY_ROOT, chat_model=ScriptedChatModel([says("hello")]))
 
 
@@ -219,6 +223,27 @@ class TestOpenAiWireCompatibility:
 
         assert body["choices"][0]["message"]["role"] == "assistant"
         assert body["choices"][0]["message"]["content"] == "hello there"
+
+    async def test_manifest_disables_endpoints_that_are_not_declared(self):
+        app, _model = build_service([says("hello")])
+
+        async with app.router.lifespan_context(app), httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=app),
+            base_url="http://test",
+        ) as http:
+            responses = await http.post(
+                "/v1/responses",
+                json={"model": MODEL, "input": "hi"},
+                headers={"x-api-key": API_KEY},
+            )
+            messages = await http.post(
+                "/v1/messages",
+                json={},
+                headers={"x-api-key": API_KEY},
+            )
+
+        assert responses.status_code == 404
+        assert messages.status_code == 404
 
 
 @pytest.mark.skipif(not forwards_the_conversation, reason=NO_HEADER_FORWARDING)
