@@ -17,9 +17,9 @@ requires-python = ">=3.12"
 # reaches the framework, appeared in that release.
 dependencies = [
     "ai-agent-lab-core",
-    "ygo74-agent-runtime-agents>=0.8.1,<2",
-    "ygo74-agent-runtime-langchain>=0.8.1,<2",
-    "ygo74-agent-runtime-security>=0.8.1,<2",
+    "ygo74-agent-runtime-agents>=0.8.2,<2",
+    "ygo74-agent-runtime-langchain>=0.8.2,<2",
+    "ygo74-agent-runtime-security>=0.8.2,<2",
     "langchain>=1.3.3,<2",
     "langgraph>=1.2,<2",
     "langchain-openai>=1.6,<2",

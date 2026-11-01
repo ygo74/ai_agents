@@ -376,7 +376,7 @@ release — check `WorkerSettings.__init__`'s accepted fields (or run the
 [worker contract tests](../tests/contract/test_worker_settings_http_contract.py),
 which exercise the installed library directly) against whatever is actually
 resolved by [the core dependencies](../agents/core/pyproject.toml)'s
-`ygo74-agent-runtime-agents>=0.8.1,<2` range.
+`ygo74-agent-runtime-agents>=0.8.2,<2` range.
 When working against an **editable** checkout of the runtime (as during local
 runtime development), the field being missing usually means the checkout is
 behind its own remote branch rather than a code defect in this repository -
