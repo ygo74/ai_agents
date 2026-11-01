@@ -71,8 +71,8 @@ server and agent boundaries.
 - Every MCP server remains separately installable and deployable from its
   corresponding agent.
 
-See [Mail MCP server selection](../../docs/mail-mcp-servers.md),
-[Wiki MCP server selection](../../docs/wiki-mcp-servers.md), and the
+See [Mail MCP server selection](../../doc/users/mail-mcp-servers.md),
+[Wiki MCP server selection](../../doc/users/wiki-mcp-servers.md), and the
 [deployment specification](../architecture/repository-structure.md). Tool
 ports, wire contracts, and host implementations live under [`agents/`](../../agents/)
 and [`mcp-servers/`](../../mcp-servers/).

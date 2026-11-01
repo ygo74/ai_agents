@@ -56,7 +56,7 @@ Tests: [delivered configuration](../../tests/integration/test_delivered_configur
 [delivered security posture](../../tests/integration/test_delivered_posture.py),
 and [capability exposure](../../tests/integration/test_capability_exposure.py).
 
-See [configuration specification](../../docs/configuration.md),
+See [configuration specification](../users/configuration-reference.md),
 [Mail agent specification](../../spec/agents/mail-agent.md),
 [Wiki agent specification](../../spec/agents/wiki-agent.md), and
 [MCP design](../../spec/integrations/mcp-design.md).

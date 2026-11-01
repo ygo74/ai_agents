@@ -13,7 +13,7 @@ Mail and Wiki also accept `AGENT_CONFIG_SUBDIR` (default: `mail` or `wiki`) and
 `AGENT_MANIFEST_FILENAME` (default: `agent.yaml`). The subdirectory selects both
 agent and skill packages; changing only the filename reuses the existing
 instructions, skills, and MCP configuration. See
-[Select another agent manifest](../doc/users/configuration-and-deployment.md#select-another-agent-manifest)
+[Select another agent manifest](configuration-and-deployment.md#select-another-agent-manifest)
 for setup, examples, and error behavior.
 
 ```text
@@ -263,7 +263,7 @@ with one connection per referenced server. Skills using the same server share it
 connection; skills using another server receive the corresponding typed adapter.
 A skill's tool aliases and the selected server's capabilities constrain its calls.
 There is no environment-based server selection or hard-coded fallback. See
-[Choose the MCP backend](../doc/users/configuration-and-deployment.md#choose-the-mcp-backend)
+[Choose the MCP backend](configuration-and-deployment.md#choose-the-mcp-backend)
 for configuration examples.
 
 The shared runtime's `McpServerConfigurationLoader` owns the connection
@@ -282,7 +282,7 @@ endpoint, client ID, audience and scopes. Keep only
 `MCP_MAIL_OBO_CLIENT_SECRET` in the private Mail environment file, referenced
 from YAML as `${MCP_MAIL_OBO_CLIENT_SECRET}`. Configure the MCP server to
 validate JWTs from the same issuer with audience `mail-mcp`. The server also
-requires `MAIL_MCP_RESOURCE_URL`. See the [Keycloak setup](../doc/users/mail-agent.md#connect-the-authenticated-caller-to-gmail-through-mcp).
+requires `MAIL_MCP_RESOURCE_URL`. See the [Keycloak setup](mail-agent.md#connect-the-authenticated-caller-to-gmail-through-mcp).
 
 A shared API key remains an explicit alternative for deployments that do not need
 caller identity propagation; it is not the delivered default. In that mode, use a

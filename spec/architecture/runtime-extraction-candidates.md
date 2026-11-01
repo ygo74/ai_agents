@@ -7,7 +7,7 @@
 > also uses the runtime's native LangGraph binding and managed worker. The
 > application ownership boundary is recorded in the [system specification](../README.md),
 > [LangGraph integration specification](../integrations/langchain-langgraph.md),
-> and [issue #6 task record](../../docs/tasks/issue-6/SPEC.md).
+> and [issue #6 task record](../../doc/contributors/archive/tasks/issue-6/SPEC.md).
 >
 > See [architecture.md](./architecture.md#10-what-this-repository-no-longer-owns)
 > for what the move changed here, and `docs/parity-status.md` in the runtime for
@@ -572,7 +572,7 @@ them without their test suites would amount to rewriting them.
 
 Issue #6's approved scope is implemented. Its tests and quality-check results,
 including checks that were not run or were limited by the local environment,
-are recorded in the [implementation plan](../../docs/tasks/issue-6/PLAN.md).
+are recorded in the [implementation plan](../../doc/contributors/archive/tasks/issue-6/PLAN.md).
 No performance baseline was captured, so the proposed performance budget is
 not validated. The durable application boundary is described by the current
 system and integration specifications, not by the pre-migration candidates

@@ -189,8 +189,8 @@ behavior.
 
 Source: [`agents/mail/src/ai_agent_lab/mail`](../../agents/mail/src/ai_agent_lab/mail/).
 See the [Mail specification](../../spec/agents/mail-agent.md),
-[HTTP integration guide](../../docs/mail-agent-http.md), and
-[Mail user guide](../../docs/mail-agent.md).
+[HTTP integration guide](../users/mail-agent-http.md), and
+[Mail user guide](../users/mail-agent-reference.md).
 
 ## Entry points
 

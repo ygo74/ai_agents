@@ -192,13 +192,13 @@ agent, a prompt, a log or a trace. In the HTTP case the environment credential i
 a placeholder that only supplies the base URL, the SSL settings and the proxy
 settings; each request carries the real one.
 
-See [wiki-agent-running.md](./wiki-agent-running.md) for the header formats and
+See [wiki-agent-running.md](wiki-agent-running.md) for the header formats and
 for what an unauthenticated request gets (a 401, by default, which is the right
 answer).
 
 ## Adding another wiki system
 
 Notion, XWiki, SharePoint: the same three steps as any other server, described in
-the [repository structure specification](../spec/architecture/repository-structure.md).
+the [repository structure specification](../../spec/architecture/repository-structure.md).
 Write a dialect, register it, deliver a binding. The domain speaks of spaces,
 pages and comments, and it has never heard of Confluence.

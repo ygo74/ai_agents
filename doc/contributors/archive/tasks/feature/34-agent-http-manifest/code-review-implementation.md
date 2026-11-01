@@ -13,11 +13,11 @@
 
 The review followed callers into the directly related ports, capabilities, settings, authorization adapters and runtime APIs:
 
-- Mail bootstrap: [composition](../../../../agents/mail/src/ai_agent_lab/mail/bootstrap/composition.py), [provider](../../../../agents/mail/src/ai_agent_lab/mail/bootstrap/mail_tools_provider.py), [factory](../../../../agents/mail/src/ai_agent_lab/mail/bootstrap/skills_factory.py), [router](../../../../agents/mail/src/ai_agent_lab/mail/bootstrap/routed_mail_tools.py), [scope wrapper](../../../../agents/mail/src/ai_agent_lab/mail/bootstrap/scoped_mail_tools.py), and [HTTP service](../../../../agents/mail/src/ai_agent_lab/mail/bootstrap/service.py).
-- Wiki bootstrap: [composition](../../../../agents/wiki/src/ai_agent_lab/wiki/bootstrap/composition.py), [provider](../../../../agents/wiki/src/ai_agent_lab/wiki/bootstrap/wiki_tools_provider.py), [factory](../../../../agents/wiki/src/ai_agent_lab/wiki/bootstrap/skills_factory.py), [router](../../../../agents/wiki/src/ai_agent_lab/wiki/bootstrap/routed_wiki_tools.py), [scope wrapper](../../../../agents/wiki/src/ai_agent_lab/wiki/bootstrap/scoped_wiki_tools.py), and [HTTP service](../../../../agents/wiki/src/ai_agent_lab/wiki/bootstrap/service.py).
-- Wiki [MCP registry loader](../../../../agents/wiki/src/ai_agent_lab/wiki/infrastructure/mcp/registry.py), [configuration](../../../../agents/wiki/src/ai_agent_lab/wiki/infrastructure/mcp/configuration.py), [authoring skill](../../../../agents/wiki/src/ai_agent_lab/wiki/application/skills/authoring_skill.py), [search skill](../../../../agents/wiki/src/ai_agent_lab/wiki/application/skills/search_skill.py), and [read descriptors](../../../../agents/wiki/src/ai_agent_lab/wiki/adapters/capabilities/read_capabilities.py).
-- Changed agent/skill manifest declarations and relevant MCP authentication configurations; related Mail/Wiki HTTP, routing, exposure, environment-selection, confirmation and security tests. Shared [dependency declarations](../../../../agents/core/pyproject.toml) were checked against the installed editable runtime.
-- Relevant architecture and changed configuration/HTTP/routing documentation: [architecture](../../../../doc/contributors/architecture.md), [MCP clients](../../../../doc/contributors/mcp-clients.md), [Mail](../../../../doc/contributors/mail-agent.md), [Wiki](../../../../doc/contributors/wiki-agent.md), [operator configuration](../../../../doc/users/configuration-and-deployment.md), [configuration reference](../../../../docs/configuration.md), and the Mail/Wiki HTTP and deployment guides.
+- Mail bootstrap: [composition](../../../../../../agents/mail/src/ai_agent_lab/mail/bootstrap/composition.py), [provider](../../../../../../agents/mail/src/ai_agent_lab/mail/bootstrap/mail_tools_provider.py), [factory](../../../../../../agents/mail/src/ai_agent_lab/mail/bootstrap/skills_factory.py), [router](../../../../../../agents/mail/src/ai_agent_lab/mail/bootstrap/routed_mail_tools.py), [scope wrapper](../../../../../../agents/mail/src/ai_agent_lab/mail/bootstrap/scoped_mail_tools.py), and [HTTP service](../../../../../../agents/mail/src/ai_agent_lab/mail/bootstrap/service.py).
+- Wiki bootstrap: [composition](../../../../../../agents/wiki/src/ai_agent_lab/wiki/bootstrap/composition.py), [provider](../../../../../../agents/wiki/src/ai_agent_lab/wiki/bootstrap/wiki_tools_provider.py), [factory](../../../../../../agents/wiki/src/ai_agent_lab/wiki/bootstrap/skills_factory.py), [router](../../../../../../agents/wiki/src/ai_agent_lab/wiki/bootstrap/routed_wiki_tools.py), [scope wrapper](../../../../../../agents/wiki/src/ai_agent_lab/wiki/bootstrap/scoped_wiki_tools.py), and [HTTP service](../../../../../../agents/wiki/src/ai_agent_lab/wiki/bootstrap/service.py).
+- Wiki [MCP registry loader](../../../../../../agents/wiki/src/ai_agent_lab/wiki/infrastructure/mcp/registry.py), [configuration](../../../../../../agents/wiki/src/ai_agent_lab/wiki/infrastructure/mcp/configuration.py), [authoring skill](../../../../../../agents/wiki/src/ai_agent_lab/wiki/application/skills/authoring_skill.py), [search skill](../../../../../../agents/wiki/src/ai_agent_lab/wiki/application/skills/search_skill.py), and [read descriptors](../../../../../../agents/wiki/src/ai_agent_lab/wiki/adapters/capabilities/read_capabilities.py).
+- Changed agent/skill manifest declarations and relevant MCP authentication configurations; related Mail/Wiki HTTP, routing, exposure, environment-selection, confirmation and security tests. Shared [dependency declarations](../../../../../../agents/core/pyproject.toml) were checked against the installed editable runtime.
+- Relevant architecture and changed configuration/HTTP/routing documentation: [architecture](../../../../architecture.md), [MCP clients](../../../../mcp-clients.md), [Mail](../../../../mail-agent.md), [Wiki](../../../../wiki-agent.md), [operator configuration](../../../../../users/configuration-and-deployment.md), [configuration reference](../../../../../users/configuration-reference.md), and the Mail/Wiki HTTP and deployment guides.
 - Excluded: unrelated unchanged code, a full audit of the external runtime repository, live enterprise systems, deployment infrastructure, model-quality benchmarks, and the newly created review skill itself. Runtime source was read only where needed to understand the registry/worker contracts. User launch settings were not changed.
 
 ## Summary
@@ -45,12 +45,12 @@ files with the
 documented editable-runtime source roots and `--follow-imports=silent`, retaining
 imported type information without auditing the external runtime source.
 
-See the [credential ownership tests](../../../../tests/security/test_wiki_credential_ownership.py),
-[HTTP credential ownership tests](../../../../tests/security/test_wiki_http_credential_ownership.py),
-[worker HTTP contract tests](../../../../tests/contract/test_worker_settings_http_contract.py),
-[Wiki routing tests](../../../../tests/unit/wiki/test_wiki_registry_routing.py),
-[runtime prerequisites](../../../implementing-an-agent.md), and
-[operator credential guidance](../../../../doc/users/configuration-and-deployment.md#keep-wiki-credentials-bound-to-their-owner).
+See the [credential ownership tests](../../../../../../tests/security/test_wiki_credential_ownership.py),
+[HTTP credential ownership tests](../../../../../../tests/security/test_wiki_http_credential_ownership.py),
+[worker HTTP contract tests](../../../../../../tests/contract/test_worker_settings_http_contract.py),
+[Wiki routing tests](../../../../../../tests/unit/wiki/test_wiki_registry_routing.py),
+[runtime prerequisites](../../../../implementing-an-agent.md), and
+[operator credential guidance](../../../../../users/configuration-and-deployment.md#keep-wiki-credentials-bound-to-their-owner).
 
 ## Implementation tasks
 
@@ -60,7 +60,7 @@ See the [credential ownership tests](../../../../tests/security/test_wiki_creden
 - Priority: P1.
 - Confidence: high.
 - Security severity: HIGH.
-- Locations: [connection authorization construction](../../../../agents/wiki/src/ai_agent_lab/wiki/infrastructure/mcp/registry.py#L42), [per-user classification](../../../../agents/wiki/src/ai_agent_lab/wiki/bootstrap/wiki_tools_provider.py#L375), and [Atlassian account-owner guard](../../../../agents/wiki/src/ai_agent_lab/wiki/infrastructure/mcp/atlassian/client.py#L318).
+- Locations: [connection authorization construction](../../../../../../agents/wiki/src/ai_agent_lab/wiki/infrastructure/mcp/registry.py#L42), [per-user classification](../../../../../../agents/wiki/src/ai_agent_lab/wiki/bootstrap/wiki_tools_provider.py#L375), and [Atlassian account-owner guard](../../../../../../agents/wiki/src/ai_agent_lab/wiki/infrastructure/mcp/atlassian/client.py#L318).
 - Evidence and impact: the security specialist verified that two distinct subjects receive identical upstream authorization headers made from deployment-wide `user_account`/`user_secret`. The provider marks these adapters as per-user, so the account-owner guard is skipped. Both subjects reached a mocked page read using the configured account. A further offline check through the actual factory and composition resolver confirmed that the second subject can retrieve owner-credential content through `summarise_page` and pass it to the reasoner, independently of CR-002. Preconditions are a functioning multi-user JWT host, the legacy `mcp-atlassian-http` binding, and configured basic/token/bearer account credentials. An authenticated caller can inherit another account's restricted Wiki access. Write confirmation does not repair that identity mismatch. This is a previously acknowledged gap, not evidence that the newest registry work introduced the original problem. HTTP end-to-end reachability remains blocked by CR-003.
 - Implementation:
   1. Associate fixed upstream credentials with an explicit authorized subject. Reject other subjects before constructing or exposing a connection using those credentials.
@@ -69,7 +69,7 @@ See the [credential ownership tests](../../../../tests/security/test_wiki_creden
   4. Correct the documented single-user versus multi-user contract together with the code. Do not build a new generic authentication framework for this task.
 - Preserve: credentials remain behind the MCP boundary; normal owner access, source-system ACLs, operation policy, confirmation, one connection per server per caller/session, and explicit runtime authentication modes.
 - Dependencies: none for the provider-level fix; CR-003 is needed for HTTP regression validation.
-- Validation: extend the existing controlled tests in [Wiki registry routing](../../../../tests/unit/wiki/test_wiki_registry_routing.py) and the existing Wiki security suites. A second subject must neither obtain the fixed owner's credential nor invoke its tools. Test owner success, distinct caller-bound credentials, and missing-credential refusal. After CR-003, exercise two authenticated HTTP subjects with mocked MCP calls.
+- Validation: extend the existing controlled tests in [Wiki registry routing](../../../../../../tests/unit/wiki/test_wiki_registry_routing.py) and the existing Wiki security suites. A second subject must neither obtain the fixed owner's credential nor invoke its tools. Test owner success, distinct caller-bound credentials, and missing-credential refusal. After CR-003, exercise two authenticated HTTP subjects with mocked MCP calls.
 - Acceptance criteria: fixed credentials are usable only by their admitted owner; genuinely caller-bound credentials stay distinct; rejected callers cause zero upstream calls; no credential appears in prompts, errors or test reports.
 
 ### CR-002 — Route every standalone Wiki read through its own manifest skill
@@ -77,7 +77,7 @@ See the [credential ownership tests](../../../../tests/security/test_wiki_creden
 - Category: simplicity (incorrect composition of an existing routing abstraction).
 - Priority: P1.
 - Confidence: high.
-- Locations: [grouped search-skill construction](../../../../agents/wiki/src/ai_agent_lab/wiki/bootstrap/skills_factory.py#L182), [standalone read descriptors](../../../../agents/wiki/src/ai_agent_lab/wiki/adapters/capabilities/read_capabilities.py#L120), [lazy fixed-skill resolver](../../../../agents/wiki/src/ai_agent_lab/wiki/bootstrap/composition.py#L298), and [existing operation router](../../../../agents/wiki/src/ai_agent_lab/wiki/bootstrap/routed_wiki_tools.py#L22).
+- Locations: [grouped search-skill construction](../../../../../../agents/wiki/src/ai_agent_lab/wiki/bootstrap/skills_factory.py#L182), [standalone read descriptors](../../../../../../agents/wiki/src/ai_agent_lab/wiki/adapters/capabilities/read_capabilities.py#L120), [lazy fixed-skill resolver](../../../../../../agents/wiki/src/ai_agent_lab/wiki/bootstrap/composition.py#L298), and [existing operation router](../../../../../../agents/wiki/src/ai_agent_lab/wiki/bootstrap/routed_wiki_tools.py#L22).
 - Evidence and impact: `DocumentationSearchSkill` implements search, page, children, spaces, comments and history reads, but the factory supplies only the `search_wiki` adapter. With the real provider/registry and its existing fake-server fixture, calls through `skills.search.get_page`, `get_children` and `list_spaces` each raised `McpBindingError`: `search_wiki` does not declare the requested alias. Zero remote reads occurred. The default-startup test calls the provider directly, and the operation-routing test calls `provider.build()`: neither crosses the faulty factory wiring. An agent can advertise a page-read capability that fails when invoked.
 - Implementation:
   1. Inject the existing `RoutedWikiTools` backed by the factory's per-skill resolver into the grouped `DocumentationSearchSkill`, as Mail already does for grouped operations.
@@ -86,7 +86,7 @@ See the [credential ownership tests](../../../../tests/security/test_wiki_creden
   4. Add factory/composition-level coverage, not just direct provider coverage.
 - Preserve: skill override → agent default, alias checks, caller context, read-only filtering, shared connections and closure checks. Reasoning skills retain their own server across all their calls.
 - Dependencies: none.
-- Validation: extend [Wiki registry routing tests](../../../../tests/unit/wiki/test_wiki_registry_routing.py). Invoke all grouped read operations through `WikiSkillsFactory` and at least one exposed descriptor through real composition. Test both a single-server manifest and two servers with different read-skill overrides. Keep missing-history startup coverage and reasoning-skill isolation coverage.
+- Validation: extend [Wiki registry routing tests](../../../../../../tests/unit/wiki/test_wiki_registry_routing.py). Invoke all grouped read operations through `WikiSkillsFactory` and at least one exposed descriptor through real composition. Test both a single-server manifest and two servers with different read-skill overrides. Keep missing-history startup coverage and reasoning-skill isolation coverage.
 - Acceptance criteria: all exposed standalone reads reach the adapter selected by their own manifest skill; the default page read succeeds against a fake server; undeclared aliases are still rejected; missing skills do not break startup.
 
 ### CR-003 — Reconcile manifest-driven HTTP setup with the supported runtime worker API
@@ -94,7 +94,7 @@ See the [credential ownership tests](../../../../tests/security/test_wiki_creden
 - Category: simplicity (broken typed integration contract).
 - Priority: P1.
 - Confidence: high.
-- Locations: [Mail worker construction](../../../../agents/mail/src/ai_agent_lab/mail/bootstrap/service.py#L88), [Wiki worker construction](../../../../agents/wiki/src/ai_agent_lab/wiki/bootstrap/service.py#L90), [runtime dependency range](../../../../agents/core/pyproject.toml#L21), and [agent implementation guide](../../../../docs/implementing-an-agent.md).
+- Locations: [Mail worker construction](../../../../../../agents/mail/src/ai_agent_lab/mail/bootstrap/service.py#L88), [Wiki worker construction](../../../../../../agents/wiki/src/ai_agent_lab/wiki/bootstrap/service.py#L90), [runtime dependency range](../../../../../../agents/core/pyproject.toml#L21), and [agent implementation guide](../../../../implementing-an-agent.md).
 - Evidence and impact: both services pass `http_settings` to `WorkerSettings`. In the installed editable runtime, its signature requires `authentication`, supports `surfaces`, and does not accept `http_settings`. The combined HTTP/environment check produced 24 failures and 41 passes; startup fails with `TypeError: WorkerSettings.__init__() got an unexpected keyword argument 'http_settings'`. This predates the latest registry work but is inside the development-branch HTTP migration under review. The HTTP entrypoints are unusable in the current environment.
 - Implementation:
   1. Recheck the intended runtime version and its actual public worker API. Align both services with that supported contract using the smallest composition change, or require a verified runtime release that provides the intended contract.
@@ -111,7 +111,7 @@ See the [credential ownership tests](../../../../tests/security/test_wiki_creden
 - Category: simplicity.
 - Priority: P2.
 - Confidence: high.
-- Locations: [full-port stand-in](../../../../agents/wiki/src/ai_agent_lab/wiki/bootstrap/skills_factory.py#L53), [missing-skill fallback](../../../../agents/wiki/src/ai_agent_lab/wiki/bootstrap/skills_factory.py#L237), and [typed lazy router](../../../../agents/wiki/src/ai_agent_lab/wiki/bootstrap/routed_wiki_tools.py#L22).
+- Locations: [full-port stand-in](../../../../../../agents/wiki/src/ai_agent_lab/wiki/bootstrap/skills_factory.py#L53), [missing-skill fallback](../../../../../../agents/wiki/src/ai_agent_lab/wiki/bootstrap/skills_factory.py#L237), and [typed lazy router](../../../../../../agents/wiki/src/ai_agent_lab/wiki/bootstrap/routed_wiki_tools.py#L22).
 - Evidence and impact: `_LazyUnavailableWikiTools` repeats every Wiki port method solely to discard parameters and raise the same error. The repository already has a typed router that resolves its delegate at invocation time. Keeping a second full-port implementation creates an unnecessary maintenance obligation whenever the port gains a method, without adding a distinct domain responsibility.
 - Implementation:
   1. Replace the repeated stand-in with the existing lazy router backed by a fixed missing-skill resolver that raises the same explicit error.
@@ -119,7 +119,7 @@ See the [credential ownership tests](../../../../tests/security/test_wiki_creden
   3. Remove only imports and code made unused by this simplification. Avoid merging provider, router and alias-scope responsibilities.
 - Preserve: startup with absent write/reasoning/history skills; typed ports; explicit failure on direct invocation; no fallback to another server; no connection creation for unavailable skills.
 - Dependencies: CR-002, to make the intended factory routing clear first.
-- Validation: use [Wiki registry routing](../../../../tests/unit/wiki/test_wiki_registry_routing.py) and [Wiki LangGraph integration](../../../../tests/integration/test_wiki_agent_langgraph.py). Add missing-skill factory coverage for a read and a write, checking successful assembly followed by explicit invocation failure and zero upstream calls.
+- Validation: use [Wiki registry routing](../../../../../../tests/unit/wiki/test_wiki_registry_routing.py) and [Wiki LangGraph integration](../../../../../../tests/integration/test_wiki_agent_langgraph.py). Add missing-skill factory coverage for a read and a write, checking successful assembly followed by explicit invocation failure and zero upstream calls.
 - Acceptance criteria: the duplicate full-port stand-in is gone; missing/withdrawn-skill behavior is unchanged; no new generic abstraction or dependency is introduced.
 
 ### CR-005 — Correct stale routing, fallback and identity comments
@@ -127,7 +127,7 @@ See the [credential ownership tests](../../../../tests/security/test_wiki_creden
 - Category: comments.
 - Priority: P3.
 - Confidence: high.
-- Locations: [Wiki skill lookup contract](../../../../agents/wiki/src/ai_agent_lab/wiki/bootstrap/wiki_tools_provider.py#L144), [legacy-path contract](../../../../agents/wiki/src/ai_agent_lab/wiki/bootstrap/wiki_tools_provider.py#L244), [shared adapter explanation](../../../../agents/wiki/src/ai_agent_lab/wiki/bootstrap/wiki_tools_provider.py#L361), and [Mail router docstring](../../../../agents/mail/src/ai_agent_lab/mail/bootstrap/routed_mail_tools.py#L25).
+- Locations: [Wiki skill lookup contract](../../../../../../agents/wiki/src/ai_agent_lab/wiki/bootstrap/wiki_tools_provider.py#L144), [legacy-path contract](../../../../../../agents/wiki/src/ai_agent_lab/wiki/bootstrap/wiki_tools_provider.py#L244), [shared adapter explanation](../../../../../../agents/wiki/src/ai_agent_lab/wiki/bootstrap/wiki_tools_provider.py#L361), and [Mail router docstring](../../../../../../agents/mail/src/ai_agent_lab/mail/bootstrap/routed_mail_tools.py#L25).
 - Evidence and impact: Wiki `build_for_skill()` says an absent manifest raises, but explicitly enters the legacy path. `_build_mcp_explicit()` says a manifest with no MCP-enabled skills uses that path, while `build()` selects it only when the manifest is absent. The shared-adapter explanation says legacy headers are added to dialect context, but the custom loader adds them to the connection. The Mail router says reasoning skills use scoped tools instead, while composition supplies reasoning skills with a fixed-skill lazy router that eventually resolves the scoped tools. These comments obscure ownership and encourage incorrect reuse in future agents.
 - Implementation:
   1. Rewrite only these non-obvious contracts to match the final implementation after CR-001/CR-002/CR-004.

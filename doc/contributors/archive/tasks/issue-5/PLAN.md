@@ -6,7 +6,7 @@
 
 ## Specification
 
-[`./SPEC.md`](./SPEC.md)
+[`./SPEC.md`](SPEC.md)
 
 ## Objective
 
@@ -24,7 +24,7 @@ configuration variable.
   - `ai-enterprise-agent-runtime`: `refactor/5-finish-core-migration`
 - The current `ai_agents` checkout has unrelated local modifications. Preserve
   it untouched and use an isolated worktree from the updated `origin/main` for
-  this issue. Carry only `docs/tasks/issue-5/SPEC.md` and `PLAN.md` into that
+  this issue. Carry only `doc/contributors/archive/tasks/issue-5/SPEC.md` and `PLAN.md` into that
   worktree. Create an independent worktree for the runtime repository as well;
   its current feature branch is not the base for this work.
 - Fetch and verify each remote `main` before creating the worktrees. Do not

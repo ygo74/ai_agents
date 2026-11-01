@@ -81,5 +81,5 @@ and [MAF client factory](../../agents/maf/src/ai_agent_lab/maf/chat_client.py).
 Tests: [chat client selection](../../tests/integration/test_chat_client_selection.py)
 and [logging configuration](../../tests/unit/test_logging_config.py).
 
-See the [configuration guide](../../docs/configuration.md) and [system
+See the [configuration guide](../users/configuration-reference.md) and [system
 specification](../../spec/README.md).

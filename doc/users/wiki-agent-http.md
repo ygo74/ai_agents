@@ -4,7 +4,7 @@ The command line drives one person's view of the wiki. Serving the agent over
 HTTP is what lets LibreChat talk to it, and later what lets an aggregator agent
 call it.
 
-It is the same surface as [the Mail Agent's](./mail-agent-http.md), built from
+It is the same surface as [the Mail Agent's](mail-agent-http.md), built from
 the same pieces, and that is the point: the two agents run on two different
 agentic frameworks, so anything written twice would make a comparison between
 them a comparison of two web layers instead.
@@ -202,7 +202,7 @@ retrieval or reasoning: the fixed credential never transfers to a caller it was
 not configured for. Closing the per-caller gap means injecting an on-behalf-of
 `WikiUserCredentials` source; only that implementation changes, and nothing
 above the MCP boundary notices.
-The [HTTP credential ownership tests](../tests/security/test_wiki_http_credential_ownership.py)
+The [HTTP credential ownership tests](../../tests/security/test_wiki_http_credential_ownership.py)
 prove the refusal for `get_page` and `summarise_page`, through this same HTTP
 service, with two distinct JWT subjects and no live MCP connection.
 

@@ -117,7 +117,7 @@ Anything that is not an explicit `y` is a refusal. `update_page` and
 Against a real Confluence there is a second switch. `.env.example` ships
 `WIKI_MCP_READ_ONLY=true`, so the server itself refuses writes until you set it
 to `false` deliberately. The full reasoning is in
-[wiki-agent.md](./wiki-agent.md#writing-to-the-wiki).
+[wiki-agent.md](wiki-agent-reference.md#writing-to-the-wiki).
 
 ## 5. Serving it over HTTP
 
@@ -125,7 +125,7 @@ Everything above drives one person at a console. To let LibreChat - or another
 agent - talk to it, run the OpenAI-compatible service instead:
 
 The steps from the native LangGraph console to managed HTTP hosting are in
-[BYOA: develop with LangGraph, then integrate](./wiki-agent.md#byoa-develop-with-langgraph-then-integrate).
+[BYOA: develop with LangGraph, then integrate](wiki-agent-reference.md#byoa-develop-with-langgraph-then-integrate).
 
 ```powershell
 $env:WIKI_AGENT_HTTP_API_KEY = "demo-key"
@@ -137,7 +137,7 @@ A confirmation cannot hold an HTTP request open, so a gated write ends its turn
 unperformed and comes back as a ticket to answer in a later message. That, the
 fluent `HostingFactory` setup, authentication modes and the current limit on
 acting per-caller against Confluence are all in
-[wiki-agent-http.md](./wiki-agent-http.md).
+[wiki-agent-http.md](wiki-agent-http.md).
 
 ---
 
@@ -151,7 +151,7 @@ one identical tool surface, which is what makes the eventual move from the lab t
 the office a change of environment variables rather than a rewrite.
 
 The full comparison, the servers that were rejected and the security advisories
-behind the version pin are in [wiki-mcp-servers.md](./wiki-mcp-servers.md).
+behind the version pin are in [wiki-mcp-servers.md](wiki-mcp-servers.md).
 
 ## Where the configuration lives
 
@@ -373,6 +373,6 @@ requirement — and the server this repository actually targets does not take it
 | `speaks the 'x' dialect, which is not implemented` | `dialect:` names something not in the registry; the message lists what is |
 | `could not be reached: FileNotFoundError` | for `mcp-atlassian`, Docker is not running |
 | The agent says documentation does not exist | check `WIKI_AGENT_USER_ID`: a refusal is reported as a refusal, but an empty *search* looks like absence |
-| A write is refused although you approved it | the confirmation was collected for a different target; see the `ConfirmationKey` discussion in [wiki-agent.md](./wiki-agent.md#how-an-approval-travels) |
+| A write is refused although you approved it | the confirmation was collected for a different target; see the `ConfirmationKey` discussion in [wiki-agent.md](wiki-agent-reference.md#how-an-approval-travels) |
 | `page 'x' is at version N, not the expected M` | somebody edited the page between the drafting turn and the publishing turn. Draft again from the current version; the refusal is what stops their work being lost |
 | The agent says it cannot change anything | `WIKI_MCP_READ_ONLY=true`. That withdraws the four write capabilities on purpose, because the server exposes no write tool in that mode. Set it to `false` and restart |

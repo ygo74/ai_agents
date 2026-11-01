@@ -360,7 +360,7 @@ Google accounts: the current Gmail MCP server uses one Google OAuth credential a
 serves that one mailbox to authorized callers. The local CLI has no inbound HTTP
 caller token, so this OBO configuration is for the authenticated HTTP host; CLI
 MCP calls require a separately configured non-OBO server profile.
-Use [Serving the Mail Agent over HTTP](../../docs/mail-agent-http.md) for an API
+Use [Serving the Mail Agent over HTTP](mail-agent-http.md) for an API
 example. The complete list of tools, permissions, and confirmation behavior is
-in [Mail Agent](../../docs/mail-agent.md). To connect a real mailbox, start with
-[Mail MCP server options](../../docs/mail-mcp-servers.md).
+in [Mail Agent](mail-agent-reference.md). To connect a real mailbox, start with
+[Mail MCP server options](mail-mcp-servers.md).

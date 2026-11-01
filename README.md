@@ -31,13 +31,13 @@ frameworks, not to build the same business logic three times.
 
 | Agent | Framework | State |
 |---|---|---|
-| Mail Agent | Microsoft Agent Framework | Working. See [docs/mail-agent.md](./docs/mail-agent.md). |
-| Wiki Agent | LangChain / LangGraph | Working, with read capabilities and confirmation-gated writes. See [docs/wiki-agent.md](./docs/wiki-agent.md). |
+| Mail Agent | Microsoft Agent Framework | Working. See the [Mail Agent guide](doc/users/mail-agent.md). |
+| Wiki Agent | LangChain / LangGraph | Working, with read capabilities and confirmation-gated writes. See the [Wiki Agent guide](doc/users/wiki-agent.md). |
 | Mail MCP | our server, on the Gmail REST API | Working against a real mailbox, full coverage. |
 | Mail MCP | our server, on a dataset | Working over stdio, validated by the conformance suite. |
 | Mail MCP | official Google Gmail server | Bound and capability-checked; blocked by Workspace Developer Preview enrolment. |
 | Wiki MCP | our server, on a dataset | Working over stdio, restrictions reproduced. |
-| Wiki MCP | `sooperset/mcp-atlassian` | Bound and capability-checked. Cloud and Data Center. See [docs/wiki-mcp-servers.md](./docs/wiki-mcp-servers.md). |
+| Wiki MCP | `sooperset/mcp-atlassian` | Bound and capability-checked. Cloud and Data Center. See [Wiki MCP server choices](doc/users/wiki-mcp-servers.md). |
 | Third agent | CrewAI | Not started. The core and the skill registry are ready to be reused. |
 
 ## Layout
@@ -63,7 +63,7 @@ tests/             unit, contract, integration, agent, security, architecture
 data/              deterministic datasets and MCP discovery records
 scenarios/         reproducible agent scenarios
 spec/              system-level specification
-docs/              user guides for configuration, operation and deployment
+doc/users/         user guides for configuration, operation and deployment
 doc/contributors/  architecture and maintenance guides for contributors
 ```
 
@@ -77,8 +77,8 @@ layer boundaries are enforced by
 `tests/architecture/test_distribution_boundaries.py`.
 
 Instructions, tool descriptions, prompts, approval defaults and MCP tool names
-live in `config/`, so they ship independently of the code. See
-[docs/configuration.md](./docs/configuration.md).
+live in `config/`, so they ship independently of the code. See the
+[configuration reference](doc/users/configuration-reference.md).
 
 ## Getting started
 
@@ -136,14 +136,14 @@ It groups the practical guides below by task.
 
 | Document | Content |
 |---|---|
-| [docs/configuration.md](./docs/configuration.md) | What is delivered as configuration, and what stays in code. |
-| [docs/implementing-an-agent.md](./docs/implementing-an-agent.md) | **Step by step: adding a new agent, from its permissions to its image.** |
-| [docs/deployment.md](./docs/deployment.md) | **Running the containers: images, compose, and the posture of each port.** |
-| [docs/mail-agent.md](./docs/mail-agent.md) | The Mail Agent: capabilities, skills, security, how to run it. |
-| [docs/mail-mcp-servers.md](./docs/mail-mcp-servers.md) | Which mail MCP servers are supported, and how to plug in another. |
-| [docs/wiki-agent.md](./docs/wiki-agent.md) | The Wiki Agent: capabilities, grounding, confirmation on LangGraph. |
-| [docs/wiki-agent-running.md](./docs/wiki-agent-running.md) | **How to run it, and how to configure the MCP server.** |
-| [docs/wiki-mcp-servers.md](./docs/wiki-mcp-servers.md) | Which wiki MCP servers are supported, Cloud versus Data Center. |
+| [Configuration reference](doc/users/configuration-reference.md) | What is delivered as configuration, and what stays in code. |
+| [Implementing an agent](doc/contributors/implementing-an-agent.md) | **Step by step: adding a new agent, from its permissions to its image.** |
+| [Deployment](doc/users/deployment.md) | **Running the containers: images, compose, and the posture of each port.** |
+| [Mail Agent details](doc/users/mail-agent-reference.md) | Capabilities, skills, security, and local operation. |
+| [Mail MCP server choices](doc/users/mail-mcp-servers.md) | Supported Mail MCP servers and how to add another. |
+| [Wiki Agent details](doc/users/wiki-agent-reference.md) | Grounding, capabilities, and confirmation-gated writes. |
+| [Wiki Agent run guide](doc/users/wiki-agent-running.md) | **Running the agent and configuring its MCP server.** |
+| [Wiki MCP server choices](doc/users/wiki-mcp-servers.md) | Supported Wiki MCP servers, Cloud versus Data Center. |
 
 ## Continuous integration and images
 
@@ -161,7 +161,7 @@ Two workflows, answering two different questions.
 | `ghcr.io/ygo74/mail-mcp-gmail` | Our mail MCP server on the Gmail API. **Holds a Google credential — never expose its port.** |
 
 Each image carries an SBOM and a provenance attestation, and is scanned by Trivy
-on every build. See [docs/deployment.md](./docs/deployment.md).
+on every build. See the [deployment guide](doc/users/deployment.md).
 
 ## Security
 

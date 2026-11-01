@@ -74,6 +74,6 @@ A real Confluence MCP deployment also has its own `WIKI_MCP_READ_ONLY`
 server-side setting, which must allow writes.
 
 For the complete capability list, grounding behavior, and safe write flow, see
-[The Wiki Agent](../../docs/wiki-agent.md). To connect a local or Confluence
-server, follow [Running the Wiki Agent](../../docs/wiki-agent-running.md).
-HTTP callers can use the example in [Serving the Wiki Agent over HTTP](../../docs/wiki-agent-http.md).
+[The Wiki Agent](wiki-agent-reference.md). To connect a local or Confluence
+server, follow [Running the Wiki Agent](wiki-agent-running.md).
+HTTP callers can use the example in [Serving the Wiki Agent over HTTP](wiki-agent-http.md).

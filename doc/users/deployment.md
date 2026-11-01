@@ -10,7 +10,7 @@ Three images are published to the GitHub Container Registry:
 | `ghcr.io/ygo74/wiki-agent` | The Wiki Agent, same surface | 8124 |
 | `ghcr.io/ygo74/mail-mcp-gmail` | Our mail MCP server, backed by the Gmail API | 9100 |
 
-They are built by [`.github/workflows/images.yml`](../.github/workflows/images.yml)
+They are built by [`.github/workflows/images.yml`](../../.github/workflows/images.yml)
 for `linux/amd64` and `linux/arm64`, after the quality gates have passed. Each
 carries an SBOM and a provenance attestation, and is scanned by Trivy on every
 build.
@@ -129,7 +129,7 @@ Three containers on one internal network. The agents are reachable from outside;
 the MCP server is not. This Compose example deliberately uses shared API-key
 authentication as a single-caller alternative; it does not propagate the
 authenticated end user's identity to the MCP server. For Keycloak caller identity
-propagation, use the [Mail Agent OBO setup](../doc/users/mail-agent.md#connect-the-authenticated-caller-to-gmail-through-mcp)
+propagation, use the [Mail Agent OBO setup](mail-agent.md#connect-the-authenticated-caller-to-gmail-through-mcp)
 and configure the MCP server in JWT mode.
 
 ```yaml
@@ -305,7 +305,7 @@ Mail skills' `mcp_server` references together:
 
 All three images declare a health check. It probes an authenticated endpoint
 **without a credential** and treats `200`, `401` and `403` alike: all three prove
-a process is up and answering. See [`deploy/healthcheck.py`](../deploy/healthcheck.py)
+a process is up and answering. See [`deploy/healthcheck.py`](../../deploy/healthcheck.py)
 for why a probe that carried a credential would be worse — it would put a secret
 in the image and in every orchestrator that reads it.
 
@@ -347,5 +347,5 @@ several of the ten local distributions, and they live in different directories.
 - [mail-agent-http.md](mail-agent-http.md) — the Mail Agent's HTTP surface
 - [wiki-agent-http.md](wiki-agent-http.md) — the Wiki Agent's HTTP surface
 - [mail-mcp-servers.md](mail-mcp-servers.md) — the Gmail server, its scopes and its consent
-- [configuration.md](configuration.md) — every setting, and where it is read
-- [implementing-an-agent.md](implementing-an-agent.md) — adding a third agent
+- [configuration.md](configuration-reference.md) — every setting, and where it is read
+- [implementing-an-agent.md](../contributors/implementing-an-agent.md) — adding a third agent

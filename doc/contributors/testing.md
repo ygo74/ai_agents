@@ -35,5 +35,5 @@ Scenario inputs live in `scenarios/`; sample mail and wiki content lives in
 inside each test module.
 
 For environment selection and repository quality commands, follow the root
-[`README.md`](../../README.md) and the [installation guide](../../docs/deployment.md).
+[`README.md`](../../README.md) and the [installation guide](../users/deployment.md).
 The [system specification](../../spec/README.md) links each domain's behavior.

@@ -21,7 +21,7 @@ The agent starts against the sample wiki. If configuration is invalid or a
 capability is not available from the selected MCP binding, the agent refuses or
 omits that capability instead of asking a nonexistent server tool to run.
 
-Use [Configuration](../../docs/configuration.md) to edit manifests and prompts.
+Use [Configuration](configuration-reference.md) to edit manifests and prompts.
 Keep secrets out of `agent.yaml`, `skill.yaml`, and committed `.env.example`
 files.
 
@@ -162,8 +162,8 @@ The checked-in `config/agents/wiki/agent.yaml` references this environment key
 and maps it to a local subject. The service returns an OpenAI-compatible answer
 and rejects requests without the key. For JWT/OIDC, change that manifest to
 `http.security.mode: jwt` and put the issuer/audience there. See the
-[manifest guide](../../docs/configuration.md#fixed-manifest-schemas) and the
-[HTTP serving guide](../../docs/wiki-agent-http.md).
+[manifest guide](configuration-reference.md#fixed-manifest-schemas) and the
+[HTTP serving guide](wiki-agent-http.md).
 
 ## Deploy containers
 
@@ -171,4 +171,4 @@ The repository publishes separate agent and MCP server images. Keep the
 credential-holding MCP service on a private network and expose only the agent
 port required by clients. The deployment guide includes Compose examples,
 health checks, OIDC settings, and server-side read-only controls: see
-[Deployment](../../docs/deployment.md).
+[Deployment](deployment.md).

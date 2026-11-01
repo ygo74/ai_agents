@@ -105,4 +105,4 @@ Tests: [Wiki skills](../../tests/unit/wiki/test_wiki_skills.py),
 Source: [`agents/wiki/src/ai_agent_lab/wiki`](../../agents/wiki/src/ai_agent_lab/wiki/).
 See the [Wiki specification](../../spec/agents/wiki-agent.md),
 [LangChain/LangGraph contributor page](framework-adapters.md), and
-[Wiki user guide](../../docs/wiki-agent.md).
+[Wiki user guide](../users/wiki-agent-reference.md).

@@ -6,7 +6,7 @@
 
 ## Specification
 
-[`./SPEC.md`](./SPEC.md)
+[`./SPEC.md`](SPEC.md)
 
 ## Objectif
 
@@ -460,7 +460,7 @@ validations et l’historique Git restent séparés dans chaque dépôt.
 ## Amendement du PLAN — alignement de la structure Wiki sur Mail
 
 **Issue et SPEC :** issue #6, amendement de structure Wiki approuvé le
-2026-10-18 dans `docs/tasks/issue-6/SPEC.md`.
+2026-10-18 dans `doc/contributors/archive/tasks/issue-6/SPEC.md`.
 
 **Objectif :** réorganiser le package Wiki en couches cohérentes avec Mail,
 conserver les comportements Wiki et ses usages actuels des API génériques du

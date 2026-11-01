@@ -83,8 +83,8 @@ the runtime's stream binding does not mean this service exposes HTTP streaming.
 - High-risk update and delete operations cannot bypass the security floor.
 - Read-only configuration never advertises Wiki write capabilities.
 
-See the [Wiki HTTP and conversation guide](../../docs/wiki-agent-http.md), the
-[Wiki user guide](../../docs/wiki-agent.md), [LangGraph integration](../integrations/langchain-langgraph.md),
+See the [Wiki HTTP and conversation guide](../../doc/users/wiki-agent-http.md), the
+[Wiki user guide](../../doc/users/wiki-agent-reference.md), [LangGraph integration](../integrations/langchain-langgraph.md),
 and [MCP server boundaries](../integrations/mcp-server-hosting.md). The
 delivered inventory is in [`agent.yaml`](../../config/agents/wiki/agent.yaml);
 tool posture is defined by [`operations.py`](../../agents/wiki/src/ai_agent_lab/wiki/application/operations.py)

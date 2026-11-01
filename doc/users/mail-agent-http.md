@@ -7,7 +7,7 @@ Two things change, and only two: the caller is established by the transport
 instead of by `.env`, and a confirmation can no longer block a turn.
 
 For the developer path before HTTP hosting, see
-[BYOA: develop with MAF, then integrate](./mail-agent.md#byoa-develop-with-maf-then-integrate).
+[BYOA: develop with MAF, then integrate](mail-agent-reference.md#byoa-develop-with-maf-then-integrate).
 
 ## What runs the HTTP surface
 
@@ -57,7 +57,7 @@ Uvicorn reload subprocesses using `MAIL_AGENT_ENV_FILE`. If running Uvicorn
 directly against `bootstrap.service:build_app`, set `MAIL_AGENT_ENV_FILE` to
 the selected path first. Process variables override file values; a selected
 file does not fall back to `.env`. See the
-[component setup](../doc/users/mail-agent.md#choose-an-environment-file-per-component).
+[component setup](mail-agent.md#choose-an-environment-file-per-component).
 
 ```powershell
 curl -Method POST http://127.0.0.1:8123/v1/chat/completions `
@@ -78,7 +78,7 @@ configuration. YAML holds the token endpoint, client ID, target
 audience and scopes; set only `MCP_MAIL_OBO_CLIENT_SECRET` in the private
 environment file. The server must validate JWTs from the same
 issuer and audience `mail-mcp`; see [local MCP setup](mail-mcp-servers.md#local-http-setup)
-and [the Mail Agent user guide](../doc/users/mail-agent.md#connect-the-authenticated-caller-to-gmail-through-mcp).
+and [the Mail Agent user guide](mail-agent.md#connect-the-authenticated-caller-to-gmail-through-mcp).
 The current Gmail MCP server still uses one Google credential for one mailbox; OBO
 authenticates callers but does not yet select a different Google account per user.
 ### Developing against a runtime checkout
@@ -120,7 +120,7 @@ installed library and skip, with a reason, whatever it cannot do yet.
 
 For JWT/OIDC, put issuer, audience, key source and optional role/group claim
 paths in `agent.yaml`; do not set the retired `MAIL_AGENT_HTTP_OIDC_*` variables.
-See [the Mail identity-provider setup](../doc/users/mail-agent.md#configure-the-two-services)
+See [the Mail identity-provider setup](mail-agent.md#configure-the-two-services)
 for an example.
 
 The service never runs unauthenticated. Without a subject there is nothing to

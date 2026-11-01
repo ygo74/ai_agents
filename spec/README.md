@@ -185,15 +185,15 @@ runtime APIs.
 - [Agent and framework design](architecture/agent-design.md)
 - [Mail agent behavior and safety rules](agents/mail-agent.md)
 - [Wiki agent behavior and safety rules](agents/wiki-agent.md)
-- [Mail HTTP and conversation integration](../docs/mail-agent-http.md)
-- [Wiki HTTP and conversation integration](../docs/wiki-agent-http.md)
+- [Mail HTTP and conversation integration](../doc/users/mail-agent-http.md)
+- [Wiki HTTP and conversation integration](../doc/users/wiki-agent-http.md)
 - [LangChain and LangGraph in the Wiki agent](integrations/langchain-langgraph.md)
-- [Configuration and manifest contracts](../docs/configuration.md)
+- [Configuration and manifest contracts](../doc/users/configuration-reference.md)
 - [MCP client and tool-port design](integrations/mcp-design.md)
 - [Mail and Wiki MCP server hosting](integrations/mcp-server-hosting.md)
 - [Repository distributions and installation](architecture/repository-structure.md)
 - [Runtime extraction decisions](architecture/runtime-extraction-candidates.md)
-- [Adding a new agent](../docs/implementing-an-agent.md)
+- [Adding a new agent](../doc/contributors/implementing-an-agent.md)
 
 ## Task records
 
@@ -203,5 +203,5 @@ system.
 
 - [Issue #5 specification](tasks/issue-5/SPEC.md)
 - [Issue #5 implementation plan](tasks/issue-5/PLAN.md)
-- [Issue #6 specification](../docs/tasks/issue-6/SPEC.md)
-- [Issue #6 implementation plan](../docs/tasks/issue-6/PLAN.md)
+- [Issue #6 specification](../doc/contributors/archive/tasks/issue-6/SPEC.md)
+- [Issue #6 implementation plan](../doc/contributors/archive/tasks/issue-6/PLAN.md)

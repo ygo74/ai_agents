@@ -955,7 +955,7 @@ Create/update:
 ```text
 spec/architecture/agent-design.md
 spec/integrations/mcp-design.md
-docs/mail-agent.md
+doc/users/mail-agent-reference.md
 ```
 
 Document:
