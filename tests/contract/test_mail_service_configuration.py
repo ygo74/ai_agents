@@ -16,10 +16,13 @@ mailbox to whoever asked first.
 
 from __future__ import annotations
 
+import shutil
 from pathlib import Path
 
+import httpx
 import pytest
-from fastapi.testclient import TestClient
+import yaml
+from ygo74.agent_runtime.domains.configuration.directory import CONFIG_DIR_VARIABLE
 
 from ai_agent_lab.mail.bootstrap.service import (
     MailServiceConfigurationError,
@@ -32,8 +35,8 @@ pytestmark = pytest.mark.security
 
 
 @pytest.fixture(autouse=True)
-def single_caller_deployment(monkeypatch):
-    """Configure the single-caller posture the module is written against."""
+def single_caller_deployment(monkeypatch, tmp_path):
+    """Create an isolated API-key deployment independent of the delivered JWT manifest."""
     monkeypatch.setenv("MAIL_AGENT_MODE", "mock")
     monkeypatch.setenv("MAIL_AGENT_USER_ID", "local-user")
     monkeypatch.setenv("MAIL_AGENT_USER_EMAIL", "local-user@example.com")
@@ -41,6 +44,25 @@ def single_caller_deployment(monkeypatch):
     monkeypatch.setenv("OPENAI_API_KEY", "sk-mock-key-for-service-wiring-tests")
     monkeypatch.setenv("OPENAI_CHAT_MODEL", "gpt-4o-mini")
     monkeypatch.delenv("MAIL_AGENT_HTTP_OIDC_ISSUER", raising=False)
+
+    config_root = tmp_path / "config"
+    shutil.copytree(REPOSITORY_ROOT / "config", config_root)
+    manifest_path = config_root / "agents" / "mail" / "agent.yaml"
+    manifest = yaml.safe_load(manifest_path.read_text(encoding="utf-8"))
+    manifest["http"]["security"] = {
+        "mode": "api_key",
+        "api_key": {
+            "value": "${MAIL_AGENT_HTTP_API_KEY}",
+            "header_name": "X-API-Key",
+            "user": {"subject": "local-user", "email": "local-user@example.com"},
+        },
+    }
+    manifest_path.write_text(yaml.safe_dump(manifest, sort_keys=False), encoding="utf-8")
+    monkeypatch.setenv(CONFIG_DIR_VARIABLE, str(config_root))
+
+    env_file = tmp_path / "mail-agent.env"
+    env_file.write_text("", encoding="utf-8")
+    monkeypatch.setenv("MAIL_AGENT_ENV_FILE", str(env_file))
 
 
 class TestTheServiceRefusesToRunOpen:
@@ -54,42 +76,27 @@ class TestTheServiceRefusesToRunOpen:
     def test_it_will_not_start_without_a_way_to_identify_a_caller(self, monkeypatch):
         monkeypatch.setenv("MAIL_AGENT_HTTP_API_KEY", "")
 
-        with pytest.raises(MailServiceConfigurationError, match="needs a caller"):
+        with pytest.raises(
+            MailServiceConfigurationError,
+            match=r"http\.security\.api_key\.value",
+        ):
             build_app(base_path=REPOSITORY_ROOT)
 
-    def test_an_issuer_alone_enables_oidc(self, monkeypatch):
-        """OIDC is a supported caller identity, not an open-service setting."""
-        monkeypatch.setenv("MAIL_AGENT_HTTP_API_KEY", "")
-        monkeypatch.setenv("MAIL_AGENT_HTTP_OIDC_ISSUER", "https://realm.example/auth")
-        monkeypatch.setenv(
-            "MAIL_AGENT_HTTP_JWKS_URL",
-            "https://realm.example/auth/protocol/openid-connect/certs",
-        )
-
+    async def test_manifest_selects_the_api_key_and_exposes_declared_routes(self):
+        """The manifest owns Mail's selected routes and API-key policy."""
         app = build_app(base_path=REPOSITORY_ROOT)
 
-        assert app.state.conversations is not None
-
-    def test_oidc_takes_precedence_over_the_configured_api_key(self, monkeypatch):
-        """An old demo key must not remain a second way into an OIDC service."""
-        monkeypatch.setenv("MAIL_AGENT_HTTP_OIDC_ISSUER", "https://realm.example/auth")
-        monkeypatch.setenv(
-            "MAIL_AGENT_HTTP_JWKS_URL",
-            "https://realm.example/auth/protocol/openid-connect/certs",
-        )
-
-        app = build_app(base_path=REPOSITORY_ROOT)
-
-        with TestClient(app) as http:
-            no_credential = http.get("/v1/models")
-            api_key = http.get("/v1/models", headers={"x-api-key": "demonstration-key"})
+        async with app.router.lifespan_context(app), httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=app),
+            base_url="http://test",
+        ) as http:
+            no_credential = await http.get("/v1/models")
+            api_key = await http.get(
+                "/v1/models",
+                headers={"x-api-key": "demonstration-key"},
+            )
+            disabled_messages = await http.post("/v1/messages", json={})
 
         assert no_credential.status_code in (401, 403)
-        assert api_key.status_code in (401, 403)
-
-    def test_it_will_not_start_when_oidc_and_api_key_are_both_absent(self, monkeypatch):
-        monkeypatch.setenv("MAIL_AGENT_HTTP_API_KEY", "")
-        monkeypatch.delenv("MAIL_AGENT_HTTP_OIDC_ISSUER", raising=False)
-
-        with pytest.raises(MailServiceConfigurationError, match="needs a caller"):
-            build_app(base_path=REPOSITORY_ROOT)
+        assert api_key.status_code == 200
+        assert disabled_messages.status_code == 404

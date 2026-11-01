@@ -27,9 +27,9 @@ the selected dataset and model are available.
 
 The Wiki Agent supports the community `sooperset/mcp-atlassian` server for
 Confluence Cloud and Data Center. The delivered configuration defaults to a
-read-only server mode. Follow [Running the Wiki Agent](../../docs/wiki-agent-running.md)
+read-only server mode. Follow [Running the Wiki Agent](wiki-agent-running.md)
 to choose stdio or streamable HTTP, provide credentials, and map tool names.
-See [Wiki MCP server choices](../../docs/wiki-mcp-servers.md) for compatibility
+See [Wiki MCP server choices](wiki-mcp-servers.md) for compatibility
 and the server's security settings.
 
 ## Connect Gmail
@@ -37,7 +37,7 @@ and the server's security settings.
 The Mail Agent can use the reference dataset or a Gmail-backed MCP server. The
 official Google-hosted MCP service and the repository's Gmail API server have
 different setup and credential requirements. Start with
-[Mail MCP server options](../../docs/mail-mcp-servers.md); it explains OAuth
+[Mail MCP server options](mail-mcp-servers.md); it explains OAuth
 consent, API scopes, and the HTTP network boundary.
 
 ## Keep identity and access aligned

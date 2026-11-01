@@ -23,7 +23,7 @@ Confluence: the domain speaks of spaces, pages and comments.
 ## Running it
 
 Full instructions, including how to configure the MCP server, are in
-[wiki-agent-running.md](./wiki-agent-running.md). The short version:
+[wiki-agent-running.md](wiki-agent-running.md). The short version:
 
 ```powershell
 py -3.12 -m scripts.install --env wiki-agent --into .venvs\wiki-agent
@@ -49,7 +49,7 @@ or a comparison between the two frameworks measures two deployments instead.
 ## BYOA: develop with LangGraph, then integrate
 
 The Wiki Agent is built with LangChain's public `create_agent(...)` API in
-[`application/composition.py`](../agents/wiki/src/ai_agent_lab/wiki/bootstrap/composition.py).
+[`application/composition.py`](../../agents/wiki/src/ai_agent_lab/wiki/bootstrap/composition.py).
 Use the existing console entry point while changing the graph, tools or prompt:
 
 ```python
@@ -348,7 +348,7 @@ classic ambiguity of a delimiter in a composite key.
 
 ## Servers
 
-See [wiki-mcp-servers.md](./wiki-mcp-servers.md) for the research behind
+See [wiki-mcp-servers.md](wiki-mcp-servers.md) for the research behind
 `sooperset/mcp-atlassian`, the Cloud-to-Data-Center story, and the security
 advisories that make the version pin non-negotiable.
 

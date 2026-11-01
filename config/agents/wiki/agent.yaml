@@ -14,8 +14,9 @@ mcp_server: mcp-atlassian
 # delivered under config/skills/wiki/. Removing a name removes the capability.
 #
 # The write capabilities come last, and drafting comes before them, because that
-# is the order they are meant to be used in: compose, show the person, publish
-# only if they ask. Every write is gated by the confirmation policy, and
+# is the order they are meant to be used in: compose, propose the requested write,
+# then get one confirmation before publishing. Draft-only requests stop at the draft.
+# Every write is gated by the confirmation policy, and
 # update_page and delete_page are additionally pinned by the security floor in
 # code, which no file here can lower.
 #
@@ -37,3 +38,13 @@ skills:
   - update_page
   - add_comment
   - delete_page
+http:
+  endpoints: [chat_completions]
+  security:
+    mode: api_key
+    api_key:
+      value: ${WIKI_AGENT_HTTP_API_KEY}
+      header_name: X-API-Key
+      user:
+        subject: ygobert74@gmail.com
+        name: Yannick GOBERT

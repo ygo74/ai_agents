@@ -37,6 +37,11 @@ def exposed(monkeypatch, tmp_path: Path, *, mode: str, server: str) -> frozenset
     monkeypatch.setenv("MAIL_AGENT_MODE", mode)
     root = tmp_path / "config"
     shutil.copytree(REPOSITORY_ROOT / "config", root)
+    agent_yaml = root / "agents" / "mail" / "agent.yaml"
+    agent_yaml.write_text(
+        agent_yaml.read_text(encoding="utf-8").replace("mcp_server: gmail-http", f"mcp_server: {server}"),
+        encoding="utf-8",
+    )
     for path in (root / "skills" / "mail").glob("*/skill.yaml"):
         path.write_text(
             path.read_text(encoding="utf-8").replace("mcp_server: gmail-http", f"mcp_server: {server}"),

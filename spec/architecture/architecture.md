@@ -37,7 +37,7 @@ Delivered configuration sits beside the code, not inside it:
 ```text
 config/                Agent and skill YAML/Markdown, MCP bindings
                        -> manifests loaded by the runtime; bindings loaded by application code
-                       -> see docs/configuration.md
+                       -> see doc/users/configuration-reference.md
 ```
 
 ### Dependency rule

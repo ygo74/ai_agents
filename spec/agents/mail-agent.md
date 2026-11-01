@@ -96,11 +96,11 @@ credentials. No change to the MCP server API or Mail authorization is implied.
 - `authorise --server` and `discover --server` load the selected runtime YAML;
   `authorise` defaults to the official `gmail` binding with YAML OAuth settings.
 
-See [Mail HTTP and approval flow](../../docs/mail-agent-http.md), the
-[Mail user guide](../../docs/mail-agent.md), the [MCP boundary](../integrations/mcp-design.md),
+See [Mail HTTP and approval flow](../../doc/users/mail-agent-http.md), the
+[Mail user guide](../../doc/users/mail-agent-reference.md), the [MCP boundary](../integrations/mcp-design.md),
 and the [server specification](../integrations/mcp-server-hosting.md). The
 delivered inventory is in [`agent.yaml`](../../config/agents/mail/agent.yaml);
 tool posture is defined by [`application/operations.py`](../../agents/mail/src/ai_agent_lab/mail/application/operations.py).
 See [Mail layer ownership](../../doc/contributors/mail-agent.md) for dependency
-rules and [the Mail guide](../../docs/mail-agent.md) for the supported entrypoints.
+rules and [the Mail guide](../../doc/users/mail-agent-reference.md) for the supported entrypoints.
 Mail does not provide legacy executable compatibility paths.

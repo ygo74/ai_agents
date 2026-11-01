@@ -8,6 +8,8 @@ description: >-
   owner, prepares replies and, once the owner has confirmed, sends them or
   reorganises the mailbox.
 
+mcp_server: gmail-http
+
 # Capabilities offered to the model, in this order. Each name is a package
 # delivered under config/skills/mail/. Removing a name removes the capability.
 skills:
@@ -27,3 +29,21 @@ skills:
   - remove_label
   - create_label
   - delete_label
+http:
+  endpoints: [chat_completions, responses]
+  security:
+    # mode: api_key
+    # api_key:
+    #   value: ${MAIL_AGENT_HTTP_API_KEY}
+    #   header_name: X-API-Key
+    #   user:
+    #     subject: local-user
+    #     email: local-user@example.com
+    mode: jwt
+    jwt:
+      audience: librechat
+      issuer: https://localhost:8443/realms/localhost_backends
+      jwks_url: https://localhost:8443/realms/localhost_backends/protocol/openid-connect/certs
+      roles_claim_path: realm_access.roles
+      allowed_algorithms:
+        - RS256

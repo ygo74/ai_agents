@@ -10,7 +10,7 @@ Three images are published to the GitHub Container Registry:
 | `ghcr.io/ygo74/wiki-agent` | The Wiki Agent, same surface | 8124 |
 | `ghcr.io/ygo74/mail-mcp-gmail` | Our mail MCP server, backed by the Gmail API | 9100 |
 
-They are built by [`.github/workflows/images.yml`](../.github/workflows/images.yml)
+They are built by [`.github/workflows/images.yml`](../../.github/workflows/images.yml)
 for `linux/amd64` and `linux/arm64`, after the quality gates have passed. Each
 carries an SBOM and a provenance attestation, and is scanned by Trivy on every
 build.
@@ -129,7 +129,7 @@ Three containers on one internal network. The agents are reachable from outside;
 the MCP server is not. This Compose example deliberately uses shared API-key
 authentication as a single-caller alternative; it does not propagate the
 authenticated end user's identity to the MCP server. For Keycloak caller identity
-propagation, use the [Mail Agent OBO setup](../doc/users/mail-agent.md#connect-the-authenticated-caller-to-gmail-through-mcp)
+propagation, use the [Mail Agent OBO setup](mail-agent.md#connect-the-authenticated-caller-to-gmail-through-mcp)
 and configure the MCP server in JWT mode.
 
 ```yaml
@@ -257,17 +257,26 @@ so do not read `/v1/models` as the list of what will actually run.
 ### Using an identity provider instead of an API key
 
 The API key is a demonstration mode: one key, one caller, no notion of *who*.
-For anything beyond a trial, configure an issuer instead:
+For anything beyond a trial, edit `config/agents/mail/agent.yaml` (and mount
+the updated `config/` into the container):
 
 ```yaml
-      MAIL_AGENT_HTTP_OIDC_ISSUER: https://keycloak.example.com/realms/agents
-      MAIL_AGENT_HTTP_OIDC_AUDIENCE: mail-agent
-      MAIL_AGENT_HTTP_ROLES_CLAIM_PATH: realm_access.roles
+http:
+  endpoints: [chat_completions, responses]
+  security:
+    mode: jwt
+    jwt:
+      issuer: https://keycloak.example.com/realms/agents
+      audience: mail-agent
+      allowed_algorithms: [RS256]
+      required_claims: [sub, exp, iss, aud]
+      roles_claim_path: realm_access.roles
 ```
 
-Once an issuer is configured the API key is ignored — two ways in is one too
-many. The signing keys are discovered from the issuer; name
-`MAIL_AGENT_HTTP_JWKS_URL` only if your provider does not publish discovery.
+The manifest selects one authentication mode, so the API-key declaration is
+replaced when JWT is selected. Signing keys are discovered from the issuer; set
+`jwks_url` in the manifest only when you need an explicit JWKS endpoint. The
+Wiki Agent uses the same structure, with `endpoints: [chat_completions]`.
 
 Permissions then come from the token's roles rather than from a default, which is
 what makes multi-user deployment meaningful. See
@@ -296,7 +305,7 @@ Mail skills' `mcp_server` references together:
 
 All three images declare a health check. It probes an authenticated endpoint
 **without a credential** and treats `200`, `401` and `403` alike: all three prove
-a process is up and answering. See [`deploy/healthcheck.py`](../deploy/healthcheck.py)
+a process is up and answering. See [`deploy/healthcheck.py`](../../deploy/healthcheck.py)
 for why a probe that carried a credential would be worse — it would put a secret
 in the image and in every orchestrator that reads it.
 
@@ -338,5 +347,5 @@ several of the ten local distributions, and they live in different directories.
 - [mail-agent-http.md](mail-agent-http.md) — the Mail Agent's HTTP surface
 - [wiki-agent-http.md](wiki-agent-http.md) — the Wiki Agent's HTTP surface
 - [mail-mcp-servers.md](mail-mcp-servers.md) — the Gmail server, its scopes and its consent
-- [configuration.md](configuration.md) — every setting, and where it is read
-- [implementing-an-agent.md](implementing-an-agent.md) — adding a third agent
+- [configuration.md](configuration-reference.md) — every setting, and where it is read
+- [implementing-an-agent.md](../contributors/implementing-an-agent.md) — adding a third agent

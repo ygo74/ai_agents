@@ -5,17 +5,10 @@ attributed to, which conversation it continues, and what is done with a gated
 operation. Everything the transport owns - routes, OpenAI payload shapes, JWT
 validation, discovery - comes from ``ygo74-agent-runtime``.
 
-Authentication is deliberately explicit, and deliberately layered.
-``WIKI_AGENT_HTTP_OIDC_ISSUER`` turns the service multi-user: every request
-carries a token the runtime validates against the realm's published keys, and the
-subject of that token is the person the agent acts for. Without an issuer,
-``WIKI_AGENT_HTTP_API_KEY`` starts a single-caller service for a demonstration.
-Both go through the runtime's authenticator chain, so ``auth_context`` reaches
-the entrypoint the same way and the agent cannot tell which was used.
-
-The two are mutually exclusive on purpose: two ways in is one too many, and a
-static key left behind next to a configured realm is exactly the kind of
-leftover that outlives the demonstration it was added for.
+Authentication and routes come from the delivered ``agent.yaml`` manifest.
+Secret values are resolved from environment-variable references only when the
+HTTP host is built; conversation capacity and idle lifetime remain operator
+settings.
 """
 
 from __future__ import annotations
@@ -27,23 +20,16 @@ from pathlib import Path
 
 from fastapi import FastAPI
 from langchain_core.language_models import BaseChatModel
-from ygo74.agent_runtime.domains.auth.apikey_authenticator import StaticApiKeyUserResolver
-from ygo74.agent_runtime.domains.auth.auth_context import ResolvedUser
-from ygo74.agent_runtime.domains.auth.authentication_policy import AuthenticationPolicy
-from ygo74.agent_runtime.domains.auth.jwt_authenticator import (
-    DiscoveredJwksKeyResolver,
-    JwksKeyResolver,
-    JwtValidationConfig,
+from ygo74.agent_runtime.domains.configuration.agent_http_configuration import (
+    AgentHttpRuntimeSettings,
+    AgentHttpSettingsBuilder,
 )
-from ygo74.agent_runtime.domains.auth.oidc_discovery import OidcDiscovery
 from ygo74.agent_runtime.domains.contracts.agent_definition import AgentDefinition, AgentFactoryContext
+from ygo74.agent_runtime.domains.contracts.manifests import AgentManifest
 from ygo74.agent_runtime.domains.discovery.agent_descriptor import AgentDescriptor
 from ygo74.agent_runtime.domains.discovery.discovery_configuration import DiscoveryConfiguration
 from ygo74.agent_runtime.domains.discovery.manifest_descriptor import AdvertisedSecurity
-from ygo74.agent_runtime.domains.endpoints.hosting_factory import EndpointSurface
 from ygo74.agent_runtime.domains.endpoints.managed_worker import WorkerSettings
-from ygo74.agent_runtime.domains.http.asgi_lifecycle import AsgiShutdownRegistrar
-from ygo74.agent_runtime.domains.http.client_lifecycle import SyncHttpClientOwner
 from ygo74.agent_runtime.integrations.langchain import LangGraphRunnable
 from ygo74.agent_runtime.integrations.langchain.worker import LangGraphWorker
 
@@ -83,47 +69,28 @@ def build_app(
     http = WikiAgentHttpSettings.load()
     setup_logging(default_level=settings.log_level)
 
-    _refuse_an_open_service(http)
-
     composition = WikiAgentCompositionRoot(
         settings,
         chat_model or build_chat_model(),
         base_path=base_path or Path.cwd(),
     )
     factory = WikiConversationFactory(composition)
+    manifest = composition.manifest()
+    http_runtime = _runtime_http_settings(manifest)
 
-    # Computed once and used twice: the authenticator chain is configured from
-    # these, and the descriptor is derived from them, so discovery cannot
-    # advertise a scheme this service does not accept.
-    oidc_http = SyncHttpClientOwner() if http.uses_oidc else None
-    jwt_validation = _jwt_validation(http, oidc_http)
-    api_key_resolver = _api_key_resolver(http, settings)
-
-    if jwt_validation is not None:
-        authentication = AuthenticationPolicy.jwt(jwt_validation)
-    elif api_key_resolver is not None:
-        authentication = AuthenticationPolicy.api_key(api_key_resolver)
-    else:
-        raise WikiServiceConfigurationError("the Wiki Agent HTTP service needs a caller")
-
-    descriptor = _descriptor(
-        composition,
-        jwt_validation=jwt_validation,
-        api_key_resolver=api_key_resolver,
-    )
+    descriptor = _descriptor(manifest, http_runtime)
     definition = AgentDefinition(
         descriptor=descriptor,
         factory="ai_agent_lab.wiki.bootstrap.service:build_graph",
-        tools=tuple(skill.operation for skill in composition.manifest().skills),
+        tools=tuple(skill.operation for skill in manifest.skills),
         control_point="wiki-confirmation-policy",
     )
-    app = LangGraphWorker(
+    return LangGraphWorker(
         definition,
         WorkerSettings(
             deployment_id="wiki-agent",
-            identity_namespace=http.oidc_issuer or "wiki-api-key",
-            authentication=authentication,
-            surfaces=(EndpointSurface.OPENAI_CHAT_COMPLETIONS,),
+            identity_namespace=_identity_namespace(manifest),
+            http_settings=http_runtime,
             discovery=DiscoveryConfiguration(
                 enable_openai_models=True,
                 require_authentication=True,
@@ -133,9 +100,6 @@ def build_app(
         ),
         conversation_factory=factory.build,
     ).build_app()
-    if oidc_http is not None:
-        AsgiShutdownRegistrar.register(app, oidc_http.close, startup=oidc_http.start)
-    return app
 
 
 @asynccontextmanager
@@ -158,90 +122,47 @@ async def build_graph(context: AgentFactoryContext) -> AsyncIterator[LangGraphRu
         await runtime.aclose()
 
 
-def _refuse_an_open_service(http: WikiAgentHttpSettings) -> None:
-    """Fail loudly when nothing would identify a caller."""
-    if http.uses_oidc or http.api_key:
-        return
-    raise WikiServiceConfigurationError(
-        "the Wiki Agent HTTP service needs a caller: set WIKI_AGENT_HTTP_OIDC_ISSUER "
-        "for a real deployment, or WIKI_AGENT_HTTP_API_KEY for a single-caller demonstration"
-    )
+def _runtime_http_settings(manifest: AgentManifest) -> AgentHttpRuntimeSettings:
+    """Resolve the declared HTTP policy and fail without exposing secret values."""
+    if manifest.http is None:
+        raise WikiServiceConfigurationError(
+            "config/agents/wiki/agent.yaml must declare an http section"
+        )
+    try:
+        return AgentHttpSettingsBuilder().build(manifest.http)
+    except ValueError as error:
+        raise WikiServiceConfigurationError(
+            f"invalid HTTP settings in the Wiki Agent manifest: {error}"
+        ) from error
 
 
 def _descriptor(
-    composition: WikiAgentCompositionRoot,
-    *,
-    jwt_validation: JwtValidationConfig | None,
-    api_key_resolver: StaticApiKeyUserResolver | None,
+    manifest: AgentManifest,
+    http_runtime: AgentHttpRuntimeSettings,
 ) -> AgentDescriptor:
-    """Describe the agent from the configuration it was built with.
-
-    The authentication is read from the very values the endpoints are configured
-    with, so a descriptor cannot claim a scheme this service refuses.
-    """
+    """Describe the exact authentication policy registered by the HTTP host."""
     return WikiAgentDescriptorFactory(
-        composition.manifest(),
-        security=AdvertisedSecurity.of(jwt_validation=jwt_validation, api_key_resolver=api_key_resolver),
+        manifest,
+        security=AdvertisedSecurity.of(
+            jwt_validation=None,
+            api_key_resolver=None,
+            authenticators=http_runtime.authentication.authenticators
+        ),
         agent_id=AGENT_ID,
     ).build()
 
 
-def _jwt_validation(
-    http: WikiAgentHttpSettings,
-    http_client_owner: SyncHttpClientOwner | None = None,
-) -> JwtValidationConfig | None:
-    """Build the token validation an OIDC deployment needs.
-
-    Returning nothing when no issuer is configured is what keeps the API-key
-    demonstration usable: the runtime then has no JWT authenticator to try.
-    """
-    if not http.uses_oidc:
-        return None
-    return JwtValidationConfig(
-        allowed_algorithms=("RS256",),
-        required_claims=("sub", "exp", "iss", "aud"),
-        issuer=http.oidc_issuer,
-        audience=http.oidc_audience,
-        key_resolver=(
-            JwksKeyResolver(
-                jwks_url=http.jwks_url_override,
-                http_client_owner=http_client_owner,
-                service_identity=http.oidc_issuer,
-            )
-            if http.jwks_url_override
-            else DiscoveredJwksKeyResolver(
-                issuer=http.oidc_issuer,
-                discovery=OidcDiscovery(http_client_owner=http_client_owner),
-            )
-        ),
-        roles_claim_path=http.roles_claim_path,
-    )
-
-
-def _api_key_resolver(
-    http: WikiAgentHttpSettings,
-    settings: WikiAgentSettings,
-) -> StaticApiKeyUserResolver | None:
-    """Map the demonstration key onto the configured local user.
-
-    One key, one caller, stated in configuration. It exists so the LibreChat
-    integration can be proved before a realm exists, and it is refused outright
-    once an issuer is configured.
-
-    No e-mail address is supplied. A wiki account is identified by its subject,
-    and asserting an address nobody verified would put an untrue claim into
-    every audit record this caller produces.
-    """
-    if not http.api_key:
-        return None
-    if http.uses_oidc:
-        _logger.warning("an OIDC issuer is configured; the static API key is ignored")
-        return None
-    return StaticApiKeyUserResolver(
-        {
-            http.api_key: ResolvedUser(
-                user_id=settings.user_id,
-                name=settings.user_id,
-            )
-        }
-    )
+def _identity_namespace(manifest: AgentManifest) -> str:
+    """Partition cached conversations by the configured issuer or API-key subject."""
+    configuration = manifest.http
+    if configuration is None:
+        raise WikiServiceConfigurationError(
+            "config/agents/wiki/agent.yaml must declare an http section"
+        )
+    jwt = configuration.security.jwt
+    if jwt is not None:
+        return jwt.issuer or jwt.jwks_url or f"{AGENT_ID}:jwt"
+    api_key = configuration.security.api_key
+    if api_key is None:
+        raise WikiServiceConfigurationError("the Wiki Agent manifest has no HTTP identity")
+    return f"{AGENT_ID}:{api_key.user.subject}"

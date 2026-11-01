@@ -81,6 +81,21 @@ with the message, sender, and label. Reply with the exact `CONFIRM cfm-...`
 command to apply it, or `CANCEL cfm-...` to decline. In HTTP mode, keep the same
 conversation ID when answering the ticket.
 
+## Diagnose a failed HTTP conversation
+
+HTTP 200 does not mean that a streamed conversation succeeded. A failure after
+the first event is reported inside the stream. On the Responses endpoint, an
+`error` event precedes `response.failed`; OpenAI SDK consumers can then surface
+the failure instead of silently ending the answer. Chat Completions also sends
+an error envelope. No successful answer is fabricated.
+
+For example, a missing MCP secret produces public code `agent_execution_error`.
+The server log contains the request ID, exception type and raising location.
+For this known configuration failure, it also names the missing variable,
+`MCP_MAIL_OBO_CLIENT_SECRET`, without logging its value. Correct the variable
+in the selected environment file, restart Mail, and retry the same request.
+Arbitrary provider exception messages and retrieved mail content remain private.
+
 ## Connect the authenticated caller to Gmail through MCP
 
 ### Configure the OBO source
@@ -95,6 +110,13 @@ endpoint, client ID, audience and scopes. Put only the client secret in
 ```dotenv
 MCP_MAIL_OBO_CLIENT_SECRET=<private-client-secret>
 ```
+
+The variable name must match the YAML reference exactly. A private file that
+still defines `MAIL_AGENT_MCP_OBO_CLIENT_SECRET` does not supply
+`MCP_MAIL_OBO_CLIENT_SECRET`. Rename the key without changing its secret value,
+and restart the Mail HTTP process using that environment file. Existing process
+variables take precedence over values loaded from the file. A missing secret
+stops conversation construction before any model or MCP request is made.
 
 The valid resource part of `config/mcp/gmail-http.yaml` is:
 
@@ -172,22 +194,37 @@ identity check.
 This setup assumes LibreChat sends a Keycloak **access token** to the Mail Agent
 HTTP API in `Authorization: Bearer <access-token>`. The Mail HTTP host validates
 its issuer and audience before accepting the request. For the provided local
-Keycloak realm, configure the agent environment with the exact issuer URL and an
-audience that is present in the incoming access token (commonly `mail-agent` after
-adding that audience to the Keycloak token mapper):
+Keycloak realm, change the Mail manifest's `http.security` block from `api_key`
+to `jwt`. Use the exact issuer URL and an audience present in the incoming
+access token (commonly `mail-agent` after adding that audience to the Keycloak
+token mapper):
+
+```yaml
+# config/agents/mail/agent.yaml
+http:
+  endpoints: [chat_completions, responses]
+  security:
+    mode: jwt
+    jwt:
+      issuer: https://localhost:8443/realms/localhost_backends
+      audience: mail-agent
+      allowed_algorithms: [RS256]
+      required_claims: [sub, exp, iss, aud]
+      roles_claim_path: realm_access.roles
+```
+
+Keep deployment-only values in the selected environment file:
 
 ```dotenv
-MAIL_AGENT_HTTP_OIDC_ISSUER=https://localhost:8443/realms/localhost_backends
-MAIL_AGENT_HTTP_OIDC_AUDIENCE=mail-agent
 MAIL_AGENT_MODE=mcp
 MCP_MAIL_OBO_CLIENT_SECRET=<private-client-secret>
 ```
 
-Each Mail HTTP worker creates one OIDC HTTP client during application startup.
-Discovery and signing-key refreshes reuse that client, which closes after the
-worker releases its conversations. Startup creates the pool without contacting
-Keycloak; the first token validation loads discovery and signing keys. An
-explicit `MAIL_AGENT_HTTP_JWKS_URL` skips discovery but uses the same lifecycle.
+The Mail HTTP worker creates its OIDC HTTP client lazily when it validates the
+first bearer token. Discovery and signing-key retrieval reuse that client, which
+closes when the worker releases its conversations. The first token validation
+loads discovery and signing keys. An
+If discovery is unavailable, set `jwks_url` in the manifest's `jwt` block.
 TLS verification remains enabled.
 
 MCP uses separate asynchronous pools: the runtime reuses one pool per MCP
@@ -323,7 +360,7 @@ Google accounts: the current Gmail MCP server uses one Google OAuth credential a
 serves that one mailbox to authorized callers. The local CLI has no inbound HTTP
 caller token, so this OBO configuration is for the authenticated HTTP host; CLI
 MCP calls require a separately configured non-OBO server profile.
-Use [Serving the Mail Agent over HTTP](../../docs/mail-agent-http.md) for an API
+Use [Serving the Mail Agent over HTTP](mail-agent-http.md) for an API
 example. The complete list of tools, permissions, and confirmation behavior is
-in [Mail Agent](../../docs/mail-agent.md). To connect a real mailbox, start with
-[Mail MCP server options](../../docs/mail-mcp-servers.md).
+in [Mail Agent](mail-agent-reference.md). To connect a real mailbox, start with
+[Mail MCP server options](mail-mcp-servers.md).

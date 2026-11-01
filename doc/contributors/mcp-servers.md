@@ -66,5 +66,5 @@ Tests: [Mail server contract](../../tests/contract/test_mail_tools_contract.py),
 and [distribution boundaries](../../tests/architecture/test_distribution_boundaries.py).
 
 See [MCP server hosting specification](../../spec/integrations/mcp-server-hosting.md)
-and [Mail](../../docs/mail-mcp-servers.md) and
-[Wiki](../../docs/wiki-mcp-servers.md) deployment guides.
+and [Mail](../users/mail-mcp-servers.md) and
+[Wiki](../users/wiki-mcp-servers.md) deployment guides.

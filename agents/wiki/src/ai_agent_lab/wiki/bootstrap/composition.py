@@ -22,6 +22,8 @@ from __future__ import annotations
 
 import hashlib
 import logging
+import os
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -74,6 +76,7 @@ from ai_agent_lab.wiki.application.skills.bundle import WikiSkills
 from ai_agent_lab.wiki.application.skills.context import WikiContextBuilder
 from ai_agent_lab.wiki.application.skills.freshness_skill import PageFreshnessDetector
 from ai_agent_lab.wiki.application.skills.gating import GatedWikiOperationRunner
+from ai_agent_lab.wiki.bootstrap.routed_wiki_tools import RoutedWikiTools
 from ai_agent_lab.wiki.bootstrap.skills_factory import WikiSkillsFactory
 from ai_agent_lab.wiki.bootstrap.wiki_tools_provider import WikiToolsProvider
 from ai_agent_lab.wiki.domain.operation_names import WikiToolName
@@ -86,6 +89,7 @@ from ai_agent_lab.wiki.infrastructure.configuration.settings import (
 )
 from ai_agent_lab.wiki.infrastructure.inmemory.dataset import WikiDatasetLoader
 from ai_agent_lab.wiki.infrastructure.inmemory.draft_store import InMemoryWikiDraftStore
+from ai_agent_lab.wiki.infrastructure.mcp.authorization import WikiUserCredentials
 
 WIKI_AGENT = "wiki"
 
@@ -141,6 +145,7 @@ class WikiAgentCompositionRoot:
         wiki_tools: WikiTools | None = None,
         reasoner: TextReasoner | None = None,
         base_path: Path | None = None,
+        credentials: WikiUserCredentials | None = None,
     ) -> None:
         self._settings = settings
         self._chat_model = chat_model
@@ -148,6 +153,7 @@ class WikiAgentCompositionRoot:
         self._wiki_tools_override = wiki_tools
         self._reasoner_override = reasoner
         self._base_path = base_path
+        self._credentials = credentials
 
     def for_principal(self, principal: AgentPrincipal) -> WikiAgentCompositionRoot:
         """Return a root that assembles the agent for another caller.
@@ -163,6 +169,7 @@ class WikiAgentCompositionRoot:
             wiki_tools=self._wiki_tools_override,
             reasoner=self._reasoner_override,
             base_path=self._base_path,
+            credentials=self._credentials,
         )
 
     def manifest(self) -> AgentManifest:
@@ -202,23 +209,25 @@ class WikiAgentCompositionRoot:
             WikiDatasetLoader(),
             user_id=self._principal.subject,
             manifest=manifest,
+            credentials=self._credentials,
         )
+        tools_for = self._tools_resolver(provider)
         wiki_tools = self._wiki_tools_override or provider.build(base_path=self._base_path)
         _logger.info("Calling WikiAgentCompositionRoot._skills() to assemble domain capabilities...")
-        skills = self._skills(manifest, wiki_tools, policy, audit)
+        skills = self._skills(manifest, tools_for, policy, audit)
 
         draft_store = InMemoryWikiDraftStore()
         ledger = InMemoryConfirmationLedger()
 
-        capabilities = provider.capabilities(base_path=self._base_path)
-        _logger.info("Served capabilities count: %d", len(capabilities))
+        served = self._served(provider, manifest)
+        _logger.info("Served capabilities count: %d", len(served))
 
         registry = self._registry(
             manifest,
             skills,
             draft_store,
             ledger,
-            capabilities,
+            served,
         )
 
         approvals = LangGraphApprovalTranslator()
@@ -291,10 +300,36 @@ class WikiAgentCompositionRoot:
             WikiSecurityFloor().build(),
         )
 
+    def _tools_resolver(self, provider: WikiToolsProvider) -> Callable[[str], WikiTools]:
+        """Build the per-skill tools resolver for the configured mode.
+
+        Keeps the override for tests that inject a single fixed ``WikiTools``
+        regardless of which skill resolves it.
+        """
+        if self._wiki_tools_override is not None:
+            override = self._wiki_tools_override
+            return lambda tool_name: override  # noqa: ARG005
+        base_path = self._base_path
+        def resolve(tool_name: str) -> WikiTools:
+            # Withdrawn skills still assemble, but cannot obtain a registry view when invoked.
+            return RoutedWikiTools(lambda _alias: provider.build_for_skill(tool_name, base_path=base_path))
+
+        return resolve
+
+    def _served(
+        self, provider: WikiToolsProvider, manifest: AgentManifest
+    ) -> Mapping[str, frozenset[WikiToolName]]:
+        """Read capabilities from each skill's own effective server, without opening connections."""
+        return {
+            skill.tool_name: provider.capabilities_for(skill.tool_name, base_path=self._base_path)
+            for skill in manifest.skills
+            if skill.mcp_tools
+        }
+
     def _skills(
         self,
         manifest: AgentManifest,
-        wiki_tools: WikiTools,
+        tools_for: Callable[[str], WikiTools],
         policy: ConfirmationPolicy,
         audit: InMemoryAuditTrail,
     ) -> WikiSkills:
@@ -306,7 +341,7 @@ class WikiAgentCompositionRoot:
             thresholds.stale_after_days,
         )
         return WikiSkillsFactory(
-            wiki_tools=wiki_tools,
+            tools_for=tools_for,
             reasoner=self._reasoner(),
             manifest=manifest,
             context_builder=WikiContextBuilder(),
@@ -341,7 +376,8 @@ class WikiAgentCompositionRoot:
             PermissionRegistry(WikiPermission.declared()),
             WikiSecurityFloor().build(),
         )
-        return AgentManifestLoader(directory, skills).load(WIKI_AGENT)
+        agent = os.environ.get("AGENT_CONFIG_SUBDIR", "").strip() or WIKI_AGENT
+        return AgentManifestLoader(directory, skills).load(agent)
 
     def _registry(
         self,
@@ -349,7 +385,7 @@ class WikiAgentCompositionRoot:
         skills: WikiSkills,
         draft_store: InMemoryWikiDraftStore,
         ledger: InMemoryConfirmationLedger,
-        served: frozenset[WikiToolName],
+        served: Mapping[str, frozenset[WikiToolName]],
     ) -> SkillRegistry:
         """Bind the delivered manifests to the code that runs them.
 
@@ -386,7 +422,8 @@ class WikiAgentCompositionRoot:
         serviceable: list[SkillDescriptor] = []
         unserviceable: list[str] = []
         for descriptor in descriptors:
-            if self._is_serviceable(descriptor, served):
+            required = frozenset(WikiToolName(alias) for alias in manifest.skill(descriptor.tool_name).mcp_tools)
+            if self._is_serviceable(descriptor, served) and required <= served.get(descriptor.tool_name, frozenset()):
                 _logger.debug("Capability '%s': serviceable=True (registered)", descriptor.tool_name)
                 serviceable.append(descriptor)
             else:
@@ -403,20 +440,21 @@ class WikiAgentCompositionRoot:
         return SkillRegistry(skills=serviceable)
 
     @staticmethod
-    def _is_serviceable(descriptor: SkillDescriptor, served: frozenset[WikiToolName]) -> bool:
-        """Whether the bound server can honour a capability.
+    def _is_serviceable(descriptor: SkillDescriptor, served: Mapping[str, frozenset[WikiToolName]]) -> bool:
+        """Whether this descriptor's own effective server can honour it.
 
-        A capability that maps onto one MCP tool needs that tool. A capability
-        that retrieves before it reasons - or before it drafts - needs the tools
-        it retrieves with, which are declared in the two requirement tables
-        because they cannot be read off the name.
+        Each manifest skill routes to its own effective MCP server, so the
+        capabilities that server exposes are looked up by that same skill's
+        own ``tool_name`` - never by some other skill's server, even one that
+        happens to expose a superset of aliases.
         """
+        own_served = served.get(descriptor.tool_name, frozenset())
         required = REQUIRED_MCP_CAPABILITY.get(descriptor.tool_name) or REQUIRED_WRITE_MCP_CAPABILITY.get(
             descriptor.tool_name
         )
         if required is not None:
-            return all(capability in served for capability in required)
+            return all(capability in own_served for capability in required)
         try:
-            return WikiToolName(descriptor.tool_name) in served
+            return WikiToolName(descriptor.tool_name) in own_served
         except ValueError:
             return True

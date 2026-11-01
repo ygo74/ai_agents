@@ -35,7 +35,7 @@ token source; a console call has no such caller token. The YAML holds the exchan
 client ID, audience and scopes; set only `MCP_MAIL_OBO_CLIENT_SECRET` in the
 Mail Agent's private environment file. The registry builds the source from each
 server's resolved settings.
-See the [Mail Agent user guide](../doc/users/mail-agent.md#connect-the-authenticated-caller-to-gmail-through-mcp)
+See the [Mail Agent user guide](mail-agent.md#connect-the-authenticated-caller-to-gmail-through-mcp)
 for the complete Keycloak exchange configuration.
 
 For a local server process, create `.env.gmail-mcp` with the following MCP

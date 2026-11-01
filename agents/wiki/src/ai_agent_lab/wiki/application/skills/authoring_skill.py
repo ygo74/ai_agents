@@ -21,7 +21,7 @@ from ygo74.agent_runtime.domains.humanapproval.confirmation import (
 )
 from ygo74.agent_runtime.domains.security.user_context import UserContext
 
-from ai_agent_lab.wiki.application.ports.wiki_tools import WikiAuthoringTools, WikiReadTools
+from ai_agent_lab.wiki.application.ports.wiki_tools import WikiAuthoringTools, WikiTools
 from ai_agent_lab.wiki.application.skills.errors import EmptyPageContentError
 from ai_agent_lab.wiki.application.skills.gating import GatedWikiOperationRunner
 from ai_agent_lab.wiki.domain.models import WikiPage, WikiPageDraft
@@ -40,16 +40,27 @@ _TITLES = {
 
 
 class PageAuthoringSkill:
-    """Writes pages to the wiki, never without an authorised decision."""
+    """Writes pages to the wiki, never without an authorised decision.
+
+    Each operation is wired to its own MCP tools, resolved against its own
+    manifest skill's effective server. ``create_page``, ``update_page`` and
+    ``delete_page`` can each declare a different ``mcp_server``, and
+    ``update_page``/``delete_page`` additionally need a read tool to look a
+    page up - but that read must come from their *own* server, not a shared
+    "the" read tool resolved elsewhere, so that one operation never silently
+    reaches a server another operation's skill declaration never named.
+    """
 
     def __init__(
         self,
-        read_tools: WikiReadTools,
-        authoring_tools: WikiAuthoringTools,
+        create_tools: WikiAuthoringTools,
+        update_tools: WikiTools,
+        delete_tools: WikiTools,
         runner: GatedWikiOperationRunner,
     ) -> None:
-        self._read_tools = read_tools
-        self._authoring_tools = authoring_tools
+        self._create_tools = create_tools
+        self._update_tools = update_tools
+        self._delete_tools = delete_tools
         self._runner = runner
 
     def requires_confirmation(self, tool: WikiToolName, user: UserContext) -> bool:
@@ -149,7 +160,7 @@ class PageAuthoringSkill:
         return await self._runner.execute(
             WikiToolName.CREATE_PAGE,
             user,
-            lambda: self._authoring_tools.create_page(
+            lambda: self._create_tools.create_page(
                 draft.space_key,
                 title,
                 draft.body.expose(),
@@ -183,7 +194,7 @@ class PageAuthoringSkill:
         return await self._runner.execute(
             WikiToolName.UPDATE_PAGE,
             user,
-            lambda: self._authoring_tools.update_page(
+            lambda: self._update_tools.update_page(
                 page_id,
                 draft.body.expose(),
                 user,
@@ -207,7 +218,7 @@ class PageAuthoringSkill:
         await self._runner.execute(
             WikiToolName.DELETE_PAGE,
             user,
-            lambda: self._authoring_tools.delete_page(page_id, user),
+            lambda: self._delete_tools.delete_page(page_id, user),
             target_id=page_id,
             request=request,
             decision=decision,
@@ -222,7 +233,7 @@ class PageAuthoringSkill:
         confirmation that looks merely terse.
         """
         try:
-            page = await self._read_tools.get_page(page_id, user)
+            page = await self._delete_tools.get_page(page_id, user)
         except (WikiAccessDeniedError, WikiNotFoundError):
             return None
         return page.title.expose()

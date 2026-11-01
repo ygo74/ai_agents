@@ -2,8 +2,9 @@
 
 This guide explains how the agent repository is organized and where to change
 each domain. It complements the [system specification](../../spec/README.md),
-which records current responsibilities and behavior. Setup and operator
-workflows remain in [`docs/`](../../docs/).
+which records current responsibilities and behavior. For a new-agent walkthrough
+and the shared native Mail runtime integration, see [implementing an agent](implementing-an-agent.md)
+and [native Mail runtime](native-mail-runtime.md).
 
 ## Domains
 
@@ -17,6 +18,7 @@ workflows remain in [`docs/`](../../docs/).
 - [MCP server distributions](mcp-servers.md)
 - [Delivered configuration](configuration.md)
 - [Tests and scenarios](testing.md)
+- [Task and review archive](archive/README.md)
 
 ## Before changing code
 

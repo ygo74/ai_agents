@@ -97,13 +97,9 @@ class WikiMcpSettings(BaseSettings):
     # the caller's identity as a tool argument instead.
     auth_scheme: WikiAuthScheme = WikiAuthScheme.NONE
 
-    # The credential of the local user, for the proof of concept.
-    #
-    # This is the seam where a real deployment differs. Here there is one local
-    # user and no identity provider, so the credential is configured. Serving
-    # several people means minting an on-behalf-of token for the authenticated
-    # caller and supplying it per request; only the WikiUserCredentials
-    # implementation changes, and nothing above the MCP boundary notices.
+    # Fixed credentials belong to WIKI_AGENT_USER_ID, not the current HTTP caller.
+    # Multi-user hosts inject WikiUserCredentials into the composition root;
+    # missing caller credentials must never fall back to this shared secret.
     user_account: str = ""
     user_secret: SecretStr = SecretStr("")
 

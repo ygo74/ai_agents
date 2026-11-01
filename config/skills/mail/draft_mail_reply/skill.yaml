@@ -18,7 +18,6 @@ operation:
   confirmation_required: false
 
 # Logical MCP tools this capability is allowed to use.
-mcp_server: gmail-http
 mcp_tools:
   - get_mail
   - get_thread

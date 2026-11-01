@@ -93,11 +93,13 @@ classDiagram
 ## MCP dialect ownership
 
 `MAIL_AGENT_MODE` chooses the mock or MCP backend. In MCP mode, Mail bootstrap
-calls `MailToolsProvider.server_for(manifest)` to select one shared server from
-the `mcp_server` references of skills that declare `mcp_tools`.
-These references must be present and equal; missing or conflicting references
-fail configuration. The delivered skills name `gmail-http`. Environment
-variables do not select or override that server.
+uses `McpAgentRegistryLoader` to resolve each skill's `mcp_server`, falling back
+to the agent manifest's default. The registry owns one connection per referenced
+server. Skills on the same server share the connection; overrides can select a
+different server. The skill factory receives typed adapters scoped to the
+corresponding manifest skills. Missing effective server references fail
+configuration. Environment variables do not override these server declarations.
+See [per-skill routing](./mcp-clients.md#per-skill-routing).
 
 The shared runtime's `McpServerConfigurationLoader` owns YAML connection
 settings: authentication, headers, `request_timeout_seconds`, transport and
@@ -107,32 +109,36 @@ domain models; do not recreate runtime connection settings in Mail.
 
 [`load_configuration`](../../agents/mail/src/ai_agent_lab/mail/infrastructure/mcp/configuration.py)
 loads the selected runtime YAML with Mail's typed tool names and error category.
-Bootstrap passes the selected server string to
+Bootstrap passes the agent manifest to
 [`MailToolsProvider`](../../agents/mail/src/ai_agent_lab/mail/bootstrap/mail_tools_provider.py).
+The runtime registry applies each server's connection settings. The standalone
 [`MailMcpConnectionFactory`](../../agents/mail/src/ai_agent_lab/mail/infrastructure/mcp/connection.py)
-applies the resolved timeout, headers and network options to `McpConnection`.
+is retained for CLI authorization without an agent manifest.
 OAuth construction delegates to the runtime's `McpOAuthProviderFactory`.
 API-key authentication uses the runtime-resolved header, not a Mail bearer
-provider. `delegatedOAuth` is explicitly rejected because Mail has no delegated
-token source. The old Mail MCP settings, OAuth module and bearer module are
-removed; do not recreate compatibility paths.
+provider. Delegated authentication uses the caller's injected token source, or
+an RFC 8693 on-behalf-of source built from the selected server's YAML settings.
+Credentials remain inside the connection layer. The old Mail MCP settings,
+OAuth module and bearer module are removed; do not recreate compatibility paths.
 
 ```mermaid
 sequenceDiagram
     participant Bootstrap as Mail bootstrap
-    participant Manifest as Delivered skill manifests
-    participant Runtime as McpServerConfigurationLoader
-    participant Connection as MailMcpConnectionFactory
+    participant Provider as MailToolsProvider
+    participant Loader as McpAgentRegistryLoader
+    participant Registry as McpAgentRegistry
     participant Dialect as Mail MCP dialect
-    participant Server as Gmail MCP server
-    Bootstrap->>Manifest: MailToolsProvider.server_for(manifest)
-    Manifest-->>Bootstrap: gmail-http or configuration error
-    Bootstrap->>Runtime: load_configuration for gmail-http
-    Runtime-->>Bootstrap: connection settings and typed binding
-    Bootstrap->>Connection: build(configuration)
-    Connection-->>Bootstrap: configured McpConnection or unsupported auth error
-    Bootstrap->>Dialect: inject connection and mailbox owner
+    participant Server as Selected MCP server
+    Bootstrap->>Provider: supply agent manifest and caller
+    Provider->>Loader: load(manifest)
+    Loader-->>Provider: registry with one connection per server
+    Bootstrap->>Provider: build_for_skill(tool_name)
+    Provider->>Registry: for_skill(tool_name)
+    Registry-->>Provider: selected connection and aliases
+    Provider->>Dialect: inject scoped binding, connection and mailbox owner
     Dialect->>Server: admitted tool call with configured authentication
+    Bootstrap->>Provider: aclose()
+    Provider->>Registry: close all unique connections
 ```
 
 Only designated YAML secret references resolve environment variables. In the
@@ -183,8 +189,8 @@ behavior.
 
 Source: [`agents/mail/src/ai_agent_lab/mail`](../../agents/mail/src/ai_agent_lab/mail/).
 See the [Mail specification](../../spec/agents/mail-agent.md),
-[HTTP integration guide](../../docs/mail-agent-http.md), and
-[Mail user guide](../../docs/mail-agent.md).
+[HTTP integration guide](../users/mail-agent-http.md), and
+[Mail user guide](../users/mail-agent-reference.md).
 
 ## Entry points
 

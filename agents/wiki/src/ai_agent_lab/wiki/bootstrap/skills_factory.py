@@ -8,11 +8,16 @@ wiki server backs its tools, or which agentic framework will drive it.
 from __future__ import annotations
 
 import logging
+from collections.abc import Callable
 
 from ygo74.agent_runtime.domains.contracts.manifests import AgentManifest
 from ygo74.agent_runtime.domains.reasoning.ports import TextReasoner
 
-from ai_agent_lab.wiki.adapters.capabilities.read_capabilities import ANSWER_FROM_WIKI, SUMMARISE_PAGE
+from ai_agent_lab.wiki.adapters.capabilities.read_capabilities import (
+    ANSWER_FROM_WIKI,
+    ASSESS_PAGE_FRESHNESS,
+    SUMMARISE_PAGE,
+)
 from ai_agent_lab.wiki.adapters.capabilities.write_capabilities import DRAFT_PAGE_CONTENT
 from ai_agent_lab.wiki.application.ports.wiki_tools import WikiTools
 from ai_agent_lab.wiki.application.skills.analysis import WikiAnalysisMapper
@@ -27,8 +32,23 @@ from ai_agent_lab.wiki.application.skills.gating import GatedWikiOperationRunner
 from ai_agent_lab.wiki.application.skills.question_terms import QuestionTerms
 from ai_agent_lab.wiki.application.skills.search_skill import DocumentationSearchSkill
 from ai_agent_lab.wiki.application.skills.summary_skill import PageSummarySkill
+from ai_agent_lab.wiki.bootstrap.routed_wiki_tools import RoutedWikiTools
+from ai_agent_lab.wiki.domain.operation_names import WikiToolName
+from ai_agent_lab.wiki.infrastructure.mcp.errors import McpBindingError
 
 _logger = logging.getLogger(__name__)
+
+ToolsResolver = Callable[[str], WikiTools]
+
+
+def _unavailable_skill_resolver(tool_name: str) -> ToolsResolver:
+    """Keep missing skills constructible; fail only when the router requests a delegate."""
+
+    def _raise(alias: str) -> WikiTools:
+        del alias
+        raise McpBindingError(f"skill {tool_name!r} is not configured in this deployment's manifest")
+
+    return _raise
 
 
 class WikiSkillsFactory:
@@ -38,12 +58,20 @@ class WikiSkillsFactory:
     confirmation policy, the domain gate and the audit trail of one deployment,
     and those belong to the composition root: a factory that built its own would
     be a second opinion on which operations need approving.
+
+    ``tools_for`` resolves each skill's own tools **by that skill's own manifest
+    tool name**: a reasoning skill like ``summarise_page`` keeps its own server
+    throughout its whole call (search, read, and any composed analysis all
+    route through the one connection ``summarise_page`` itself declares), and a
+    grouped write skill like page authoring resolves ``create_page``,
+    ``update_page`` and ``delete_page`` independently, because each of those
+    three manifest skills can declare a different effective MCP server.
     """
 
     def __init__(
         self,
         *,
-        wiki_tools: WikiTools,
+        tools_for: ToolsResolver,
         reasoner: TextReasoner,
         manifest: AgentManifest,
         context_builder: WikiContextBuilder,
@@ -51,7 +79,7 @@ class WikiSkillsFactory:
         runner: GatedWikiOperationRunner,
         question_terms: QuestionTerms | None = None,
     ) -> None:
-        self._wiki_tools = wiki_tools
+        self._tools_for = tools_for
         self._reasoner = reasoner
         self._manifest = manifest
         self._context_builder = context_builder
@@ -61,7 +89,8 @@ class WikiSkillsFactory:
 
     def build(self) -> WikiSkills:
         """Assemble every skill."""
-        _logger.info("Assembling 4 domain skills for Wiki Agent (search, summary, answer, freshness)...")
+        _logger.info("Assembling 7 domain skills for Wiki Agent (search, summary, answer, freshness, "
+                     "drafting, authoring, comment)...")
         mapper = WikiAnalysisMapper()
         summarise_prompt = self._prompt_of(SUMMARISE_PAGE)
         answer_prompt = self._prompt_of(ANSWER_FROM_WIKI)
@@ -70,11 +99,11 @@ class WikiSkillsFactory:
             len(summarise_prompt),
             len(answer_prompt),
         )
-        search_skill = DocumentationSearchSkill(self._wiki_tools)
+        search_skill = DocumentationSearchSkill(RoutedWikiTools(self._tools_of))
         _logger.debug("Built DocumentationSearchSkill")
 
         summary_skill = PageSummarySkill(
-            self._wiki_tools,
+            self._tools_of(SUMMARISE_PAGE),
             self._reasoner,
             self._context_builder,
             mapper,
@@ -83,7 +112,7 @@ class WikiSkillsFactory:
         _logger.debug("Built PageSummarySkill")
 
         answer_skill = DocumentationAnswerSkill(
-            self._wiki_tools,
+            self._tools_of(ANSWER_FROM_WIKI),
             self._reasoner,
             self._context_builder,
             mapper,
@@ -92,18 +121,25 @@ class WikiSkillsFactory:
         )
         _logger.debug("Built DocumentationAnswerSkill")
 
-        freshness_skill = PageFreshnessSkill(self._wiki_tools, self._freshness_detector)
+        freshness_skill = PageFreshnessSkill(
+            self._tools_of(ASSESS_PAGE_FRESHNESS), self._freshness_detector
+        )
         _logger.debug("Built PageFreshnessSkill")
         drafting = PageDraftingSkill(
-            self._wiki_tools,
+            self._tools_of(DRAFT_PAGE_CONTENT),
             self._reasoner,
             self._context_builder,
             self._prompt_of(DRAFT_PAGE_CONTENT),
         )
         _logger.debug("Built PageDraftingSkill")
-        authoring = PageAuthoringSkill(self._wiki_tools, self._wiki_tools, self._runner)
+        authoring = PageAuthoringSkill(
+            self._tools_of(WikiToolName.CREATE_PAGE.value),
+            self._tools_of(WikiToolName.UPDATE_PAGE.value),
+            self._tools_of(WikiToolName.DELETE_PAGE.value),
+            self._runner,
+        )
         _logger.debug("Built PageAuthoringSkill")
-        comment = PageCommentSkill(self._wiki_tools, self._runner)
+        comment = PageCommentSkill(self._tools_of(WikiToolName.ADD_COMMENT.value), self._runner)
         _logger.debug("Built PageCommentSkill")
 
         _logger.info("All domain skills successfully assembled")
@@ -116,6 +152,24 @@ class WikiSkillsFactory:
             authoring=authoring,
             comment=comment,
         )
+
+    def _tools_of(self, tool_name: str) -> WikiTools:
+        """Resolve one skill's own tools, or an unavailable stand-in when unexposed.
+
+        A deployment is free to leave a skill out of its manifest entirely -
+        for example a read-only deployment never declaring ``create_page`` -
+        and that must not break assembly of the skills that *are* exposed.
+        Nothing is silently substituted from another server: the skill is
+        simply built against a resolver that raises the moment it is actually
+        invoked, exactly as a manifest-declared skill does when its own server
+        is unreachable.
+        """
+        try:
+            self._manifest.skill(tool_name)
+        except KeyError:
+            _logger.debug("No manifest skill found for '%s'; tools resolve lazily on first use", tool_name)
+            return RoutedWikiTools(_unavailable_skill_resolver(tool_name))
+        return self._tools_for(tool_name)
 
     def _prompt_of(self, tool_name: str) -> str:
         """Return the reasoning instructions delivered for a capability.

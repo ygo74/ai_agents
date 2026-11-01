@@ -6,6 +6,7 @@ from collections.abc import Mapping
 
 from ygo74.agent_runtime.domains.configuration.directory import ConfigurationDirectory
 from ygo74.agent_runtime.domains.mcp.binding import McpServerBinding, McpServerBindingLoader, McpTransport
+from ygo74.agent_runtime.domains.mcp.configuration import McpServerConfiguration, McpServerConfigurationLoader
 
 from ai_agent_lab.wiki.application.operations import WikiToolCatalog
 from ai_agent_lab.wiki.domain.operation_names import WikiToolName
@@ -28,6 +29,28 @@ def load_binding(directory: ConfigurationDirectory, name: str) -> McpServerBindi
     binding = loader.load(path, name=name)
     binding.require_declared_capabilities()
     return binding
+
+
+def load_configuration(
+    directory: ConfigurationDirectory, name: str, *, environment: Mapping[str, str] | None = None
+) -> McpServerConfiguration[WikiToolName]:
+    """Load one Wiki server's full connection configuration, including its auth mode.
+
+    Used by the multi-server provider to decide, per server, whether the
+    registry's own authentication already identifies the caller (``api_key``,
+    ``oauth``) or whether Wiki's legacy per-user header scheme must still be
+    layered on top (``none``, the default a deployment without a configured
+    ``authentication_mode`` gets).
+
+    Args:
+        directory: Application-selected root that contains the delivered MCP files.
+        name: Configuration filename without its ``.yaml`` suffix.
+    """
+    path = directory.require(MCP_DIRECTORY, f"{name}.yaml")
+    loader = McpServerConfigurationLoader(WikiToolName, environment=environment, error_factory=McpBindingError)
+    configuration = loader.load(path, name=name)
+    configuration.binding.require_declared_capabilities()
+    return configuration
 
 
 def is_read_only(value: str) -> bool:

@@ -19,6 +19,7 @@ controls is only ever half.
 from __future__ import annotations
 
 from ygo74.agent_runtime.domains.auth.agent_principal import AgentPrincipal
+from ygo74.agent_runtime.domains.auth.auth_errors import AuthorizationError
 from ygo74.agent_runtime.domains.humanapproval.confirmed_operations import ConfirmedOperationRunner
 from ygo74.agent_runtime.domains.humanapproval.pending_renderer import PendingConfirmationRenderer
 from ygo74.agent_runtime.domains.humanapproval.tickets import InMemoryPendingConfirmationStore
@@ -27,10 +28,11 @@ from ygo74.agent_runtime.domains.sessions.agent_conversation import (
     HttpConversationEngine,
 )
 
-from ai_agent_lab.wiki.adapters.capabilities.results import WikiToolResultRenderer
+from ai_agent_lab.wiki.adapters.http.confirmation_results import WikiConfirmationResultRenderer
 from ai_agent_lab.wiki.adapters.langchain.approval import WikiTicketApprovalResolver
 from ai_agent_lab.wiki.adapters.langchain.session import WikiAgentSession
 from ai_agent_lab.wiki.bootstrap.composition import WikiAgentCompositionRoot, WikiAgentRuntime
+from ai_agent_lab.wiki.domain.tool_errors import WikiAccessDeniedError
 
 WikiConversation = AgentConversation[WikiAgentRuntime, WikiAgentSession]
 WikiConversationEngine = HttpConversationEngine[WikiConversation]
@@ -56,7 +58,10 @@ class WikiConversationFactory:
 
     async def build(self, principal: AgentPrincipal, conversation_id: str) -> WikiConversation:
         """Assemble the conversation of one caller."""
-        runtime = self._composition.for_principal(principal).build(session_id=conversation_id)
+        try:
+            runtime = self._composition.for_principal(principal).build(session_id=conversation_id)
+        except WikiAccessDeniedError as error:
+            raise AuthorizationError("The authenticated caller cannot access this Wiki deployment") from error
         store = InMemoryPendingConfirmationStore()
         session = WikiAgentSession(
             runtime,
@@ -71,7 +76,7 @@ class WikiConversationFactory:
             runtime.registry,
             store,
             runtime.confirmation_ledger,
-            WikiToolResultRenderer(),
+            WikiConfirmationResultRenderer(),
             runtime.user,
             conversation_id=conversation_id,
         )

@@ -155,8 +155,8 @@
       "console": "integratedTerminal",
       "justMyCode": false,
       "cwd": "${workspaceFolder}",
-      "envFile": "${workspaceFolder}/${input:wikiAgentEnvFile}",
-      "args": ["--env-file", "${input:wikiAgentEnvFile}"],
+      "envFile": "${workspaceFolder}/.env_wiki_agent_console",
+      "args": ["--env-file", ".env_wiki_agent_console"],
       "env": {
         "WIKI_AGENT_MODE": "mock",
         "WIKI_AGENT_LOG_LEVEL": "DEBUG",
@@ -164,7 +164,7 @@
       }
     },
     {
-      "name": "Wiki Agent — Console (mcp-atlassian)",
+      "name": "Wiki Agent — Console",
       "type": "debugpy",
       "request": "launch",
       "module": "ai_agent_lab.wiki.adapters.cli.entrypoint",
@@ -172,8 +172,8 @@
       "console": "integratedTerminal",
       "justMyCode": false,
       "cwd": "${workspaceFolder}",
-      "envFile": "${workspaceFolder}/${input:wikiAgentEnvFile}",
-      "args": ["--env-file", "${input:wikiAgentEnvFile}", "--log-level", "DEBUG"],
+      "envFile": "${workspaceFolder}/.env_wiki_agent_console",
+      "args": ["--env-file", ".env_wiki_agent_console", "--log-level", "DEBUG"],
       "env": {
         "WIKI_AGENT_MODE": "mcp",
         "WIKI_MCP_READ_ONLY": "false",
@@ -211,7 +211,7 @@
       // Start docker first: see docs/wiki-mcp-servers.md. The container holds
       // the Confluence credentials (CONFLUENCE_USERNAME/CONFLUENCE_API_TOKEN),
       // so the agent sends no identity header: WIKI_MCP_AUTH_SCHEME=none.
-      "name": "Wiki Agent — HTTP (mcp-atlassian HTTP)",
+      "name": "Wiki Agent — HTTP",
       "type": "debugpy",
       "request": "launch",
       "module": "ai_agent_lab.wiki.adapters.http.server",

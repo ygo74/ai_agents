@@ -1,7 +1,8 @@
 # User and operator guides
 
 These guides help you install, configure, run, and operate the Mail Agent, Wiki
-Agent, and their MCP servers. They point to the detailed guides under `docs/`.
+Agent, and their MCP servers. The focused guides below link to detailed
+references in this directory.
 
 ## Guides
 
@@ -17,14 +18,15 @@ Agent, and their MCP servers. They point to the detailed guides under `docs/`.
 
 ## Detailed references
 
-- [Wiki Agent run guide](../../docs/wiki-agent-running.md)
-- [Wiki Agent HTTP API](../../docs/wiki-agent-http.md)
-- [Wiki MCP server choices](../../docs/wiki-mcp-servers.md)
-- [Mail Agent guide](../../docs/mail-agent.md)
-- [Mail Agent HTTP API](../../docs/mail-agent-http.md)
-- [Mail MCP server choices](../../docs/mail-mcp-servers.md)
-- [Configuration](../../docs/configuration.md)
-- [Deployment](../../docs/deployment.md)
+- [Wiki Agent run guide](wiki-agent-running.md)
+- [Wiki Agent HTTP API](wiki-agent-http.md)
+- [Wiki Agent behavior and capabilities](wiki-agent-reference.md)
+- [Wiki MCP server choices](wiki-mcp-servers.md)
+- [Mail Agent behavior and capabilities](mail-agent-reference.md)
+- [Mail Agent HTTP API](mail-agent-http.md)
+- [Mail MCP server choices](mail-mcp-servers.md)
+- [Configuration](configuration-reference.md)
+- [Deployment](deployment.md)
 
 For contributor architecture, see [`../contributors/README.md`](../contributors/README.md).
 For behavior and design rationale, see [`../../spec/README.md`](../../spec/README.md).

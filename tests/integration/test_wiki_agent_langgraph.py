@@ -90,6 +90,17 @@ class TestComposition:
 
         assert "You assist a member of a project team" in runtime.manifest.instructions
 
+    @pytest.mark.parametrize("filename", ["agent.yaml", "agent.console.yaml"])
+    def test_explicit_write_instructions_use_one_confirmation(self, monkeypatch, filename):
+        monkeypatch.setenv("AGENT_MANIFEST_FILENAME", filename)
+        runtime = build_runtime()
+
+        instructions = runtime.manifest.instructions
+        assert "Do not ask a separate question about publishing the draft first." in instructions
+        assert "asks only for a draft or a preview" in instructions
+        assert "A write awaiting confirmation is pending, not refused or published." in instructions
+        assert "not a substitute for that approval" in instructions
+
     def test_the_write_capabilities_are_delivered_and_gated(self):
         """Phase two delivers the four writes, and every one of them is gated."""
         runtime = build_runtime()

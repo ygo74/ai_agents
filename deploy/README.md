@@ -19,7 +19,7 @@ The images are built and published by
 `linux/arm64`, after the quality gates have passed. Each carries an SBOM and a
 provenance attestation and is scanned by Trivy.
 
-**[docs/deployment.md](../docs/deployment.md) is the deployment guide** — the
+**[Deployment guide](../doc/users/deployment.md)** covers the
 compose file, the Gmail token prerequisite, and the security posture of each
 port. What follows here is the workstation path.
 
@@ -64,7 +64,7 @@ curl -Method POST http://127.0.0.1:8123/v1/chat/completions `
 A well-formed reply carries `choices[0].message.content`. If it carries
 `output` instead, the installed `ygo74-agent-runtime` predates the OpenAI
 response mapping and LibreChat will not be able to read it - see
-[docs/mail-agent-http.md](../docs/mail-agent-http.md).
+[Mail Agent HTTP guide](../doc/users/mail-agent-http.md).
 
 ## Confirmations
 

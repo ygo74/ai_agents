@@ -15,7 +15,7 @@ not by convention.
 
 The Mail Agent is a Microsoft Agent Framework agent. Its framework object is a
 normal MAF `Agent`, built in
-[`bootstrap/composition.py`](../agents/mail/src/ai_agent_lab/mail/bootstrap/composition.py).
+[`bootstrap/composition.py`](../../agents/mail/src/ai_agent_lab/mail/bootstrap/composition.py).
 In a framework-only prototype, the developer supplies the chat client and tool
 functions, then calls MAF directly. These two application objects are the only
 parts omitted from this short example:
@@ -110,7 +110,7 @@ Only the current launch paths are supported; there are no compatibility wrappers
 under `application/`. Authorisation and discovery use
 `python -m ai_agent_lab.mail.adapters.cli.authorise` and
 `python -m ai_agent_lab.mail.adapters.cli.discover`. See
-[Mail ownership and dependencies](../doc/contributors/mail-agent.md).
+[Mail ownership and dependencies](../contributors/mail-agent.md).
 
 ## 1. Capabilities
 
@@ -165,7 +165,7 @@ Each capability is delivered as a package under `config/skills/mail/`: a
 `skill.yaml` declaring its identity, security posture and the MCP tools it may
 use, plus a `SKILL.md` carrying the prompt when a model is involved. The prompt
 is injected into the skill, so re-wording a summary is a configuration delivery.
-See [configuration.md](./configuration.md).
+See [configuration.md](configuration-reference.md).
 
 Collaborators worth naming: `MailContextBuilder` assembles the untrusted
 context, `MailAnalysisMapper` maps model output to domain models and enforces
@@ -589,12 +589,12 @@ The contract and agent scenarios use scripted doubles and can be run offline:
 For Keycloak delegation, the incoming caller token must first be accepted by the
 Mail HTTP host; Keycloak must permit the confidential Mail Agent client to exchange
 it for audience `mail-mcp`; and the Mail MCP server must validate the resulting JWT.
-Use the detailed [user setup](../doc/users/mail-agent.md#connect-the-authenticated-caller-to-gmail-through-mcp)
+Use the detailed [user setup](mail-agent.md#connect-the-authenticated-caller-to-gmail-through-mcp)
 for the variables and request example.
 
 The reference stdio server remains available as a separate configuration. The
 agent, skills and scenarios are identical in both modes; only the provider's
-implementation changes. See [mail-mcp-servers.md](./mail-mcp-servers.md) for server
+implementation changes. See [mail-mcp-servers.md](mail-mcp-servers.md) for server
 choices and their capabilities.
 ## 7. Testing
 
@@ -635,7 +635,7 @@ three different implementations.
 
 - The official Gmail server has no send tool or label deletion, so
   those capabilities are not offered when it is the bound server. See
-  [mail-mcp-servers.md](./mail-mcp-servers.md).
+  [mail-mcp-servers.md](mail-mcp-servers.md).
 - Drafts and confirmation preferences live in memory, for the lifetime of a
   process.
 - A summary is produced from fenced content but is itself relayed to the agent

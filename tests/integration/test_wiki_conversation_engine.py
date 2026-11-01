@@ -17,20 +17,25 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
+from langchain_core.messages import HumanMessage
 from tests.support.langgraph_fakes import ScriptedChatModel, ToolCall, calls, says
 from ygo74.agent_runtime.domains.auth.agent_principal import AgentPrincipal
 from ygo74.agent_runtime.domains.contracts.conversation import ConversationTurn
+from ygo74.agent_runtime.domains.security.user_context import UserContext
 from ygo74.agent_runtime.domains.sessions.conversation_cache import ConversationRuntimeCache
 
-from ai_agent_lab.wiki.application.skills.analysis import AnswerOutput
+from ai_agent_lab.wiki.adapters.capabilities.write_capabilities import DRAFT_PAGE_CONTENT
+from ai_agent_lab.wiki.application.skills.analysis import AnswerOutput, PageDraftOutput
 from ai_agent_lab.wiki.bootstrap.composition import WikiAgentCompositionRoot
 from ai_agent_lab.wiki.bootstrap.conversation import (
     WikiConversation,
     WikiConversationEngine,
     WikiConversationFactory,
 )
+from ai_agent_lab.wiki.domain.models import WikiPageDraft
 from ai_agent_lab.wiki.domain.operation_names import WikiToolName
 from ai_agent_lab.wiki.infrastructure.configuration.settings import WikiAgentMode, WikiAgentSettings
+from ai_agent_lab.wiki.infrastructure.inmemory.draft_store import InMemoryWikiDraftStore
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 
@@ -48,7 +53,9 @@ class ScriptedReasoner:
 
     async def reason(self, request: object, response_model: type) -> object:
         """Return the prepared output whatever was asked."""
-        del request, response_model
+        del request
+        if response_model is PageDraftOutput:
+            return PageDraftOutput(title="Architecture overview", body="A revised body.")
         return AnswerOutput(answer="scripted", cited_page_ids=[])
 
 
@@ -135,6 +142,74 @@ class TestAGatedOperationDefersInsteadOfBlocking:
         assert "CONFIRM" in reply.text
         assert reply.pending_confirmations[0] in reply.text
         assert "nothing has been changed yet" in reply.text
+
+
+@pytest.mark.security
+class TestRequestedUpdateUsesOneApproval:
+    """An explicit update drafts and queues the write in the same user turn."""
+
+    @pytest.mark.parametrize("decision", ["CONFIRM", "CANCEL"])
+    async def test_draft_and_update_need_only_the_ticket_answer(self, monkeypatch, decision):
+        engine, model, cache = build_engine(
+            [
+                calls(ToolCall(DRAFT_PAGE_CONTENT, {"page_id": PAGE_ID, "instruction": "Revise it"})),
+                says("The update is awaiting confirmation."),
+                says("Please answer the confirmation ticket."),
+            ]
+        )
+        put = InMemoryWikiDraftStore.put
+
+        def queue_update(store: InMemoryWikiDraftStore, draft: WikiPageDraft, user: UserContext) -> str:
+            reference = put(store, draft, user)
+            # Script the model's next decision using the real reference just issued.
+            model.script.insert(0, calls(ToolCall(WikiToolName.UPDATE_PAGE.value, {"draft_reference": reference})))
+            return reference
+
+        monkeypatch.setattr(InMemoryWikiDraftStore, "put", queue_update)
+        try:
+            first = await engine.respond(turn("Update the architecture page"))
+            assert len(first.pending_confirmations) == 1
+            assert sum(isinstance(message, HumanMessage) for message in model.prompts[-1]) == 1
+
+            await engine.respond(turn("yes"))
+            async with cache.lease(DIANA, "conv-1") as live:
+                page = await live.runtime.wiki_tools.get_page(PAGE_ID, live.runtime.user)
+                assert page.version == 2
+                assert page.body.expose() != "A revised body."
+
+            prompts_before = len(model.prompts)
+            resolved = await engine.respond(turn(f"{decision} {first.pending_confirmations[0]}"))
+            if decision == "CONFIRM":
+                assert "Page saved successfully." in resolved.text
+                assert "Architecture overview" in resolved.text
+                assert "Version: 3" in resolved.text
+                assert "UNTRUSTED_" not in resolved.text
+                assert "DATA retrieved" not in resolved.text
+                assert '"page_id"' not in resolved.text
+            assert len(model.prompts) == prompts_before
+            async with cache.lease(DIANA, "conv-1") as live:
+                page = await live.runtime.wiki_tools.get_page(PAGE_ID, live.runtime.user)
+                assert page.version == (3 if decision == "CONFIRM" else 2)
+                if decision == "CONFIRM":
+                    assert page.body.expose() == "A revised body."
+        finally:
+            await cache.aclose()
+
+    async def test_a_draft_only_request_does_not_queue_a_write(self):
+        engine, _model, cache = build_engine(
+            [
+                calls(ToolCall(DRAFT_PAGE_CONTENT, {"page_id": PAGE_ID, "instruction": "Preview it"})),
+                says("Here is the draft."),
+            ]
+        )
+        try:
+            reply = await engine.respond(turn("Draft a revision without publishing it"))
+            assert reply.pending_confirmations == ()
+            async with cache.lease(DIANA, "conv-1") as live:
+                page = await live.runtime.wiki_tools.get_page(PAGE_ID, live.runtime.user)
+                assert page.version == 2
+        finally:
+            await cache.aclose()
 
 
 class TestConfirmingInALaterRequest:

@@ -36,5 +36,5 @@ access and a valid credential. For the Mail Agent, replace `wiki-agent` with
 `mail-agent` and use its [Mail guide](mail-agent.md).
 
 For the other run modes and their requirements, continue with
-[Running the Wiki Agent](../../docs/wiki-agent-running.md). The full environment
+[Running the Wiki Agent](wiki-agent-running.md). The full environment
 installer and development setup are in the root [README](../../README.md).
