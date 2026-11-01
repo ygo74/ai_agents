@@ -61,10 +61,11 @@ async def routed_backend():
         return delegates[binding.server]
 
     provider = WikiToolsProvider(
-        WikiAgentSettings(mode="mcp", user_id="diana"),
+        WikiAgentSettings(mode="mcp", user_id="diana", _env_file=None),
         WikiDatasetLoader(),
         user_id="diana",
         manifest=manifest,
+        mcp_settings=WikiMcpSettings(account_id="diana", _env_file=None),
         dialects=create_dialect_registry({"native": dialect, "atlassian": dialect}),
         environment={
             "CONFLUENCE_URL": "https://example.atlassian.net/wiki",

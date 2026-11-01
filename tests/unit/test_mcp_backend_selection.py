@@ -1,4 +1,8 @@
-"""Mail and Wiki honor skill overrides before the agent's default MCP backend."""
+"""Legacy single-server helpers use the agent default before skill fallbacks.
+
+Normal manifest-driven execution routes each skill through its own registry
+binding; those paths are covered by the Mail and Wiki registry routing tests.
+"""
 
 from pathlib import Path
 
@@ -39,14 +43,23 @@ def test_skills_inherit_agent_default(backend):
     assert provider.server_for(manifest) == "default-backend"
 
 
-@pytest.mark.parametrize("default", [None, "default-backend"])
-def test_explicit_skill_servers_override_agent_default(backend, default):
+def test_agent_default_is_used_by_legacy_helper_even_with_skill_overrides(backend):
     provider, _, manifest = backend
     skills = tuple(
         skill.model_copy(update={"mcp_server": "override-backend"}) if skill.mcp_tools else skill
         for skill in manifest.skills
     )
-    selected = manifest.model_copy(update={"skills": skills, "mcp_server": default})
+    selected = manifest.model_copy(update={"skills": skills})
+    assert provider.server_for(selected) == "default-backend"
+
+
+def test_legacy_helper_falls_back_to_a_skill_server_without_agent_default(backend):
+    provider, _, manifest = backend
+    skills = tuple(
+        skill.model_copy(update={"mcp_server": "override-backend"}) if index == 0 else skill
+        for index, skill in enumerate(manifest.skills)
+    )
+    selected = manifest.model_copy(update={"skills": skills, "mcp_server": None})
     assert provider.server_for(selected) == "override-backend"
 
 
@@ -55,14 +68,6 @@ def test_explicit_same_server_and_inherited_default_can_mix(backend):
     changed = manifest.skills[0].model_copy(update={"mcp_server": "default-backend"})
     selected = manifest.model_copy(update={"skills": (changed, *manifest.skills[1:])})
     assert provider.server_for(selected) == "default-backend"
-
-
-def test_conflicting_effective_servers_are_refused(backend):
-    provider, error, manifest = backend
-    changed = manifest.skills[0].model_copy(update={"mcp_server": "other-backend"})
-    selected = manifest.model_copy(update={"skills": (changed, *manifest.skills[1:])})
-    with pytest.raises(error, match="one MCP server"):
-        provider.server_for(selected)
 
 
 def test_missing_effective_server_is_refused(backend):

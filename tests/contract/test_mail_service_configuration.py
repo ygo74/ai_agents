@@ -16,10 +16,13 @@ mailbox to whoever asked first.
 
 from __future__ import annotations
 
+import shutil
 from pathlib import Path
 
 import httpx
 import pytest
+import yaml
+from ygo74.agent_runtime.domains.configuration.directory import CONFIG_DIR_VARIABLE
 
 from ai_agent_lab.mail.bootstrap.service import (
     MailServiceConfigurationError,
@@ -32,8 +35,8 @@ pytestmark = pytest.mark.security
 
 
 @pytest.fixture(autouse=True)
-def single_caller_deployment(monkeypatch):
-    """Configure the single-caller posture the module is written against."""
+def single_caller_deployment(monkeypatch, tmp_path):
+    """Create an isolated API-key deployment independent of the delivered JWT manifest."""
     monkeypatch.setenv("MAIL_AGENT_MODE", "mock")
     monkeypatch.setenv("MAIL_AGENT_USER_ID", "local-user")
     monkeypatch.setenv("MAIL_AGENT_USER_EMAIL", "local-user@example.com")
@@ -41,6 +44,25 @@ def single_caller_deployment(monkeypatch):
     monkeypatch.setenv("OPENAI_API_KEY", "sk-mock-key-for-service-wiring-tests")
     monkeypatch.setenv("OPENAI_CHAT_MODEL", "gpt-4o-mini")
     monkeypatch.delenv("MAIL_AGENT_HTTP_OIDC_ISSUER", raising=False)
+
+    config_root = tmp_path / "config"
+    shutil.copytree(REPOSITORY_ROOT / "config", config_root)
+    manifest_path = config_root / "agents" / "mail" / "agent.yaml"
+    manifest = yaml.safe_load(manifest_path.read_text(encoding="utf-8"))
+    manifest["http"]["security"] = {
+        "mode": "api_key",
+        "api_key": {
+            "value": "${MAIL_AGENT_HTTP_API_KEY}",
+            "header_name": "X-API-Key",
+            "user": {"subject": "local-user", "email": "local-user@example.com"},
+        },
+    }
+    manifest_path.write_text(yaml.safe_dump(manifest, sort_keys=False), encoding="utf-8")
+    monkeypatch.setenv(CONFIG_DIR_VARIABLE, str(config_root))
+
+    env_file = tmp_path / "mail-agent.env"
+    env_file.write_text("", encoding="utf-8")
+    monkeypatch.setenv("MAIL_AGENT_ENV_FILE", str(env_file))
 
 
 class TestTheServiceRefusesToRunOpen:
