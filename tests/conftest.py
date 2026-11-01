@@ -71,10 +71,16 @@ def deterministic_backend(monkeypatch):
     to be configured for. A test that needs another backend overrides these.
 
     Real OAuth credentials are removed for the same reason: no test may reach a
-    live mail server, even by accident.
+    live mail server, even by accident. Manifest selectors are removed so tests
+    use the delivered configuration unless they explicitly select a variant.
     """
     monkeypatch.setenv("MAIL_AGENT_MODE", "mock")
-    for name in ("MAIL_MCP_HTTP_AUTHORIZATION", "MAIL_MCP_OAUTH_CLIENT_SECRET"):
+    for name in (
+        "MAIL_MCP_HTTP_AUTHORIZATION",
+        "MAIL_MCP_OAUTH_CLIENT_SECRET",
+        "AGENT_CONFIG_SUBDIR",
+        "AGENT_MANIFEST_FILENAME",
+    ):
         monkeypatch.delenv(name, raising=False)
 
 

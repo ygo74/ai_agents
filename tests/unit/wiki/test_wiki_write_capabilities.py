@@ -114,7 +114,7 @@ def skills(manifest: AgentManifest, tools: InMemoryWikiTools) -> WikiSkills:
         InMemoryConfirmationPreferenceStore({}), WikiSecurityFloor().build()
     )
     return WikiSkillsFactory(
-        wiki_tools=tools,
+        tools_for=lambda _tool_name: tools,
         reasoner=DraftingReasoner(),
         manifest=manifest,
         context_builder=WikiContextBuilder(),

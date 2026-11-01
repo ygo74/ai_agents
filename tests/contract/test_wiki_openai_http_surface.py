@@ -14,14 +14,20 @@ contract the moment it becomes available.
 
 from __future__ import annotations
 
+import json
 import re
 from pathlib import Path
+from unittest.mock import AsyncMock, patch
 
 import httpx
 import pytest
 from fastapi.testclient import TestClient
+from langchain_core.messages import AIMessage, ToolMessage
+from langchain_core.runnables import RunnableLambda
+from pydantic import BaseModel
 from tests.support.langgraph_fakes import ScriptedChatModel, ToolCall, calls, says
 
+from ai_agent_lab.wiki.adapters.capabilities.write_capabilities import DRAFT_PAGE_CONTENT
 from ai_agent_lab.wiki.application.skills.analysis import AnswerOutput
 from ai_agent_lab.wiki.bootstrap.service import (
     AGENT_ID,
@@ -29,6 +35,7 @@ from ai_agent_lab.wiki.bootstrap.service import (
     build_app,
 )
 from ai_agent_lab.wiki.domain.operation_names import WikiToolName
+from ai_agent_lab.wiki.infrastructure.inmemory.wiki_tools import InMemoryWikiTools
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 
@@ -84,6 +91,14 @@ class ScriptedReasoner:
         return AnswerOutput(answer="scripted", cited_page_ids=[])
 
 
+class StreamingStructuredModel(ScriptedChatModel):
+    """Run a real nested chat-model call before parsing its structured response."""
+
+    def with_structured_output(self, schema: type[BaseModel], **kwargs: object):
+        del kwargs
+        return self | RunnableLambda(lambda message: schema.model_validate_json(message.content))
+
+
 @pytest.fixture(autouse=True)
 def demonstration_deployment(monkeypatch):
     """Configure the single-caller posture the whole module is written against."""
@@ -100,16 +115,50 @@ def build_service(script) -> tuple[object, ScriptedChatModel]:
     return app, model
 
 
-def chat(http: TestClient, message: str, *, key: str | None = API_KEY, conversation: str | None = None):
+def chat(
+    http: TestClient,
+    message: str,
+    *,
+    key: str | None = API_KEY,
+    conversation: str | None = None,
+    stream: bool = False,
+):
     """Post one OpenAI chat completion, the way LibreChat does."""
     headers = {} if key is None else {"x-api-key": key}
     if conversation is not None:
         headers["X-Conversation-Id"] = conversation
     return http.post(
         "/v1/chat/completions",
-        json={"model": MODEL, "messages": [{"role": "user", "content": message}], "stream": False},
+        json={"model": MODEL, "messages": [{"role": "user", "content": message}], "stream": stream},
         headers=headers,
     )
+
+
+def streamed_answer_of(response: httpx.Response) -> str:
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/event-stream")
+    chunks = []
+    for line in response.text.splitlines():
+        if not line.startswith("data: ") or line == "data: [DONE]":
+            continue
+        event = json.loads(line.removeprefix("data: "))
+        for choice in event.get("choices", []):
+            chunks.append(choice.get("delta", {}).get("content") or "")
+    return "".join(chunks)
+
+
+def assert_complete_tool_history(model: ScriptedChatModel) -> None:
+    for prompt in model.prompts:
+        pending: set[str] = set()
+        for message in prompt:
+            if isinstance(message, ToolMessage):
+                assert message.tool_call_id in pending
+                pending.remove(message.tool_call_id)
+                continue
+            assert not pending, "A new message precedes outstanding tool responses"
+            if isinstance(message, AIMessage):
+                pending.update(call["id"] for call in message.tool_calls)
+        assert not pending
 
 
 def ticket_in(reply: str) -> str:
@@ -331,6 +380,32 @@ class TestAnUnauthenticatedCallerIsRefused:
 
 
 @pytest.mark.security
+class TestInternalReasoningIsNotDisplayed:
+    @pytest.mark.parametrize("stream", [False, True])
+    @pytest.mark.parametrize("answer", ["Here is the proposed Live test section.", '{"status":"draft_ready"}'])
+    def test_drafting_returns_only_the_assistant_answer(self, stream, answer):
+        internal = json.dumps({"title": "Architecture overview", "body": "Internal draft body."})
+        model = StreamingStructuredModel(
+            [
+                calls(ToolCall(DRAFT_PAGE_CONTENT, {"page_id": PAGE_ID, "instruction": "Add a Live test section"})),
+                says(internal),
+                says(answer),
+            ]
+        )
+        app = build_app(base_path=REPOSITORY_ROOT, chat_model=model)
+
+        with TestClient(app) as http:
+            response = chat(http, "Prepare a revision of the architecture page", stream=stream)
+            rendered = streamed_answer_of(response) if stream else answer_of(response)
+
+        assert len(model.prompts) == 3
+        assert "draft_reference" in str(model.prompts[-1][-1].content)
+        assert rendered == answer
+        assert internal not in rendered
+        assert "Internal draft body." not in rendered
+
+
+@pytest.mark.security
 class TestAGatedOperationIsDeferredOverHttp:
     """A request must be answered, so an approval cannot hold the connection."""
 
@@ -342,6 +417,60 @@ class TestAGatedOperationIsDeferredOverHttp:
 
         assert "CONFIRM" in reply
         assert "nothing has been changed yet" in reply
+
+    @pytest.mark.parametrize("stream_follow_up", [False, True])
+    def test_streamed_ticket_preserves_history_without_writing(self, monkeypatch, stream_follow_up):
+        write = AsyncMock()
+        monkeypatch.setattr(InMemoryWikiTools, "add_comment", write)
+        app, model = build_service([*commenting_script(), says("The comment is awaiting confirmation.")])
+
+        with TestClient(app) as http:
+            raised = streamed_answer_of(chat(http, f"comment on {PAGE_ID}", conversation="streamed", stream=True))
+            assert ticket_in(raised)
+            assert "nothing has been changed yet" in raised
+            assert '"tool_call_id"' not in raised
+            write.assert_not_awaited()
+
+            response = chat(http, "What is awaiting confirmation?", conversation="streamed", stream=stream_follow_up)
+            continued = streamed_answer_of(response) if stream_follow_up else answer_of(response)
+
+        assert "awaiting confirmation" in continued
+        assert len(model.prompts) == 3
+        assert_complete_tool_history(model)
+        write.assert_not_awaited()
+
+    @pytest.mark.parametrize("decision", ["CONFIRM", "CANCEL"])
+    @pytest.mark.parametrize("stream_confirmation", [False, True])
+    def test_streamed_ticket_is_resolved_once_outside_the_model(self, decision, stream_confirmation):
+        app, model = build_service(commenting_script())
+        with (
+            patch.object(
+                InMemoryWikiTools, "add_comment", autospec=True, side_effect=InMemoryWikiTools.add_comment
+            ) as write,
+            TestClient(app) as http,
+        ):
+            raised = streamed_answer_of(chat(http, f"comment on {PAGE_ID}", conversation="streamed", stream=True))
+            ticket = ticket_in(raised)
+            write.assert_not_awaited()
+            prompts_before = len(model.prompts)
+
+            response = chat(http, f"{decision} {ticket}", conversation="streamed", stream=stream_confirmation)
+            resolved = streamed_answer_of(response) if stream_confirmation else answer_of(response)
+            replayed = answer_of(chat(http, f"CONFIRM {ticket}", conversation="streamed"))
+
+            if decision == "CONFIRM":
+                write.assert_awaited_once()
+                assert "Comment posted successfully." in resolved
+                assert "UNTRUSTED_" not in resolved
+                assert '"comment_id"' not in resolved
+            else:
+                write.assert_not_awaited()
+                assert "Nothing was changed" in resolved
+
+        assert "not awaiting an answer" not in resolved
+        assert "not awaiting an answer" in replayed
+        assert len(model.prompts) == prompts_before
+        assert_complete_tool_history(model)
 
     def test_the_ticket_can_be_answered_in_a_later_request(self):
         app, _model = build_service(commenting_script())

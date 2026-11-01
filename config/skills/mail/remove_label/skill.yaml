@@ -14,7 +14,6 @@ operation:
   confirmation_required: true
 
 # Logical MCP tools this capability is allowed to use.
-mcp_server: gmail-http
 mcp_tools:
   - remove_label
   - list_labels

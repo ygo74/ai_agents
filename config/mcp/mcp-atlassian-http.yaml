@@ -5,10 +5,10 @@
 #
 # Over stdio the server is a local process holding one set of credentials, so it
 # acts as exactly one person. Over HTTP it reads an `Authorization` header on
-# every request and builds a client for whoever that header names, so the agent
-# genuinely acts **on behalf of** the person asking. On a wiki, where pages and
-# spaces are restricted per person, that is the difference between an agent that
-# respects those restrictions and one that quietly reads around them.
+# every request and builds a client for that credential's owner. Fixed agent
+# credentials belong only to WIKI_AGENT_USER_ID. A multi-user agent must inject
+# a WikiUserCredentials source; HTTP transport alone does not make a deployment
+# credential caller-bound.
 #
 # Start the server yourself, once, and point this at it:
 #
@@ -47,8 +47,8 @@ dialect: atlassian
 #           Center PAT when it has no OAuth configuration, so say `token` when a
 #           PAT is what you mean.
 #
-# No `env:` block: the credentials belong to the server process, which is
-# started separately, and the per-user credential travels in a header.
+# No `env:` block: the server is started separately. The agent resolves the
+# admitted caller's credential and sends it in the connection's header.
 
 # The server is started separately for this binding, so the agent cannot read its
 # configuration. `read_only_variable` still applies: set WIKI_MCP_READ_ONLY to

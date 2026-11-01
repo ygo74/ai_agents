@@ -363,6 +363,27 @@ derives advertised security from those same authenticators, so discovery cannot
 advertise a scheme the service does not accept. The complete key and type
 reference is in [configuration](configuration.md#fixed-manifest-schemas).
 
+**Runtime prerequisite — not a guarantee of any published release.** This
+`http_settings=` construction of `WorkerSettings` (and the matching
+`HostingFactory.add_http_settings(...)`) requires the installed
+`ygo74-agent-runtime-agents` to actually carry the `http_settings` field and the
+code path that consumes it. The editable runtime source at commit `e097cac`
+was verified with both real service factories and the worker contract tests.
+A `ygo74-agent-runtime-agents` build that predates this contract raises
+`TypeError`/`ValueError` constructing `WorkerSettings`, not a graceful fallback.
+No version of this contract is pinned here against a specific published package
+release — check `WorkerSettings.__init__`'s accepted fields (or run the
+[worker contract tests](../tests/contract/test_worker_settings_http_contract.py),
+which exercise the installed library directly) against whatever is actually
+resolved by [the core dependencies](../agents/core/pyproject.toml)'s
+`ygo74-agent-runtime-agents>=0.8.1,<2` range.
+When working against an **editable** checkout of the runtime (as during local
+runtime development), the field being missing usually means the checkout is
+behind its own remote branch rather than a code defect in this repository -
+`git -C <runtime checkout> fetch && git -C <runtime checkout> log --oneline
+HEAD..@{upstream}` shows whether a fast-forward closes the gap before any
+change is made here.
+
 **Worked examples:** [`wiki/bootstrap/service.py`](../agents/wiki/src/ai_agent_lab/wiki/bootstrap/service.py),
 [`mail/bootstrap/service.py`](../agents/mail/src/ai_agent_lab/mail/bootstrap/service.py),
 and [mail-agent-http.md](mail-agent-http.md) / [wiki-agent-http.md](wiki-agent-http.md).
@@ -379,6 +400,7 @@ Nothing here is optional, and the suite runs with no network and no credential.
 | Integration | Agent → skill → MCP client → a controlled server |
 | Scenario | A reproducible turn: input, tools available, expected tool use, expected result |
 | Security | Unauthorised access, cross-user access, prompt injection, tool misuse, confirmation bypass, data leakage |
+| Contract | The installed runtime library's own public API, independent of any manifest or service factory — see `tests/contract/test_worker_settings_http_contract.py` |
 
 The security tests are the ones that matter most and are most often forgotten.
 A gate that is documented but not tested is a gate that will be removed by a

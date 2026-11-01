@@ -9,6 +9,13 @@ speaks, what it is allowed to do or which MCP server it talks to is a delivery o
 
 `config/` at the repository root, or wherever `YGO74_AGENT_RUNTIME_CONFIG_DIR` points.
 
+Mail and Wiki also accept `AGENT_CONFIG_SUBDIR` (default: `mail` or `wiki`) and
+`AGENT_MANIFEST_FILENAME` (default: `agent.yaml`). The subdirectory selects both
+agent and skill packages; changing only the filename reuses the existing
+instructions, skills, and MCP configuration. See
+[Select another agent manifest](../doc/users/configuration-and-deployment.md#select-another-agent-manifest)
+for setup, examples, and error behavior.
+
 ```text
 config/
   agents/mail/
@@ -248,10 +255,16 @@ cover the contract fails immediately, not on the first request a user makes.
 
 ### Mail connection settings
 
-`MAIL_AGENT_MODE` chooses `mock` or `mcp`. In MCP mode, Mail requires every
-delivered skill to name the same `mcp_server`. All delivered Mail skills
-currently use `gmail-http`; missing or conflicting references are rejected.
-There is no environment-based server selection or fallback.
+`MAIL_AGENT_MODE` chooses `mock` or `mcp`. Mail and Wiki resolve each MCP
+skill's server from its own `mcp_server`, or from the agent manifest's
+`mcp_server` when the skill omits it. Skill-level declarations take precedence.
+Missing effective servers are rejected. Each agent owns a runtime MCP registry
+with one connection per referenced server. Skills using the same server share its
+connection; skills using another server receive the corresponding typed adapter.
+A skill's tool aliases and the selected server's capabilities constrain its calls.
+There is no environment-based server selection or hard-coded fallback. See
+[Choose the MCP backend](../doc/users/configuration-and-deployment.md#choose-the-mcp-backend)
+for configuration examples.
 
 The shared runtime's `McpServerConfigurationLoader` owns the connection
 settings in `config/mcp/<server>.yaml`: authentication, headers,

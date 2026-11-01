@@ -196,12 +196,18 @@ asking instead of quietly reading around them.
 **The proof of concept does not yet mint that credential per caller.** It reads
 `WIKI_MCP_USER_ACCOUNT` and `WIKI_MCP_USER_SECRET` from the environment, so an
 HTTP deployment authenticates its callers correctly but still reaches Confluence
-as one configured account. Closing that gap means exchanging the caller's token
-for an on-behalf-of credential; only the `WikiUserCredentials` implementation
-changes, and nothing above the MCP boundary notices.
+as one configured account - and that account is bound to its owner,
+`WIKI_AGENT_USER_ID`. A different authenticated subject receives HTTP 403 before
+retrieval or reasoning: the fixed credential never transfers to a caller it was
+not configured for. Closing the per-caller gap means injecting an on-behalf-of
+`WikiUserCredentials` source; only that implementation changes, and nothing
+above the MCP boundary notices.
+The [HTTP credential ownership tests](../tests/security/test_wiki_http_credential_ownership.py)
+prove the refusal for `get_page` and `summarise_page`, through this same HTTP
+service, with two distinct JWT subjects and no live MCP connection.
 
-Until then, treat the multi-user HTTP mode as authenticated but not yet
-per-caller *at the wiki*.
+Until then, treat the multi-user HTTP mode as authenticated and owner-bound,
+but not yet per-caller *at the wiki*.
 
 ## What the installed runtime supports
 

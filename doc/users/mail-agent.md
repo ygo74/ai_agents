@@ -81,6 +81,21 @@ with the message, sender, and label. Reply with the exact `CONFIRM cfm-...`
 command to apply it, or `CANCEL cfm-...` to decline. In HTTP mode, keep the same
 conversation ID when answering the ticket.
 
+## Diagnose a failed HTTP conversation
+
+HTTP 200 does not mean that a streamed conversation succeeded. A failure after
+the first event is reported inside the stream. On the Responses endpoint, an
+`error` event precedes `response.failed`; OpenAI SDK consumers can then surface
+the failure instead of silently ending the answer. Chat Completions also sends
+an error envelope. No successful answer is fabricated.
+
+For example, a missing MCP secret produces public code `agent_execution_error`.
+The server log contains the request ID, exception type and raising location.
+For this known configuration failure, it also names the missing variable,
+`MCP_MAIL_OBO_CLIENT_SECRET`, without logging its value. Correct the variable
+in the selected environment file, restart Mail, and retry the same request.
+Arbitrary provider exception messages and retrieved mail content remain private.
+
 ## Connect the authenticated caller to Gmail through MCP
 
 ### Configure the OBO source
@@ -95,6 +110,13 @@ endpoint, client ID, audience and scopes. Put only the client secret in
 ```dotenv
 MCP_MAIL_OBO_CLIENT_SECRET=<private-client-secret>
 ```
+
+The variable name must match the YAML reference exactly. A private file that
+still defines `MAIL_AGENT_MCP_OBO_CLIENT_SECRET` does not supply
+`MCP_MAIL_OBO_CLIENT_SECRET`. Rename the key without changing its secret value,
+and restart the Mail HTTP process using that environment file. Existing process
+variables take precedence over values loaded from the file. A missing secret
+stops conversation construction before any model or MCP request is made.
 
 The valid resource part of `config/mcp/gmail-http.yaml` is:
 

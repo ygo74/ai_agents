@@ -26,11 +26,12 @@ import pytest
 from agent_framework.openai import OpenAIChatClient
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-from openai import AsyncOpenAI
+from openai import APIError, AsyncOpenAI, OpenAI
 from tests.support.maf_fakes import ScriptedChatClient, ToolCall, calls, says
 from tests.support.mail_continuity_provider import ContextualResponsesProvider, bounded_mailbox
 from ygo74.agent_runtime.domains.auth.apikey_authenticator import StaticApiKeyUserResolver
 from ygo74.agent_runtime.domains.auth.auth_context import ResolvedUser
+from ygo74.agent_runtime.domains.configuration.directory import ConfigurationDirectory
 from ygo74.agent_runtime.domains.discovery.agent_descriptor import AgentDescriptor
 from ygo74.agent_runtime.domains.discovery.descriptor_registry import DescriptorRegistry
 from ygo74.agent_runtime.domains.discovery.discovery_configuration import DiscoveryConfiguration
@@ -52,6 +53,7 @@ from ai_agent_lab.mail.domain.operation_names import MailToolName
 from ai_agent_lab.mail.infrastructure.configuration.settings import MailAgentSettings
 from ai_agent_lab.mail.infrastructure.inmemory.mail_tools import InMemoryMailTools
 from ai_agent_lab.mail.infrastructure.inmemory.reasoner import ScriptedTextReasoner
+from ai_agent_lab.mail.infrastructure.mcp.configuration import load_configuration
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 
@@ -120,7 +122,7 @@ def build_service(script) -> tuple[FastAPI, ScriptedChatClient]:
     return build_service_with_client(client), client
 
 
-def build_service_with_client(client, mail_tools=None) -> FastAPI:
+def build_service_with_client(client, mail_tools=None, *, enable_responses: bool = False) -> FastAPI:
     """Keep endpoint/auth/cache wiring identical for scripted and SDK clients."""
     composition = MailAgentCompositionRoot(
         MailAgentSettings(always_confirm_tools=MailToolName.APPLY_LABEL.value),
@@ -160,7 +162,7 @@ def build_service_with_client(client, mail_tools=None) -> FastAPI:
         MailAgentEntrypoint(MailConversationEngine(conversations)),
         default_route_key=AGENT_ID,
         enable_openai_chat_completions=True,
-        enable_openai_responses=False,
+        enable_openai_responses=enable_responses,
         require_bearer_token=True,
         api_key_resolver=api_key_resolver,
         descriptor_registry=DescriptorRegistry([descriptor]),
@@ -449,6 +451,75 @@ class TestTheEndpointAnswers:
         assert "hello" in response.text
         assert "response" in response.text
         assert client.stream_modes == [True]
+
+
+@pytest.mark.security
+class TestConversationConstructionFailuresAreVisible:
+    """A failed first turn reaches the client and leaves safe, useful diagnostics."""
+
+    @pytest.mark.parametrize("protocol", ["chat_completions", "responses"])
+    @pytest.mark.parametrize("failure", ["missing_secret", "backend_error"])
+    def test_failed_stream_is_explicit_and_diagnostics_are_redacted(self, monkeypatch, caplog, protocol, failure):
+        private_marker = "fixture-credential-never-to-be-logged"
+
+        async def failing_build(*args, **kwargs):
+            if failure == "missing_secret":
+                load_configuration(ConfigurationDirectory(REPOSITORY_ROOT / "config"), "gmail-http", environment={})
+            raise RuntimeError(f"Authorization: Bearer {private_marker}; retrieved private mail content")
+
+        monkeypatch.setattr(MailConversationFactory, "build", failing_build)
+        app = build_service_with_client(ScriptedChatClient([]), enable_responses=True)
+        with TestClient(app) as http:
+            if protocol == "responses":
+                response = http.post(
+                    "/v1/responses", json={"model": MODEL, "input": "hello", "stream": True},
+                    headers={"x-api-key": API_KEY},
+                )
+            else:
+                response = chat(http, "hello", stream=True)
+
+        assert response.status_code == 200
+        events = [
+            json.loads(line.removeprefix("data:").strip())
+            for line in response.text.splitlines()
+            if line.startswith("data:") and line.removeprefix("data:").strip() != "[DONE]"
+        ]
+        if protocol == "responses":
+            failed = [event for event in events if event.get("type") == "response.failed"]
+            assert len(failed) == 1
+            assert failed[0]["response"]["status"] == "failed"
+            error = failed[0]["response"]["error"]
+            sdk_errors = [event for event in events if event.get("type") == "error"]
+            assert len(sdk_errors) == 1
+            assert sdk_errors[0]["code"] == error["code"]
+            assert sdk_errors[0]["message"] == error["message"]
+            assert events.index(sdk_errors[0]) < events.index(failed[0])
+            assert not any(event.get("type") == "response.completed" for event in events)
+            transport = httpx.MockTransport(
+                lambda request: httpx.Response(
+                    200, content=response.content, headers={"content-type": "text/event-stream"},
+                )
+            )
+            with (
+                OpenAI(api_key=API_KEY, http_client=httpx.Client(transport=transport)) as sdk,
+                sdk.responses.create(model=MODEL, input="hello", stream=True) as stream,
+                pytest.raises(APIError, match="Agent stream execution failed"),
+            ):
+                list(stream)
+        else:
+            failed = [event for event in events if "error" in event]
+            assert len(failed) == 1
+            error = failed[0]["error"]
+        assert error["code"] == "agent_execution_error"
+        assert error["message"]
+        assert private_marker not in response.text + caplog.text
+        assert "retrieved private mail content" not in response.text + caplog.text
+        assert "MCP_MAIL_OBO_CLIENT_SECRET" not in response.text
+        if failure == "missing_secret":
+            assert "MCP_MAIL_OBO_CLIENT_SECRET" in caplog.text
+            assert "McpBindingError" in caplog.text
+        else:
+            assert "RuntimeError" in caplog.text
 
 
 @pytest.mark.skipif(not maps_to_openai, reason=NOT_OPENAI_YET)

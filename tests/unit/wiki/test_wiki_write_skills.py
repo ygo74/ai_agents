@@ -97,7 +97,7 @@ def build_runner(
 @pytest.fixture
 def authoring(tools: InMemoryWikiTools, audit: InMemoryAuditTrail) -> PageAuthoringSkill:
     """The authoring skill over the small wiki."""
-    return PageAuthoringSkill(tools, tools, build_runner(audit))
+    return PageAuthoringSkill(tools, tools, tools, build_runner(audit))
 
 
 @pytest.fixture
@@ -244,12 +244,12 @@ class TestSecurityFloor:
 
     def test_a_preference_cannot_ungate_a_replacement(self, tools, audit, author):
         """update_page is pinned by the floor, whatever a user prefers."""
-        skill = PageAuthoringSkill(tools, tools, build_runner(audit, policy_with(update_page=True)))
+        skill = PageAuthoringSkill(tools, tools, tools, build_runner(audit, policy_with(update_page=True)))
 
         assert skill.requires_confirmation(WikiToolName.UPDATE_PAGE, author)
 
     def test_a_preference_cannot_ungate_a_deletion(self, tools, audit, author):
-        skill = PageAuthoringSkill(tools, tools, build_runner(audit, policy_with(delete_page=True)))
+        skill = PageAuthoringSkill(tools, tools, tools, build_runner(audit, policy_with(delete_page=True)))
 
         assert skill.requires_confirmation(WikiToolName.DELETE_PAGE, author)
 

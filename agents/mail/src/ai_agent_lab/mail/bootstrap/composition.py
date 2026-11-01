@@ -15,7 +15,8 @@ adapter and the confirmation policy - not a wrapper around an agent.
 from __future__ import annotations
 
 import logging
-from collections.abc import Iterator
+import os
+from collections.abc import Callable, Iterator, Mapping
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -53,6 +54,7 @@ from ai_agent_lab.mail.application.skills.bundle import MailSkills
 from ai_agent_lab.mail.application.skills.categories import MailCategoryCatalog
 from ai_agent_lab.mail.application.skills.context import MailContextBuilder
 from ai_agent_lab.mail.bootstrap.mail_tools_provider import MailToolsProvider
+from ai_agent_lab.mail.bootstrap.routed_mail_tools import RoutedMailTools
 from ai_agent_lab.mail.bootstrap.skills_factory import MailSkillsFactory
 from ai_agent_lab.mail.domain.operation_names import MailToolName
 from ai_agent_lab.mail.domain.permissions import MailPermission
@@ -60,7 +62,7 @@ from ai_agent_lab.mail.domain.policies.security_floor import MailSecurityFloor
 from ai_agent_lab.mail.infrastructure.configuration.local_principal import LocalPrincipalSource
 from ai_agent_lab.mail.infrastructure.configuration.mailbox_directory import ConfiguredMailboxOwnerDirectory
 from ai_agent_lab.mail.infrastructure.configuration.operations import DeliveredMailOperations
-from ai_agent_lab.mail.infrastructure.configuration.settings import ChatClientSettings, MailAgentMode, MailAgentSettings
+from ai_agent_lab.mail.infrastructure.configuration.settings import ChatClientSettings, MailAgentSettings
 from ai_agent_lab.mail.infrastructure.inmemory.dataset import MailDatasetLoader
 from ai_agent_lab.mail.infrastructure.inmemory.draft_store import InMemoryDraftStore
 
@@ -185,15 +187,19 @@ class MailAgentCompositionRoot:
             MailDatasetLoader(),
             owner_id=principal.subject,
             manifest=manifest,
-            server=MailToolsProvider.server_for(manifest) if self._settings.mode is MailAgentMode.MCP else None,
             delegated_token_source=self._delegated_token_source,
         )
-        mail_tools = self._mail_tools(provider)
-        skills = self._skills(manifest, mail_tools, policy, audit)
+        tools_for = self._tools_resolver(provider)
+        mail_tools = (
+            self._mail_tools_override
+            if self._mail_tools_override is not None
+            else provider.build(base_path=self._base_path)
+        )
+        skills = self._skills(manifest, tools_for, policy, audit)
 
         draft_store = InMemoryDraftStore()
         ledger = InMemoryConfirmationLedger()
-        served = self._served(provider)
+        served = self._served(provider, manifest)
         registry = self._registry(manifest, skills, draft_store, ledger, served)
         _logger.debug(
             "Registered Mail Agent skills: registered=%d, backend_capabilities=%d",
@@ -231,40 +237,40 @@ class MailAgentCompositionRoot:
             provider=provider,
         )
 
-    def _served(self, provider: MailToolsProvider) -> frozenset[MailToolName]:
-        """Return the capabilities the configured backend can actually serve.
-
-        This reads the delivered binding, never the connection, so it holds even
-        when a test supplies its own mail tools.
-        """
+    def _served(
+        self, provider: MailToolsProvider, manifest: AgentManifest
+    ) -> Mapping[str, frozenset[MailToolName]]:
+        """Read capabilities from each skill's selected server, without opening connections."""
         _logger.info("Resolving Mail MCP backend capabilities")
         _logger.debug(
             "MailAgentCompositionRoot._served arguments: provider_type=%s, base_path=%s",
             type(provider).__name__,
             self._base_path,
         )
-        return provider.capabilities(base_path=self._base_path)
+        return {
+            skill.tool_name: provider.capabilities_for(skill.tool_name, base_path=self._base_path)
+            for skill in manifest.skills
+            if skill.mcp_tools
+        }
 
     def _skills(
         self,
         manifest: AgentManifest,
-        mail_tools: MailTools,
+        tools_for: Callable[[str], MailTools],
         policy: ConfirmationPolicy,
         audit: InMemoryAuditTrail,
     ) -> MailSkills:
         """Assemble the reusable domain capabilities."""
         _logger.info("Assembling Mail Agent domain skills")
         _logger.debug(
-            "MailAgentCompositionRoot._skills arguments: manifest=%s, mail_tools_type=%s, "
-            "policy_type=%s, audit_type=%s",
+            "MailAgentCompositionRoot._skills arguments: manifest=%s, policy_type=%s, audit_type=%s",
             manifest.name,
-            type(mail_tools).__name__,
             type(policy).__name__,
             type(audit).__name__,
         )
         principal = self._principal
         return MailSkillsFactory(
-            mail_tools=mail_tools,
+            tools_for=tools_for,
             reasoner=self._reasoner(),
             operations=DeliveredMailOperations(manifest),
             policy=policy,
@@ -284,7 +290,8 @@ class MailAgentCompositionRoot:
             PermissionRegistry(MailPermission.declared()),
             MailSecurityFloor().build(),
         )
-        return AgentManifestLoader(directory, skills).load(MAIL_AGENT)
+        agent = os.environ.get("AGENT_CONFIG_SUBDIR", "").strip() or MAIL_AGENT
+        return AgentManifestLoader(directory, skills).load(agent)
 
     def _registry(
         self,
@@ -292,7 +299,7 @@ class MailAgentCompositionRoot:
         skills: MailSkills,
         draft_store: InMemoryDraftStore,
         ledger: InMemoryConfirmationLedger,
-        served: frozenset[MailToolName],
+        served: Mapping[str, frozenset[MailToolName]],
     ) -> SkillRegistry:
         """Bind the delivered manifests to the code that runs them.
 
@@ -304,7 +311,7 @@ class MailAgentCompositionRoot:
         _logger.debug(
             "MailAgentCompositionRoot._registry arguments: manifest=%s, served=%s, draft_store_type=%s, ledger_type=%s",
             manifest.name,
-            sorted(name.value for name in served),
+            sorted(served),
             type(draft_store).__name__,
             type(ledger).__name__,
         )
@@ -329,27 +336,18 @@ class MailAgentCompositionRoot:
         )
         descriptors = (*read_capabilities.descriptors(), *write_capabilities.descriptors())
         _logger.debug("Built Mail capability descriptors: count=%d", len(descriptors))
-        return SkillRegistry(tuple(self._servable(descriptors, served)))
+        return SkillRegistry(tuple(self._servable(descriptors, served, manifest)))
 
     @staticmethod
     def _servable(
         descriptors: tuple[SkillDescriptor, ...],
-        served: frozenset[MailToolName],
+        served: Mapping[str, frozenset[MailToolName]],
+        manifest: AgentManifest,
     ) -> Iterator[SkillDescriptor]:
-        """Keep the capabilities the bound server declares it can serve.
-
-        A capability whose name is not a catalogued MCP tool - an analysis run
-        by the agent itself - depends on no server and is always kept.
-        """
-        _logger.debug(
-            "MailAgentCompositionRoot._servable arguments: descriptors=%d, served=%s",
-            len(descriptors),
-            sorted(name.value for name in served),
-        )
-        catalogued = {name.value: name for name in MailToolName}
+        """Expose a skill only when its own server covers its declared MCP dependencies."""
         for descriptor in descriptors:
-            required = catalogued.get(descriptor.tool_name)
-            if required is None or required in served:
+            required = frozenset(MailToolName(alias) for alias in manifest.skill(descriptor.tool_name).mcp_tools)
+            if required <= served.get(descriptor.tool_name, frozenset()):
                 yield descriptor
 
     def _policy(self) -> ConfirmationPolicy:
@@ -383,17 +381,27 @@ class MailAgentCompositionRoot:
             permissions=MailPermission.declared(),
         )
 
-    def _mail_tools(self, provider: MailToolsProvider) -> MailTools:
-        """Build the mail MCP implementation for the configured mode."""
-        _logger.info("Selecting Mail Agent tools backend")
+    def _tools_resolver(self, provider: MailToolsProvider) -> Callable[[str], MailTools]:
+        """Build the per-skill tools resolver for the configured mode.
+
+        Keeps the override for tests that inject a single fixed ``MailTools``
+        regardless of which skill resolves it.
+        """
+        _logger.info("Selecting Mail Agent tools backend resolver")
         _logger.debug(
-            "MailAgentCompositionRoot._mail_tools arguments: provider_type=%s, override=%s",
+            "MailAgentCompositionRoot._tools_resolver arguments: provider_type=%s, override=%s",
             type(provider).__name__,
             self._mail_tools_override is not None,
         )
         if self._mail_tools_override is not None:
-            return self._mail_tools_override
-        return provider.build(base_path=self._base_path)
+            override = self._mail_tools_override
+            return lambda tool_name: override  # noqa: ARG005
+        base_path = self._base_path
+        def resolve(tool_name: str) -> MailTools:
+            # Withdrawn skills still assemble, but cannot obtain a registry view when invoked.
+            return RoutedMailTools(lambda _alias: provider.build_for_skill(tool_name, base_path=base_path))
+
+        return resolve
 
     def _reasoner(self) -> TextReasoner:
         """Build the reasoner used by the analysis skills."""
