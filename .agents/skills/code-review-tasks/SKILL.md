@@ -1,6 +1,6 @@
 ---
 name: code-review-tasks
-description: Review the current development branch for unnecessary complexity, exploitable agent-security weaknesses, and missing explanatory comments. Write evidence-based implementation instructions for another agent under docs/tasks/<current-branch>/code-review-implementation.md. Use when asked for a code review that produces a remediation task file rather than inline comments or immediate fixes.
+description: Review branch changes for unnecessary complexity, agent-security weaknesses, and missing explanatory comments, then create an evidence-based remediation handoff. Use when asked for review findings prepared for another agent rather than inline comments or immediate fixes.
 ---
 
 # Code Review Implementation Tasks

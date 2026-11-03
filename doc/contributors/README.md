@@ -6,6 +6,9 @@ which records current responsibilities and behavior. For a new-agent walkthrough
 and the shared native Mail runtime integration, see [implementing an agent](implementing-an-agent.md)
 and [native Mail runtime](native-mail-runtime.md).
 
+For the request lifecycle, role selection, and approval gates, see the
+[repository development workflow](../../spec/development-workflow.md).
+
 ## Domains
 
 - [Architecture and distributions](architecture.md)
@@ -29,6 +32,7 @@ and [native Mail runtime](native-mail-runtime.md).
 4. Update delivered manifests, bindings, prompts, tests, and user docs when the
    change affects them.
 
-This repository has no root `AGENTS.md`. The root `README.md` describes local
-setup, environments, and quality commands. The runtime repository has its own
-contributor rules; consult them when changing a shared runtime API.
+The root `AGENTS.md` and `WORKFLOW.md` define local engineering rules and skill
+routing. The root `README.md` describes setup, environments, and quality
+commands. Consult the runtime repository's instructions when changing a shared
+runtime API.
