@@ -1,13 +1,17 @@
 ---
 name: implementation-plan
-description: Analyze the existing Mail/Wiki architecture and prepare a Python implementation plan for an approved specification.
+description: Analyze the existing agent architecture and prepare a Python implementation plan for an approved specification.
 ---
 
 # Implementation plan
 
 Use after SPEC approval. Read the [tracking artifact templates](../development-workflow/references/artifact-templates.md)
 and Python Solution Architect reference from `references/`; load only the
-relevant Mail/Wiki and framework specifications.
+relevant agent (Mail, Wiki, Jira/tickets, user memory, or orchestration) and
+framework specifications.
+For a new agent, user-memory persistence, an orchestrator, or cross-agent
+architecture, also read the shared
+[agent-family architecture reference](references/agent-family-architecture.md).
 Inspect current source, module dependencies, delivered configuration, tests,
 docs, and examples before selecting changes.
 

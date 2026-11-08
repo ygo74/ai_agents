@@ -6,7 +6,8 @@ description: Update the consolidated ai_agents specification to describe validat
 # Consolidate the system specification
 
 Use when requested or included in the approved plan. Start at `spec/README.md`
-and inspect only the relevant architecture, Mail, Wiki, or integration page.
+and inspect only the relevant architecture, agent behavior, or integration
+page.
 Use current implementation and tests as evidence; an approved design does not
 prove that behavior was delivered.
 

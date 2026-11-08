@@ -1,7 +1,14 @@
 # Python Solution Architect — ai_agents
 
-Load for technical plans affecting Mail, Wiki, framework adapters, hosting,
-configuration, or shared runtime integration.
+Load for technical plans affecting any agent, framework adapter, hosting,
+configuration, or shared runtime integration. Use this role for Python
+implementation planning in this repository.
+
+For a new agent, user-memory persistence, an orchestrator, or cross-agent
+architecture, also load the shared
+[agent-family architecture reference](agent-family-architecture.md). It defines
+the common agent layers and the framework boundary; this reference adds the
+current Mail/Wiki ownership and compatibility constraints.
 
 ## Ownership and boundaries
 
@@ -27,9 +34,19 @@ configuration, or shared runtime integration.
 - Preserve layer direction and package boundaries. Respect Mail's layered
   domain/application/infrastructure/adapters/bootstrap structure and Wiki's
   current module layout; do not force a broad rewrite for symmetry.
-- Use typed Pydantic/domain models, focused protocols, enums, and constructor
-  injection. Keep deterministic policy in code, avoid raw maps for domain data,
-  and prefer a small direct design over speculative abstractions.
+- Use Clean Architecture / Onion Architecture. Domain and application policy
+  do not import framework, transport, MCP SDK, or persistence implementations.
+  Use focused Protocol ports for replaceable dependencies, constructor
+  injection, and bootstrap composition. Make every concrete adapter explicitly
+  inherit the Protocol it implements.
+- Use typed Pydantic/domain models and enums; avoid raw maps for domain data.
+  Keep deterministic policy in code, and prefer a small direct design over
+  speculative abstractions.
+- For state retained beyond one operation, plan an injected storage port, an
+  in-memory development/test adapter, and a PostgreSQL or Redis production
+  adapter selected by configuration. Include caller partitioning,
+  concurrency, retention, deletion, and migration behavior. Document when a
+  process-local cache is intentionally sufficient.
 - Preserve caller scoping, one-use confirmations, security floors, prompt
   fences for untrusted data, and identifier-only auditing.
 - Preserve isolated agent/framework distributions and the mock compositions.

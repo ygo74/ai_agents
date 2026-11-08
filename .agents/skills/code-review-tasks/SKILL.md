@@ -94,6 +94,10 @@ Check that a maintainer can understand the code's intent and important contracts
 - Explain non-obvious decisions, invariants, trust boundaries, and trade-offs.
 - Document public contracts when inputs, outputs, errors, side effects, identity,
   or connection ownership would otherwise be unclear.
+- Check that every class and method documents its purpose and arguments in the
+  repository's standard form.
+- For a non-trivial method, check that its body explains the algorithm's stages,
+  ordering, and important invariants with concise comments.
 - Correct stale comments and docstrings that contradict the implementation.
 - Prefer clearer names or simpler code when they remove the need for explanation.
 

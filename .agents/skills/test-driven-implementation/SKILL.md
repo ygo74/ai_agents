@@ -1,12 +1,16 @@
 ---
 name: test-driven-implementation
-description: Implement approved Mail/Wiki tasks with focused tests, repository architecture, and Solution Architect review of scope follow-ups.
+description: Implement approved agent tasks with focused tests, repository architecture, and Solution Architect review of scope follow-ups.
 ---
 
 # Test-driven implementation
 
 Follow the approved SPEC, PLAN, and TASKS. Load the Python implementation
-reference under `references/` and relevant Mail, Wiki, or framework pages only.
+reference under `references/` and only the behavior pages relevant to the
+affected agent (Mail, Wiki, Jira/tickets, user memory, or orchestration) and
+framework.
+For a new agent or cross-agent change, also load the shared
+[agent-family architecture reference](../implementation-plan/references/agent-family-architecture.md).
 Inspect callers, tests, and existing adapters before changing code; record what
 was considered for reuse.
 

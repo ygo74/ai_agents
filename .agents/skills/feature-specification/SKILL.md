@@ -1,20 +1,23 @@
 ---
 name: feature-specification
-description: Turn a request about Mail, Wiki, or agent architecture into a reviewable SPEC using the relevant business or technical role.
+description: Turn a request about any agent capability or agent architecture into a reviewable SPEC using the relevant business or technical role.
 ---
 
 # Feature specification
 
-Start from the current system specification and read only the relevant Mail,
-Wiki, integration, and user-guide pages. Inspect affected code, manifests,
+Start from the current system specification and read only the relevant agent,
+integration, and user-guide pages. Inspect affected code, manifests,
 permissions, tests, and docs enough to distinguish current behavior from the
 request. Do not invent requirements and do not create an Issue.
 
 Select one primary role based on the request outcome:
 
-- For a primarily functional Mail or Wiki capability, read the
-  [Business Analyst reference](references/business-analyst.md). Focus on user
-  goals, workflows, outcomes, acceptance criteria, and safety expectations.
+- For a primarily functional capability, read the
+  [Business Analyst reference](references/business-analyst.md). This applies
+  to Mail, Wiki, Jira/ticket management, user memory, orchestration, and future
+  agents. Focus on user goals, workflows, outcomes, acceptance criteria, and
+  safety expectations; then load only the behavior reference for the agents
+  and capabilities in scope.
 - For a primarily technical request (shared library use, framework integration,
   runtime hosting, architecture, or implementation details), read the Python
   Solution Architect reference in
