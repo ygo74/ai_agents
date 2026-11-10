@@ -1,6 +1,6 @@
 ---
 name: code-review-tasks
-description: Review the current development branch for unnecessary complexity, exploitable agent-security weaknesses, and missing explanatory comments. Write evidence-based implementation instructions for another agent under docs/tasks/<current-branch>/code-review-implementation.md. Use when asked for a code review that produces a remediation task file rather than inline comments or immediate fixes.
+description: Review branch changes for unnecessary complexity, agent-security weaknesses, and missing explanatory comments, then create an evidence-based remediation handoff. Use when asked for review findings prepared for another agent rather than inline comments or immediate fixes.
 ---
 
 # Code Review Implementation Tasks
@@ -94,6 +94,10 @@ Check that a maintainer can understand the code's intent and important contracts
 - Explain non-obvious decisions, invariants, trust boundaries, and trade-offs.
 - Document public contracts when inputs, outputs, errors, side effects, identity,
   or connection ownership would otherwise be unclear.
+- Check that every class and method documents its purpose and arguments in the
+  repository's standard form.
+- For a non-trivial method, check that its body explains the algorithm's stages,
+  ordering, and important invariants with concise comments.
 - Correct stale comments and docstrings that contradict the implementation.
 - Prefer clearer names or simpler code when they remove the need for explanation.
 

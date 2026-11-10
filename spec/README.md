@@ -194,14 +194,8 @@ runtime APIs.
 - [Repository distributions and installation](architecture/repository-structure.md)
 - [Runtime extraction decisions](architecture/runtime-extraction-candidates.md)
 - [Adding a new agent](../doc/contributors/implementing-an-agent.md)
+- [Development workflow and architecture principles](development-workflow.md)
 
-## Task records
-
-The design and implementation plans for issues #5 and #6 are preserved as task
-records. The current system specification above describes the resulting
-system.
-
-- [Issue #5 specification](tasks/issue-5/SPEC.md)
-- [Issue #5 implementation plan](tasks/issue-5/PLAN.md)
-- [Issue #6 specification](../doc/contributors/archive/tasks/issue-6/SPEC.md)
-- [Issue #6 implementation plan](../doc/contributors/archive/tasks/issue-6/PLAN.md)
+New work starts from this consolidated system specification and the relevant
+domain pages. Request records describe one implementation effort and are not
+sources of current system behavior.
