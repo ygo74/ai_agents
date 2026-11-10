@@ -75,6 +75,8 @@ these records are for developers and agents, not user documentation.
   [`spec-consolidation`](.agents/skills/spec-consolidation/SKILL.md), and
   [`repository-delivery`](.agents/skills/repository-delivery/SKILL.md) apply
   when the request needs those phases.
+- [`origin-push`](.agents/skills/origin-push/SKILL.md) covers explicitly
+  requested commits and pushes, including the mandatory Python quality gates.
 - Existing documentation, code-review, and image-version skills remain under
   `.agents/skills/` and are used when requested or included in approved scope.
 
