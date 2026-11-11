@@ -45,6 +45,29 @@ An HTTP server that requires caller identity refuses to start without an
 authentication policy. Stdio connections are local process relationships and
 do not use HTTP authentication.
 
+## Hosting the Mail and Wiki agents through MCP
+
+Mail and Wiki also expose their existing agent conversation entrypoints as MCP
+servers on the same FastAPI applications as their provider routes. The runtime
+mounts Streamable HTTP at `/mcp` and publishes one `invoke_agent` tool with
+`message` and optional `conversation_id` arguments. Its caller identity comes
+from the verified HTTP authentication context; clients cannot choose a subject,
+email, or roles in tool arguments. Mail retains its email requirement, while
+Wiki accepts its subject-only accounts.
+
+The endpoints use the manifest's existing authentication policy. Mail's
+JWT-protected surface requires `http.mcp.resource_url`, set to the public HTTPS
+`/mcp` address through `MAIL_AGENT_HTTP_MCP_RESOURCE_URL`. Wiki uses its
+manifest's API-key policy and does not publish OAuth resource metadata. Both
+services continue to use their existing conversation cache and domain-level
+write confirmations. The cache is process-local, so a deployment with multiple
+workers or replicas needs session affinity to continue a conversation.
+
+The `http` extras for the Mail and Wiki distributions install the runtime's
+optional `mcp-server` extra. This is inbound MCP hosting; each agent's existing
+`mcp` client dependency remains separately responsible for reaching its
+enterprise MCP server.
+
 Authentication of an agent process is not automatically the same as the
 end-user identity. Wiki deployments can pass caller-specific authorization to a
 server that supports delegated access; Mail deployments may use configured

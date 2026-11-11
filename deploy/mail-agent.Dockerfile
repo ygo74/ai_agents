@@ -74,7 +74,7 @@ EXPOSE 8123
 # answered with 401 - which is the security policy working, not the process
 # failing. See deploy/healthcheck.py for why it carries no credential.
 HEALTHCHECK --interval=30s --timeout=6s --start-period=25s --retries=3 \
-    CMD ["python", "/app/healthcheck.py", "http://127.0.0.1:8123/v1/models"]
+    CMD ["python", "/app/healthcheck.py", "http://127.0.0.1:8123/v1/models", "https://127.0.0.1:8123/v1/models"]
 
 ENTRYPOINT ["uvicorn", "ai_agent_lab.mail.bootstrap.service:build_app", "--factory"]
 CMD ["--host", "0.0.0.0", "--port", "8123"]

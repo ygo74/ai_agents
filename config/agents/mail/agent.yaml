@@ -30,7 +30,9 @@ skills:
   - create_label
   - delete_label
 http:
-  endpoints: [chat_completions, responses]
+  endpoints: [chat_completions, responses, mcp]
+  mcp:
+    resource_url: ${MAIL_AGENT_HTTP_MCP_RESOURCE_URL}
   security:
     # mode: api_key
     # api_key:
