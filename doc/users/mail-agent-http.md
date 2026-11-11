@@ -62,6 +62,24 @@ the selected path first. Process variables override file values; a selected
 file does not fall back to `.env`. See the
 [component setup](mail-agent.md#choose-an-environment-file-per-component).
 
+To serve HTTPS directly, provide both Uvicorn TLS files to the launcher:
+
+```powershell
+.\.venvs\mail-agent-maf\Scripts\python.exe -m ai_agent_lab.mail.adapters.http.server `
+  --port 8123 `
+  --ssl-certfile C:\secrets\mail-fullchain.pem `
+  --ssl-keyfile C:\secrets\mail-private-key.pem
+```
+
+The certificate file should contain the server certificate and required
+intermediate certificates. Keep the private key outside the repository and
+make it readable only by the service account. The two flags must be supplied
+together; omitting both keeps the current HTTP behavior. `resource_url` in the
+manifest advertises the public MCP URL for OAuth metadata. It does not enable
+TLS on the listener. When this service handles HTTPS directly, set
+`MAIL_AGENT_HTTP_MCP_RESOURCE_URL` to its externally reachable HTTPS URL ending
+in `/mcp`.
+
 ```powershell
 curl -Method POST http://127.0.0.1:8123/v1/chat/completions `
   -Headers @{"x-api-key" = "demo-key"} `
@@ -70,7 +88,9 @@ curl -Method POST http://127.0.0.1:8123/v1/chat/completions `
 
 ## MCP clients
 
-The same host exposes MCP Streamable HTTP at `http://127.0.0.1:8123/mcp`.
+The same host exposes MCP Streamable HTTP at
+`http://127.0.0.1:8123/mcp`, or `https://127.0.0.1:8123/mcp` when the TLS
+certificate and key options are enabled.
 It registers one `invoke_agent` tool with `message` and optional
 `conversation_id` arguments. The HTTP authentication policy also protects MCP;
 the caller subject and required email come from the verified token or API-key

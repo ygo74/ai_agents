@@ -73,7 +73,8 @@ mock mode, keep this subject aligned with `WIKI_AGENT_USER_ID`. The manifest
 deliberately does not invent an e-mail address.
 
 The same authenticated host exposes MCP Streamable HTTP at
-`http://127.0.0.1:8124/mcp`. It registers one `invoke_agent` tool with
+`http://127.0.0.1:8124/mcp`, or `https://127.0.0.1:8124/mcp` when TLS is
+enabled. It registers one `invoke_agent` tool with
 `message` and optional `conversation_id` arguments. This API-key deployment
 uses the subject configured in the manifest and does not require an email
 claim. With JWT mode, the verified subject remains the cache and authorization
@@ -82,6 +83,21 @@ identity; the MCP tool accepts no subject, email, or role arguments.
 The launcher loads the selected file before starting Uvicorn and keeps its path
 available to reload workers. A path explicitly provided with `--env-file` must
 exist.
+
+To serve HTTPS directly, supply both Uvicorn TLS files to the launcher:
+
+```powershell
+.\.venvs\wiki-agent\Scripts\python.exe -m ai_agent_lab.wiki.adapters.http.server `
+  --env-file .env_wiki_agent_http --port 8124 `
+  --ssl-certfile C:\secrets\wiki-fullchain.pem `
+  --ssl-keyfile C:\secrets\wiki-private-key.pem
+```
+
+The certificate file should include the server certificate and required
+intermediate certificates. Keep the private key outside the repository and
+make it readable only by the service account. The flags are a pair; omitting
+both leaves the service on HTTP. TLS is configured on the Uvicorn listener,
+not in the agent manifest.
 
 ```powershell
 curl -Method POST http://127.0.0.1:8124/v1/chat/completions `

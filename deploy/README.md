@@ -57,6 +57,19 @@ environment.
 If LibreChat runs in Docker and the agent runs on the host, replace
 `http://mail-agent:8123/v1` with `http://host.docker.internal:8123/v1`.
 
+To run the Python launcher with direct HTTPS, pass both certificate paths:
+
+```powershell
+.\.venvs\mail-agent-maf\Scripts\python.exe -m ai_agent_lab.mail.adapters.http.server `
+  --host 0.0.0.0 --port 8123 `
+  --ssl-certfile C:\secrets\mail-fullchain.pem `
+  --ssl-keyfile C:\secrets\mail-private-key.pem
+```
+
+The key file stays outside the repository. For a container deployment, mount
+the files read-only and pass Uvicorn's `--ssl-certfile` and `--ssl-keyfile`
+options in the container command; see the [direct HTTPS deployment example](../doc/users/deployment.md#serving-an-agent-directly-over-https).
+
 The same Mail process exposes MCP Streamable HTTP at `/mcp` and the single `invoke_agent` tool. It uses the same authentication policy and conversation cache as the OpenAI routes. The Wiki process exposes the same MCP path with its API-key policy; its identity can be a subject without an email claim. The cache is process-local, so deployments with multiple workers or replicas need session affinity. See the [Mail HTTP guide](../doc/users/mail-agent-http.md), [Wiki HTTP guide](../doc/users/wiki-agent-http.md), and [MCP hosting specification](../spec/integrations/mcp-server-hosting.md).
 
 ## Checking it before involving LibreChat
