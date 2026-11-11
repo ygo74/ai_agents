@@ -36,7 +36,11 @@ several of the ten local distributions, and they live in different directories.
 
 ## Running the Mail Agent for LibreChat
 
-Start the agent against the deterministic dataset - no mailbox, no credentials:
+Start the agent against the deterministic dataset. The checked-in Mail manifest
+uses JWT/OIDC; the API-key commands below assume you selected API-key mode in
+`config/agents/mail/agent.yaml`. JWT deployments set
+`MAIL_AGENT_HTTP_MCP_RESOURCE_URL` to their public HTTPS URL ending in `/mcp`
+and send a bearer token from the configured issuer.
 
 ```powershell
 $env:MAIL_AGENT_MODE = "mock"
@@ -52,6 +56,8 @@ environment.
 
 If LibreChat runs in Docker and the agent runs on the host, replace
 `http://mail-agent:8123/v1` with `http://host.docker.internal:8123/v1`.
+
+The same Mail process exposes MCP Streamable HTTP at `/mcp` and the single `invoke_agent` tool. It uses the same authentication policy and conversation cache as the OpenAI routes. The Wiki process exposes the same MCP path with its API-key policy; its identity can be a subject without an email claim. The cache is process-local, so deployments with multiple workers or replicas need session affinity. See the [Mail HTTP guide](../doc/users/mail-agent-http.md), [Wiki HTTP guide](../doc/users/wiki-agent-http.md), and [MCP hosting specification](../spec/integrations/mcp-server-hosting.md).
 
 ## Checking it before involving LibreChat
 

@@ -11,7 +11,7 @@ For the developer path before HTTP hosting, see
 
 ## What runs the HTTP surface
 
-Routes, OpenAI request shapes, JWT validation and discovery come from
+Routes, OpenAI request shapes, MCP Streamable HTTP, JWT validation and discovery come from
 [`ygo74-agent-runtime`](https://github.com/ygo74/ai-enterprise-agent-runtime). We
 do not reimplement them.
 
@@ -28,7 +28,7 @@ application - the same split Microsoft describes for its own hosting helpers:
 
 | Owned by the runtime library | Owned here |
 |---|---|
-| `POST /v1/chat/completions`, `GET /v1/models` | Which caller a request is attributed to |
+| `POST /v1/chat/completions`, `GET /v1/models`, MCP at `/mcp` | Which caller a request is attributed to |
 | OpenAI payload normalisation | Which conversation it continues |
 | JWT / API-key authentication | What happens to a gated operation |
 | Discovery and access policy | Isolation and eviction of conversation state |
@@ -46,9 +46,12 @@ $env:MAIL_AGENT_HTTP_API_KEY = "demo-key"
 `adapters/http/entrypoint.py`. The Mail Docker entrypoint uses the same bootstrap
 path. No legacy application launch path is provided.
 
-The checked-in manifest declares `http.security.api_key.value` as
-`${MAIL_AGENT_HTTP_API_KEY}`. Change `http.security` in that manifest to select
-JWT/OIDC. The complete manifest key reference is documented by the runtime's
+The checked-in manifest selects JWT/OIDC. Set
+`MAIL_AGENT_HTTP_MCP_RESOURCE_URL` to the public HTTPS address of this service,
+including `/mcp`; the runtime uses it for protected-resource metadata. The
+quick API-key commands below require changing `http.security` in the manifest
+to API-key mode and setting `MAIL_AGENT_HTTP_API_KEY`. API-key MCP does not
+require a resource URL. The complete manifest key reference is documented by the runtime's
 [agent manifest guide](https://github.com/ygo74/ai-enterprise-agent-runtime/blob/main/doc/python/agent-manifest.md#http-keys).
 
 The launcher reads `.env` by default. Add `--env-file .env.mail-agent` to choose
@@ -64,6 +67,20 @@ curl -Method POST http://127.0.0.1:8123/v1/chat/completions `
   -Headers @{"x-api-key" = "demo-key"} `
   -Body '{"model":"mail-agent","messages":[{"role":"user","content":"anything from John?"}]}'
 ```
+
+## MCP clients
+
+The same host exposes MCP Streamable HTTP at `http://127.0.0.1:8123/mcp`.
+It registers one `invoke_agent` tool with `message` and optional
+`conversation_id` arguments. The HTTP authentication policy also protects MCP;
+the caller subject and required email come from the verified token or API-key
+identity, never from tool arguments. For JWT/OIDC, configure
+`http.mcp.resource_url` to the public `/mcp` URL. For API-key mode, use the
+`X-API-Key` header.
+
+Mail uses the same bounded conversation cache for OpenAI and MCP calls. It is
+process-local, so a deployment with multiple workers or replicas needs session
+affinity to continue an existing conversation.
 
 VS Code's Mail HTTP mock profile does the same on port 8123
 with the debugger attached and prompts for the environment file.
@@ -114,7 +131,8 @@ installed library and skip, with a reason, whatever it cannot do yet.
 
 | Variable | Meaning |
 |---|---|
-| `MAIL_AGENT_HTTP_API_KEY` | Secret referenced by the checked-in API-key configuration in `agent.yaml`. |
+| `MAIL_AGENT_HTTP_MCP_RESOURCE_URL` | Public HTTPS URL ending in `/mcp`; required by the checked-in JWT-protected MCP surface. |
+| `MAIL_AGENT_HTTP_API_KEY` | Secret referenced by `agent.yaml` when API-key mode is selected. |
 | `MAIL_AGENT_HTTP_MAX_CONVERSATIONS` | Ceiling on live conversations. Default 200. |
 | `MAIL_AGENT_HTTP_IDLE_MINUTES` | How long an untouched conversation is kept. Default 30. |
 

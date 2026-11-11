@@ -15,7 +15,7 @@ turn.
 
 ## What runs the HTTP surface
 
-Routes, OpenAI request shapes, JWT validation and discovery come from
+Routes, OpenAI request shapes, MCP Streamable HTTP, JWT validation and discovery come from
 [`ygo74-agent-runtime`](https://github.com/ygo74/ai-enterprise-agent-runtime). We
 do not reimplement them.
 
@@ -29,7 +29,7 @@ audience and optional claim paths in the manifest. Send bearer tokens in
 
 | Owned by the runtime library | Owned here |
 |---|---|
-| `POST /v1/chat/completions`, `GET /v1/models` | Which caller a request is attributed to |
+| `POST /v1/chat/completions`, `GET /v1/models`, MCP at `/mcp` | Which caller a request is attributed to |
 | OpenAI payload normalisation | Which conversation it continues |
 | JWT / API-key authentication | What happens to a gated operation |
 | Discovery and access policy | Isolation and eviction of conversation state |
@@ -71,6 +71,13 @@ The key and its caller identity are declared in `config/agents/wiki/agent.yaml`;
 the checked-in subject is `diana`, matching the sample mock user. When using
 mock mode, keep this subject aligned with `WIKI_AGENT_USER_ID`. The manifest
 deliberately does not invent an e-mail address.
+
+The same authenticated host exposes MCP Streamable HTTP at
+`http://127.0.0.1:8124/mcp`. It registers one `invoke_agent` tool with
+`message` and optional `conversation_id` arguments. This API-key deployment
+uses the subject configured in the manifest and does not require an email
+claim. With JWT mode, the verified subject remains the cache and authorization
+identity; the MCP tool accepts no subject, email, or role arguments.
 
 The launcher loads the selected file before starting Uvicorn and keeps its path
 available to reload workers. A path explicitly provided with `--env-file` must
@@ -181,6 +188,10 @@ and reply assembly. The Wiki factory and LangGraph session adapter retain the
 subject-derived `thread_id` and framework state translation. Against a real
 Confluence it matters that eviction closes sessions rather than leaving them
 looking active after the caller has gone.
+
+MCP and OpenAI requests share this process-local cache. When running multiple
+workers or replicas, use session affinity so a conversation continues on the
+process that owns it.
 
 > Each conversation gets its own `InMemorySaver`. That is right for a
 > proof of concept - one runtime per conversation, closed on eviction - but a

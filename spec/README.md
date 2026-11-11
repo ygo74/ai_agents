@@ -57,7 +57,7 @@ Agents do not integrate with enterprise systems directly. A system is reached
 through an MCP server, whether that server is maintained here or supplied by a
 third party. The agent-side dialect is the compatibility boundary.
 
-## HTTP conversation lifecycle
+## HTTP and MCP conversation lifecycle
 
 Mail and Wiki use the runtime's generic conversation flow while keeping their
 framework runtimes distinct. `MailConversation` and `WikiConversation` are
@@ -67,7 +67,7 @@ Mail/Wiki base class. Each local conversation factory composes the runtime,
 framework session adapter, pending-confirmation store, confirmed-operation
 runner, and renderer for its domain.
 
-An HTTP turn follows this sequence:
+An HTTP or MCP turn follows this sequence:
 
 1. The agent entrypoint converts the authenticated request payload into a
    `ConversationTurn` containing the caller, conversation ID, and user message.
@@ -89,8 +89,17 @@ An HTTP turn follows this sequence:
    state through its thread ID and resume command. Pending-confirmation policy
    and the person-facing approval resolver remain application-owned.
 5. The engine returns an `AgentReply` with the answer, rendered pending-action
-   details, and pending ticket identifiers. The HTTP entrypoint maps that
-   result back to the configured provider response shape.
+   details, and pending ticket identifiers. Provider entrypoints map that
+   result to their response shape; the MCP adapter returns the typed output and
+   pending confirmation metadata as a structured `invoke_agent` result.
+
+Mail and Wiki select MCP Streamable HTTP at `/mcp` in their existing manifest
+HTTP endpoint lists. The runtime authenticates MCP requests with the same
+policy used by the provider routes and passes only the verified caller context
+to the agent. Mail additionally requires an email claim; Wiki requires a
+subject but does not invent or require an email. The route exposes no identity
+arguments. The shared bounded conversation cache is process-local, so multiple
+workers or replicas need session affinity.
 
 This division keeps caller scoping, ticket handling, turn cleanup, and reply
 assembly consistent while allowing each application to choose its framework,
