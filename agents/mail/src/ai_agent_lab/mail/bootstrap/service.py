@@ -82,6 +82,8 @@ def build_app(*, base_path: Path | None = None, env_file: Path | None = None) ->
         require_email=True,
         tools=tuple(skill.operation for skill in manifest.skills),
         control_point="mail-deterministic-skill-gates",
+        mcp_agent_operation_name=manifest.mcp_agent_operation_name,
+        mcp_agent_description=manifest.mcp_agent_description,
     )
     worker = ManagedAgentWorker(
         definition,

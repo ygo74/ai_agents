@@ -46,7 +46,7 @@ async def invoke_agent(
     conversation_id: str = "default",
     arguments: Mapping[str, Any] | None = None,
 ):
-    """Call the public agent tool and return the MCP SDK result.
+    """Discover and call the agent's single public conversational MCP tool.
 
     Args:
         session: Initialized MCP client session.
@@ -57,4 +57,9 @@ async def invoke_agent(
     tool_arguments = {"message": message, "conversation_id": conversation_id}
     if arguments:
         tool_arguments.update(arguments)
-    return await session.call_tool("invoke_agent", tool_arguments)
+    # Tool names are agent-specific, so clients choose the discovered operation
+    # rather than assuming every server calls it ``invoke_agent``.
+    tools = await session.list_tools()
+    if len(tools.tools) != 1:
+        raise AssertionError("an agent MCP endpoint must expose exactly one operation")
+    return await session.call_tool(tools.tools[0].name, tool_arguments)

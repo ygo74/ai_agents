@@ -129,7 +129,7 @@ From the repository root, use the development environment and the diagnostic
 client to ask a running Mail or Wiki Agent which MCP tools it exposes. The
 client initializes MCP and calls `list_tools`; it prints each tool description,
 argument names, types, required status, argument descriptions, and complete
-input schema. It never invokes `invoke_agent` or another tool.
+input schema. It never invokes the advertised agent operation or another tool.
 
 Mail's checked-in host configuration uses JWT. Obtain an access token through
 the existing identity-provider flow, put the complete bearer header in an

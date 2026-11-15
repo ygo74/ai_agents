@@ -70,7 +70,7 @@ The key file stays outside the repository. For a container deployment, mount
 the files read-only and pass Uvicorn's `--ssl-certfile` and `--ssl-keyfile`
 options in the container command; see the [direct HTTPS deployment example](../doc/users/deployment.md#serving-an-agent-directly-over-https).
 
-The same Mail process exposes MCP Streamable HTTP at `/mcp` and the single `invoke_agent` tool. It uses the same authentication policy and conversation cache as the OpenAI routes. The Wiki process exposes the same MCP path with its API-key policy; its identity can be a subject without an email claim. The cache is process-local, so deployments with multiple workers or replicas need session affinity. See the [Mail HTTP guide](../doc/users/mail-agent-http.md), [Wiki HTTP guide](../doc/users/wiki-agent-http.md), and [MCP hosting specification](../spec/integrations/mcp-server-hosting.md).
+The same Mail process exposes MCP Streamable HTTP at `/mcp` with one conversational tool whose name and description come from the agent manifest by default. The optional `mcp_agent_operation_name` and `mcp_agent_description` keys override them independently. It uses the same authentication policy and conversation cache as the OpenAI routes. The Wiki process exposes the same MCP path with its API-key policy; its identity can be a subject without an email claim. The cache is process-local, so deployments with multiple workers or replicas need session affinity. See the [Mail HTTP guide](../doc/users/mail-agent-http.md), [Wiki HTTP guide](../doc/users/wiki-agent-http.md), and [MCP hosting specification](../spec/integrations/mcp-server-hosting.md).
 
 ## Checking it before involving LibreChat
 

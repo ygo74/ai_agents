@@ -74,11 +74,16 @@ deliberately does not invent an e-mail address.
 
 The same authenticated host exposes MCP Streamable HTTP at
 `http://127.0.0.1:8124/mcp`, or `https://127.0.0.1:8124/mcp` when TLS is
-enabled. It registers one `invoke_agent` tool with
-`message` and optional `conversation_id` arguments. This API-key deployment
-uses the subject configured in the manifest and does not require an email
-claim. With JWT mode, the verified subject remains the cache and authorization
-identity; the MCP tool accepts no subject, email, or role arguments.
+enabled. It registers one conversational tool with `message` and optional
+`conversation_id` arguments. Its name and description default to the agent's
+`name` and `description` in `config/agents/wiki/agent.yaml`; the optional
+`mcp_agent_operation_name` and `mcp_agent_description` keys override either
+value independently. Clients should list tools to discover the operation name
+before invoking it. Set `mcp_agent_operation_name: invoke_agent` to preserve
+that name for an existing client. This API-key deployment uses the subject
+configured in the manifest and does not require an email claim. With JWT mode,
+the verified subject remains the cache and authorization identity; the MCP tool
+accepts no subject, email, or role arguments.
 
 The launcher loads the selected file before starting Uvicorn and keeps its path
 available to reload workers. A path explicitly provided with `--env-file` must

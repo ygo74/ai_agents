@@ -117,7 +117,50 @@ class TestTheServiceRefusesToRunOpen:
         assert no_credential.status_code in (401, 403)
         assert api_key.status_code == 200
         assert disabled_messages.status_code == 404
-        assert [tool.name for tool in tools.tools] == ["invoke_agent"]
+        manifest = yaml.safe_load(
+            (Path(os.environ[CONFIG_DIR_VARIABLE]) / "agents" / "mail" / "agent.yaml").read_text(
+                encoding="utf-8"
+            )
+        )
+        assert len(tools.tools) == 1
+        assert tools.tools[0].name == manifest.get("mcp_agent_operation_name", manifest["name"])
+        assert tools.tools[0].description == manifest.get("mcp_agent_description", manifest["description"])
+
+    async def test_manifest_overrides_the_mcp_operation_metadata(self, monkeypatch):
+        """Mail's MCP tool advertises optional manifest overrides."""
+        model = ScriptedChatClient([says("Mail MCP is ready.")])
+        monkeypatch.setattr(
+            MailAgentApplicationFactory,
+            "build_chat_client",
+            lambda self: model,
+        )
+        manifest_path = Path(os.environ[CONFIG_DIR_VARIABLE]) / "agents" / "mail" / "agent.yaml"
+        manifest = yaml.safe_load(manifest_path.read_text(encoding="utf-8"))
+        manifest["mcp_agent_operation_name"] = "mailbox_assistant"
+        manifest["mcp_agent_description"] = "Use for mailbox search and message actions."
+        manifest_path.write_text(yaml.safe_dump(manifest, sort_keys=False), encoding="utf-8")
+        app = build_app(base_path=REPOSITORY_ROOT)
+
+        async with app.router.lifespan_context(app):
+            async with connected_mcp_session(
+                app,
+                {"x-api-key": "demonstration-key"},
+            ) as session:
+                tools = await session.list_tools()
+                reply = await invoke_agent(session, "hello")
+            async with httpx.AsyncClient(
+                transport=httpx.ASGITransport(app=app),
+                base_url="http://test",
+                headers={"x-api-key": "demonstration-key"},
+            ) as http:
+                models = await http.get("/v1/models")
+
+        assert len(tools.tools) == 1
+        assert tools.tools[0].name == "mailbox_assistant"
+        assert tools.tools[0].description == "Use for mailbox search and message actions."
+        assert reply.isError is False
+        assert "Mail MCP is ready." in reply.structuredContent["output"]["value"]["contents"][0]["value"]["text"]
+        assert models.json()["data"][0]["id"] == "mail-agent"
 
 
 def _configure_static_jwt(monkeypatch: pytest.MonkeyPatch) -> None:

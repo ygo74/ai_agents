@@ -591,6 +591,10 @@ async def test_mcp_accepts_subject_only_identity_and_isolates_same_conversation_
 
         assert len(tools.tools) == 1
         assert models.status_code == 200
+        manifest_path = Path(os.environ[CONFIG_DIR_VARIABLE]) / "agents" / "wiki" / "agent.yaml"
+        manifest = yaml.safe_load(manifest_path.read_text(encoding="utf-8"))
+        assert tools.tools[0].name == manifest.get("mcp_agent_operation_name", manifest["name"])
+        assert tools.tools[0].description == manifest.get("mcp_agent_description", manifest["description"])
         assert set(tools.tools[0].inputSchema["properties"]) == {
             "message",
             "conversation_id",
@@ -601,6 +605,51 @@ async def test_mcp_accepts_subject_only_identity_and_isolates_same_conversation_
 
     second_prompt = "\n".join(str(message) for message in model.prompts[1])
     assert "private page phrase for wiki user one" not in second_prompt
+
+
+@pytest.mark.security
+async def test_wiki_mcp_defaults_operation_metadata_from_manifest():
+    """The MCP operation uses the agent name and description by default."""
+    app, _model = build_service([])
+    manifest_path = Path(os.environ[CONFIG_DIR_VARIABLE]) / "agents" / "wiki" / "agent.yaml"
+    manifest = yaml.safe_load(manifest_path.read_text(encoding="utf-8"))
+
+    async with (
+        app.router.lifespan_context(app),
+        connected_mcp_session(app, {"x-api-key": API_KEY}) as session,
+    ):
+        tools = await session.list_tools()
+
+    assert len(tools.tools) == 1
+    assert tools.tools[0].name == manifest["name"]
+    assert tools.tools[0].description == manifest["description"]
+
+
+@pytest.mark.security
+async def test_wiki_mcp_uses_manifest_operation_metadata_overrides():
+    """Wiki exposes customized MCP metadata without changing the conversation tool."""
+    config_root = Path(os.environ[CONFIG_DIR_VARIABLE])
+    manifest_path = config_root / "agents" / "wiki" / "agent.yaml"
+    manifest = yaml.safe_load(manifest_path.read_text(encoding="utf-8"))
+    manifest["mcp_agent_operation_name"] = "project_documentation"
+    manifest["mcp_agent_description"] = "Use for project pages, history, and comments."
+    manifest_path.write_text(yaml.safe_dump(manifest, sort_keys=False), encoding="utf-8")
+    app, _model = build_service([])
+
+    async with app.router.lifespan_context(app):
+        async with connected_mcp_session(app, {"x-api-key": API_KEY}) as session:
+            tools = await session.list_tools()
+        async with httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=app),
+            base_url="http://agent.test",
+            headers={"x-api-key": API_KEY},
+        ) as http:
+            models = await http.get("/v1/models")
+
+    assert len(tools.tools) == 1
+    assert tools.tools[0].name == "project_documentation"
+    assert tools.tools[0].description == "Use for project pages, history, and comments."
+    assert models.json()["data"][0]["id"] == AGENT_ID
 
 
 @pytest.mark.security

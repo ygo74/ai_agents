@@ -84,6 +84,8 @@ def build_app(
         factory="ai_agent_lab.wiki.bootstrap.service:build_graph",
         tools=tuple(skill.operation for skill in manifest.skills),
         control_point="wiki-confirmation-policy",
+        mcp_agent_operation_name=manifest.mcp_agent_operation_name,
+        mcp_agent_description=manifest.mcp_agent_description,
     )
     return LangGraphWorker(
         definition,

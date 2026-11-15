@@ -91,10 +91,15 @@ curl -Method POST http://127.0.0.1:8123/v1/chat/completions `
 The same host exposes MCP Streamable HTTP at
 `http://127.0.0.1:8123/mcp`, or `https://127.0.0.1:8123/mcp` when the TLS
 certificate and key options are enabled.
-It registers one `invoke_agent` tool with `message` and optional
-`conversation_id` arguments. The HTTP authentication policy also protects MCP;
-the caller subject and required email come from the verified token or API-key
-identity, never from tool arguments. For JWT/OIDC, configure
+It registers one conversational tool with `message` and optional
+`conversation_id` arguments. Its name and description default to the agent's
+`name` and `description` in `config/agents/mail/agent.yaml`; the optional
+`mcp_agent_operation_name` and `mcp_agent_description` keys override either
+value independently. Clients should list tools to discover the operation name
+before invoking it. Set `mcp_agent_operation_name: invoke_agent` to preserve
+that name for an existing client. The HTTP authentication policy also protects
+MCP; the caller subject and required email come from the verified token or
+API-key identity, never from tool arguments. For JWT/OIDC, configure
 `http.mcp.resource_url` to the public `/mcp` URL. For API-key mode, use the
 `X-API-Key` header.
 
