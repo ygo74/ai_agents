@@ -123,6 +123,42 @@ connection; `get_mail` uses the other connection. These names are existing Mail
 bindings, not a requirement for future agents. Each future agent supplies its
 own typed port, capability enum and dialect factories.
 
+## Inspect tools exposed by a hosted agent
+
+From the repository root, use the development environment and the diagnostic
+client to ask a running Mail or Wiki Agent which MCP tools it exposes. The
+client initializes MCP and calls `list_tools`; it prints each tool description,
+argument names, types, required status, argument descriptions, and complete
+input schema. It never invokes `invoke_agent` or another tool.
+
+Mail's checked-in host configuration uses JWT. Obtain an access token through
+the existing identity-provider flow, put the complete bearer header in an
+environment variable, and inspect the HTTPS endpoint:
+
+```powershell
+$env:MAIL_MCP_INSPECT_AUTHORIZATION = "Bearer <access-token>"
+python -m scripts.inspect_mcp `
+  --url https://127.0.0.1:8123/mcp `
+  --header Authorization=MAIL_MCP_INSPECT_AUTHORIZATION
+```
+
+Wiki's checked-in host configuration uses an API key:
+
+```powershell
+$env:WIKI_AGENT_HTTP_API_KEY = "<wiki-api-key>"
+python -m scripts.inspect_mcp `
+  --url https://127.0.0.1:8124/mcp `
+  --header X-API-Key=WIKI_AGENT_HTTP_API_KEY
+```
+
+The header option contains only the header name and environment-variable name;
+the secret value is read from the process environment and is not printed. The
+development environment installed by `python -m scripts.install` includes the
+MCP client and HTTP dependencies. HTTPS certificates must be trusted by that
+Python environment; the inspector does not disable certificate verification.
+Replace the URLs with the host's externally reachable `/mcp` URL when
+inspecting a deployment.
+
 ## Adding a server dialect
 
 1. Implement the relevant tool port with strict input and output mapping.
