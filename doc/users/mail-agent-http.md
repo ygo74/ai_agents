@@ -90,18 +90,84 @@ curl -Method POST http://127.0.0.1:8123/v1/chat/completions `
 
 The same host exposes MCP Streamable HTTP at
 `http://127.0.0.1:8123/mcp`, or `https://127.0.0.1:8123/mcp` when the TLS
-certificate and key options are enabled.
-It registers one conversational tool with `message` and optional
-`conversation_id` arguments. Its name and description default to the agent's
-`name` and `description` in `config/agents/mail/agent.yaml`; the optional
-`mcp_agent_operation_name` and `mcp_agent_description` keys override either
-value independently. Clients should list tools to discover the operation name
-before invoking it. Set `mcp_agent_operation_name: invoke_agent` to preserve
-that name for an existing client. The HTTP authentication policy also protects
-MCP; the caller subject and required email come from the verified token or
-API-key identity, never from tool arguments. For JWT/OIDC, configure
-`http.mcp.resource_url` to the public `/mcp` URL. For API-key mode, use the
-`X-API-Key` header.
+certificate and key options are enabled. It registers one conversational tool.
+The operation name and description default to `name` and `description` in
+`config/agents/mail/agent.yaml` (currently `mail-agent`); optional
+`mcp_agent_operation_name` and `mcp_agent_description` keys override them
+independently. To preserve the former `invoke_agent` name for an existing
+client, set `mcp_agent_operation_name: invoke_agent`. The tool schema requires
+`message` and accepts an optional `conversation_id`, which defaults to
+`default`.
+
+Configure the MCP client with this endpoint and the same authentication policy
+as the rest of the HTTP host; the checked-in configuration uses a bearer token.
+The MCP client initializes the Streamable HTTP session and manages its session
+headers. After initialization, list the operation and its schema:
+
+```json
+{"jsonrpc": "2.0", "id": 1, "method": "tools/list"}
+```
+
+The response contains `result.tools`, including the operation `name`, its
+`description`, and `inputSchema`. By default, Mail advertises the agent
+description from the manifest; an explicit `mcp_agent_description` replaces
+it. Use the advertised name when invoking the tool. For example, with no name
+override the name is `mail-agent`:
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "result": {
+    "tools": [
+      {
+        "name": "mail-agent",
+        "description": "<description from agent.yaml or its MCP override>",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "message": {"title": "Message", "type": "string"},
+            "conversation_id": {
+              "default": "default",
+              "title": "Conversation Id",
+              "type": "string"
+            }
+          },
+          "required": ["message"]
+        }
+      }
+    ]
+  }
+}
+```
+
+This shows the relevant fields; the server returns the complete schema and
+description. If a name override is configured, use that returned name instead
+of `mail-agent`.
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 2,
+  "method": "tools/call",
+  "params": {
+    "name": "<operation-name-from-tools-list>",
+    "arguments": {
+      "message": "Summarize messages from John.",
+      "conversation_id": "mail-review"
+    }
+  }
+}
+```
+
+The MCP client sends this call within the initialized session and with the same
+authentication. Reuse `conversation_id` on a later call to continue that
+conversation. If it is omitted, the endpoint uses `default`. The response
+includes structured agent output and the conversation ID. The caller subject
+and required email come from the verified token or API-key identity, never
+from tool arguments. For JWT/OIDC, configure `http.mcp.resource_url` to the
+public `/mcp` URL. For API-key mode, configure the client to send the
+`X-API-Key` header instead of a bearer token.
 
 Mail uses the same bounded conversation cache for OpenAI and MCP calls. It is
 process-local, so a deployment with multiple workers or replicas needs session

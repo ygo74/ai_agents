@@ -74,16 +74,85 @@ deliberately does not invent an e-mail address.
 
 The same authenticated host exposes MCP Streamable HTTP at
 `http://127.0.0.1:8124/mcp`, or `https://127.0.0.1:8124/mcp` when TLS is
-enabled. It registers one conversational tool with `message` and optional
-`conversation_id` arguments. Its name and description default to the agent's
-`name` and `description` in `config/agents/wiki/agent.yaml`; the optional
-`mcp_agent_operation_name` and `mcp_agent_description` keys override either
-value independently. Clients should list tools to discover the operation name
-before invoking it. Set `mcp_agent_operation_name: invoke_agent` to preserve
-that name for an existing client. This API-key deployment uses the subject
-configured in the manifest and does not require an email claim. With JWT mode,
-the verified subject remains the cache and authorization identity; the MCP tool
-accepts no subject, email, or role arguments.
+enabled. It registers one conversational tool. The operation name and
+description default to `name` and `description` in
+`config/agents/wiki/agent.yaml` (currently `wiki-agent`); optional
+`mcp_agent_operation_name` and `mcp_agent_description` keys override them
+independently. To preserve the former `invoke_agent` name for an existing
+client, set `mcp_agent_operation_name: invoke_agent`. The tool schema requires
+`message` and accepts an optional `conversation_id`, which defaults to
+`default`.
+
+Configure the MCP client with this endpoint and the same authentication policy
+as the rest of the HTTP host; the checked-in configuration uses an API key in
+the `X-API-Key` header. The MCP client initializes the Streamable HTTP session
+and manages its session headers. After initialization, list the operation and
+its schema:
+
+```json
+{"jsonrpc": "2.0", "id": 1, "method": "tools/list"}
+```
+
+The response contains `result.tools`, including the operation `name`, its
+`description`, and `inputSchema`. By default, Wiki advertises the agent
+description from the manifest; an explicit `mcp_agent_description` replaces
+it. Use the advertised name when invoking the tool. For example, with no name
+override the name is `wiki-agent`:
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "result": {
+    "tools": [
+      {
+        "name": "wiki-agent",
+        "description": "<description from agent.yaml or its MCP override>",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "message": {"title": "Message", "type": "string"},
+            "conversation_id": {
+              "default": "default",
+              "title": "Conversation Id",
+              "type": "string"
+            }
+          },
+          "required": ["message"]
+        }
+      }
+    ]
+  }
+}
+```
+
+This shows the relevant fields; the server returns the complete schema and
+description. If a name override is configured, use that returned name instead
+of `wiki-agent`.
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 2,
+  "method": "tools/call",
+  "params": {
+    "name": "<operation-name-from-tools-list>",
+    "arguments": {
+      "message": "Summarize the Apollo project documentation.",
+      "conversation_id": "apollo-review"
+    }
+  }
+}
+```
+
+The MCP client sends this call within the initialized session and with the same
+authentication. Reuse `conversation_id` on a later call to continue that
+conversation. If it is omitted, the endpoint uses `default`. The response
+includes structured agent output and the conversation ID. This API-key
+deployment uses the subject configured in the manifest and does not require an
+email claim. With JWT mode, the verified subject remains the cache and
+authorization identity; the MCP tool accepts no subject, email, or role
+arguments.
 
 The launcher loads the selected file before starting Uvicorn and keeps its path
 available to reload workers. A path explicitly provided with `--env-file` must
