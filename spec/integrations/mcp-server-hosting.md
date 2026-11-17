@@ -49,11 +49,17 @@ do not use HTTP authentication.
 
 Mail and Wiki also expose their existing agent conversation entrypoints as MCP
 servers on the same FastAPI applications as their provider routes. The runtime
-mounts Streamable HTTP at `/mcp` and publishes one `invoke_agent` tool with
-`message` and optional `conversation_id` arguments. Its caller identity comes
-from the verified HTTP authentication context; clients cannot choose a subject,
-email, or roles in tool arguments. Mail retains its email requirement, while
-Wiki accepts its subject-only accounts.
+mounts Streamable HTTP at `/mcp` and publishes one conversation tool. Its name
+and description default to the agent manifest's `name` and `description`;
+optional `mcp_agent_operation_name` and `mcp_agent_description` fields override
+them independently. Clients can discover the effective metadata with MCP
+`tools/list` and use the advertised operation name with `tools/call`. The input
+schema requires `message` and accepts optional `conversation_id`, which
+defaults to `default`.
+
+The caller identity comes from the verified HTTP authentication context;
+clients cannot choose a subject, email, or roles in tool arguments. Mail
+retains its email requirement, while Wiki accepts its subject-only accounts.
 
 The endpoints use the manifest's existing authentication policy. Mail's
 JWT-protected surface requires `http.mcp.resource_url`, set to the public HTTPS

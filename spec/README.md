@@ -90,8 +90,9 @@ An HTTP or MCP turn follows this sequence:
    and the person-facing approval resolver remain application-owned.
 5. The engine returns an `AgentReply` with the answer, rendered pending-action
    details, and pending ticket identifiers. Provider entrypoints map that
-   result to their response shape; the MCP adapter returns the typed output and
-   pending confirmation metadata as a structured `invoke_agent` result.
+   result to their response shape; the MCP adapter returns typed output and
+   pending confirmation metadata as a structured result from its advertised
+   operation.
 
 Mail and Wiki select MCP Streamable HTTP at `/mcp` in their existing manifest
 HTTP endpoint lists. The runtime authenticates MCP requests with the same
@@ -100,6 +101,14 @@ to the agent. Mail additionally requires an email claim; Wiki requires a
 subject but does not invent or require an email. The route exposes no identity
 arguments. The shared bounded conversation cache is process-local, so multiple
 workers or replicas need session affinity.
+
+Each agent MCP endpoint advertises one conversation tool. Its name and
+description default to the agent manifest's `name` and `description` and can be
+overridden independently with `mcp_agent_operation_name` and
+`mcp_agent_description`. The input schema requires `message` and accepts an
+optional `conversation_id`, defaulting to `default`. See the [MCP server
+hosting specification](integrations/mcp-server-hosting.md) for the full
+contract.
 
 This division keeps caller scoping, ticket handling, turn cleanup, and reply
 assembly consistent while allowing each application to choose its framework,
