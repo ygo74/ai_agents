@@ -10,27 +10,61 @@ these records are for developers and agents, not user documentation.
 ## Request lifecycle
 
 ```text
-user request or optional Issue
-  → SPEC → user approval → PLAN → user approval → TASKS
-  → test-driven implementation → review and user acceptance
-  → requested documentation, consolidation, and release work
+user request or optional Issue → classify and select branch
+  ├─ documentation/consolidation only → relevant skill
+  └─ implementation change → SPEC → approval → PLAN → approval → TASKS
+     → test-driven implementation → review and user acceptance
+     → requested documentation, consolidation, and release work
 ```
 
 Use [`development-workflow`](.agents/skills/development-workflow/SKILL.md) as
 the entry point. An Issue is optional; do not create one unless the user asks.
 
+First classify the request. If it is limited to user documentation, contributor
+documentation, or consolidation of the global specification, apply the branch
+rules below and use the matching skill without creating or updating development
+SPEC/PLAN artifacts. If a request also changes implementation behavior, use the
+full tracked workflow.
+
+Before making repository changes, inspect each affected repository
+independently. Check its working tree and current branch, then successfully
+refresh and inspect `origin` so a stale remote-tracking ref is not mistaken for
+a live branch. A successful `git fetch origin --prune` refreshes remote refs;
+verify that `origin/main` is available before creating a branch from it.
+
+| Repository state after checking `origin` | Branch action | Request tracking for implementation changes |
+| --- | --- | --- |
+| Current branch is `main` | Fetch the latest `origin/main`; create a request branch from it. | Create a new canonical SPEC and PLAN in the primary repository. |
+| Current branch is not `main` and still exists on `origin` | Continue on the current branch. | Update that branch's existing canonical SPEC and PLAN in place. |
+| Current branch is not `main` and no longer exists on `origin` | Fetch the latest `origin/main`; create a new request branch from it. Keep the old local branch and its commits. | Create a new canonical SPEC and PLAN in the primary repository. |
+
+Do not switch branches with uncommitted work. Preserve it and ask how to
+proceed if a branch transition is needed. If `origin` cannot be refreshed,
+stop before choosing a branch based on stale refs. For a continuing branch,
+locate its existing tracking folder using the Issue identifier, branch recorded
+in `JOURNAL.md`, and request scope. Prefer the matching record whose
+`TASKS.md`/`JOURNAL.md` show related work is active. If the relevant record is
+ambiguous, ask the user which one to continue; do not silently create a
+duplicate. Keep one request record in the primary repository. In a
+multi-repository request, make the
+branch decision independently in each repository and record secondary branch
+states in the canonical journal; do not create duplicate tracking folders in
+secondary repositories.
+
 For a primarily functional capability of any agent, the specification skill
 loads the Business Analyst reference. For a primarily technical request, it
-loads the Python Solution Architect reference. The SPEC records the request,
-scope, expected behavior, acceptance criteria, constraints, risks, and open
-decisions. Present it and wait for explicit user approval before planning.
+loads the Python Solution Architect reference. The new or amended SPEC records
+the request, scope, expected behavior, acceptance criteria, constraints, risks,
+and open decisions. Present it and wait for explicit user approval before
+planning.
 
 After SPEC approval, the planning skill examines the current source, tests,
 contracts, configuration, documentation, and examples. It loads the Python
 Solution Architect reference and, for new agents or cross-agent changes, the
 shared [agent-family architecture reference](.agents/skills/implementation-plan/references/agent-family-architecture.md).
-Present the PLAN and wait for approval. After plan approval, the architect
-creates ordered `TASKS.md`; there is no additional task-approval gate.
+Present the new or amended PLAN and wait for approval. After plan approval, the
+architect creates or extends ordered `TASKS.md`; there is no additional
+task-approval gate.
 
 Implement approved tasks test-first: failing test, minimal change, passing
 test, and refactor for behavior changes. Keep the implementation simple, typed,
@@ -79,9 +113,13 @@ Keep one canonical request folder in the primary repository:
 spec/implementation/<issue-N-or-adhoc-slug>/{SPEC,PLAN,TASKS,JOURNAL}.md
 ```
 
-Start each new request from the consolidated `spec/` pages, not an old request
-record. Keep tracking material out of user-facing documentation. After user
-acceptance, use consolidation, user-documentation, contributor-documentation,
-and image-version skills only when requested or included in the approved plan.
+Start each new request from the consolidated `spec/` pages. On an existing
+remote branch, continue that branch's existing SPEC and PLAN rather than
+treating its tracking record as current system behavior. Keep tracking material
+out of user-facing documentation. After user acceptance, use consolidation,
+user-documentation, contributor-documentation, and image-version skills only
+when requested or included in the approved plan. Documentation and
+consolidation phases do not require amendments to the development SPEC or PLAN
+unless they also change implementation scope.
 Pushing a `v*` tag triggers image publication and requires explicit user
 authorization. Never merge or publish implicitly.

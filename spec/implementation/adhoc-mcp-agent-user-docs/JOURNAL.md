@@ -34,3 +34,39 @@
 - `git diff --check` in `ai-enterprise-agent-runtime`: passed.
 - No automated tests were run, as this is a documentation-only change and the
   approved plan excludes tests.
+
+## Workflow amendment status
+
+- The maintainer requested updated SPEC/PLAN reuse and branch-selection rules
+  for the skills in both repositories, with documentation-only and
+  consolidation-only requests exempt from development SPEC/PLAN tracking.
+- The current branch was checked independently in both repositories. Each is
+  `feature/37-mcp-agent-endpoints` and has a matching local `origin` tracking
+  ref (`ai_agents`: `100d9c2f`; `ai-enterprise-agent-runtime`: `e2ca5637`);
+  the branch was also confirmed on GitHub for both repositories.
+- Updated this existing SPEC and PLAN in place; no new request folder was
+  created. The maintainer approved the amended SPEC and PLAN.
+- The implementation checklist was extended in the existing `TASKS.md`.
+- Current work is limited to workflow instructions and skills in the two
+  repositories. No application code, user/contributor product docs, CI,
+  commits, or pushes were included in the workflow-amendment implementation.
+
+## Workflow amendment completion
+
+- Updated `AGENTS.md`, `WORKFLOW.md`, and the workflow, specification,
+  planning, task, multi-repository, user-documentation,
+  contributor-documentation, and specification-consolidation skills in both
+  repositories.
+- The branch rules check each repository independently, refresh remote refs,
+  reuse the existing request record on a continuing remote branch, and create
+  a branch from the updated `origin/main` when on `main` or a deleted remote
+  branch. Existing local branches and uncommitted work are protected.
+- Documentation-only and consolidation-only requests now skip development
+  SPEC/PLAN tracking; implementation requests retain SPEC and PLAN approval
+  gates and extend their existing task list.
+- Reviewed the two repositories' routing rules and the new local skill links.
+  `git diff --check` passed in both repositories. No automated tests were run
+  because this change only updates workflow documentation.
+- No commits or pushes were made as part of implementing the workflow
+  amendment. The maintainer subsequently requested delivery of the workflow
+  and tracking changes.

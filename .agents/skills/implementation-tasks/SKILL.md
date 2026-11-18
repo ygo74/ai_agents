@@ -7,7 +7,10 @@ description: Convert an approved Python architecture plan into ordered implement
 
 Use after PLAN approval. Read the [tracking artifact templates](../development-workflow/references/artifact-templates.md)
 and Python Solution Architect reference, then convert the approved plan into
-`TASKS.md` in the canonical tracking directory.
+`TASKS.md` in the existing request tracking directory. Create it for a new
+request; extend it for an approved amendment, preserving completed task records
+and adding ordered tasks for the new scope. Do not create a new tracking folder
+when continuing a remote branch.
 
 Order tasks by dependency. Name the repository and affected modules for each
 task; state prerequisites, observable completion criteria, and validation.

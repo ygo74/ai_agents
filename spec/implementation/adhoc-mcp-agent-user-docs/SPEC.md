@@ -86,3 +86,40 @@ data and do not encourage unauthenticated calls.
   describe the stable JSON-RPC request and the semantic result without claiming
   a client-specific presentation.
 - None open at specification time.
+
+## Amendment: reuse request tracking and route documentation-only work
+
+The maintainer reports that the current workflow creates a new SPEC for every
+change request. Amend this request to update the workflow guidance in both
+repositories so work on an existing remote branch updates that branch's
+existing request SPEC and PLAN. A new request SPEC and PLAN are created only
+when the branch decision calls for a new work branch.
+
+Before creating or reusing request tracking, inspect the current branch and
+whether that branch exists on `origin`, independently for each affected
+repository:
+
+- On `main`, create a request branch from the latest `origin/main` and create a
+  new request SPEC and PLAN.
+- On a non-main branch that still exists on `origin`, stay on that branch and
+  update its existing canonical SPEC and PLAN in place.
+- On a non-main branch absent from `origin`, fetch the latest `origin/main`,
+  create a new request branch from it, and create a new SPEC and PLAN. Preserve
+  local changes and never discard them as part of branch selection.
+
+Requests limited to user documentation, contributor documentation, or
+consolidating the global repository specification use the relevant skill
+directly and do not create or update development request SPEC/PLAN artifacts.
+The branch decision still applies to repository changes. If a request also
+changes implementation behavior, it uses the normal SPEC/PLAN workflow.
+
+### Amendment acceptance criteria
+
+1. Both repositories describe the same branch and tracking decision rules,
+   including checking origin independently for every repository.
+2. Existing request tracking on a branch that remains on origin is updated in
+   place; a new tracking folder is not created for that case.
+3. A deleted remote branch leads to a new branch based on fetched `origin/main`
+   and new request tracking, while preserving local work.
+4. User-doc, contributor-doc, and spec-consolidation-only requests bypass
+   development SPEC/PLAN tracking; implementation requests do not.

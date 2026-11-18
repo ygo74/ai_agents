@@ -26,11 +26,22 @@ Select one primary role based on the request outcome:
   secondary concerns. Ask only if the main outcome cannot be inferred.
 
 Use the [tracking artifact templates](../development-workflow/references/artifact-templates.md)
-when useful. Create `SPEC.md` in `spec/implementation/<issue-N-or-adhoc-slug>/` in the
-primary repository. Record request source, repository scope, goal, current
-context, expected behavior, acceptance criteria, out-of-scope items,
-constraints, risks, and open decisions. Note security, permissions, untrusted
-content, MCP, compatibility, docs, and deployment impacts when relevant.
+when useful. Follow the branch and tracking decision in
+[development-workflow](../development-workflow/SKILL.md): create a new
+`SPEC.md` only for a new request branch, or amend the SPEC already associated
+with the continuing remote branch. Preserve its prior scope and record the new
+request as a clearly marked amendment with acceptance criteria; do not create
+a second folder for that branch. If the existing record cannot be identified
+uniquely, stop and ask.
 
-Present the SPEC path, summary, key decisions, and open questions. Wait for
-explicit user approval before preparing the plan.
+Store the canonical SPEC under
+`spec/implementation/<issue-N-or-adhoc-slug>/` in the primary repository.
+Record request source, repository scope, goal, current context, expected
+behavior, acceptance criteria, out-of-scope items, constraints, risks, and open
+decisions for the new request or amendment. Note security, permissions,
+untrusted content, MCP, compatibility, docs, and deployment impacts when
+relevant.
+
+Present the complete new or amended SPEC, its path, summary, key decisions, and
+open questions. Wait for explicit user approval before preparing or amending
+the plan.

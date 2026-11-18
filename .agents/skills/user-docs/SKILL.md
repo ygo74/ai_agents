@@ -5,6 +5,14 @@ description: Create or update simple-English Markdown documentation for users an
 
 # User Documentation
 
+When the request is limited to user documentation, use this skill directly
+after the repository branch is selected by
+[development-workflow](../development-workflow/SKILL.md). Do not create or
+update a development request SPEC or PLAN for this documentation-only request.
+If documentation is part of an implementation request, keep it within the
+approved implementation scope; updating these guides does not by itself require
+amending that request's SPEC or PLAN.
+
 Write documentation for people who install, configure, or use the repository's
 runtime and agents. Use simple English for readers working in a French-speaking
 environment. Explain product terms before using them and preserve exact command,

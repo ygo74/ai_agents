@@ -10,3 +10,13 @@
 - [x] DOCS-003 Review the three guide diffs, JSON-RPC request bodies, links,
   placeholders, and claims against the current manifests and runtime contract;
   record outcomes in `JOURNAL.md`; depends on: DOCS-001, DOCS-002.
+- [x] WF-001 Update `AGENTS.md`, `WORKFLOW.md`, `development-workflow`,
+  `feature-specification`, `implementation-plan`, `implementation-tasks`, and
+  `multi-repo-coordination` in both repositories with the approved branch and
+  SPEC/PLAN reuse policy; depends on: approval of the workflow amendment.
+- [x] WF-002 Update `user-docs`, `contributor-docs`, and `spec-consolidation`
+  in both repositories so documentation-only and consolidation-only requests
+  bypass development SPEC/PLAN tracking; depends on: WF-001.
+- [x] WF-003 Review the two repositories' guidance for consistent rules,
+  repository-specific links, branch safety, and correct primary-repository
+  tracking; record findings in `JOURNAL.md`; depends on: WF-001, WF-002.
