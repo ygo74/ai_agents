@@ -29,6 +29,7 @@ async def test_oidc_http_client_is_lazy_shared_and_closed(monkeypatch, service, 
     service_prefix = f"{service.upper()}_AGENT_"
     monkeypatch.setenv(f"{service_prefix}MODE", "mock")
     monkeypatch.setenv(f"{service_prefix}HTTP_API_KEY", "must-not-be-used")
+    monkeypatch.setenv(f"{service_prefix}HTTP_MCP_RESOURCE_URL", f"https://{service}.example.test/mcp")
     monkeypatch.setenv("OPENAI_API_KEY", "mock-key")
     monkeypatch.setenv("OPENAI_CHAT_MODEL", "gpt-4o-mini")
     config_root = tmp_path / "config"
@@ -45,6 +46,8 @@ async def test_oidc_http_client_is_lazy_shared_and_closed(monkeypatch, service, 
     if explicit_jwks:
         jwt_settings["jwks_url"] = f"{ISSUER}/keys"
     document["http"]["security"] = {"mode": "jwt", "jwt": jwt_settings}
+    if service == "wiki":
+        document["http"].setdefault("mcp", {})["resource_url"] = "${WIKI_AGENT_HTTP_MCP_RESOURCE_URL}"
     manifest_path.write_text(yaml.safe_dump(document, sort_keys=False), encoding="utf-8")
     monkeypatch.setenv(CONFIG_DIR_VARIABLE, str(config_root))
 

@@ -123,6 +123,75 @@ connection; `get_mail` uses the other connection. These names are existing Mail
 bindings, not a requirement for future agents. Each future agent supplies its
 own typed port, capability enum and dialect factories.
 
+## Inspect tools exposed by a hosted agent
+
+From the repository root, use the development environment and the diagnostic
+client to ask a running Mail or Wiki Agent which MCP tools it exposes. The
+client initializes MCP and calls `list_tools`; it prints each tool description,
+argument names, types, required status, argument descriptions, and complete
+input schema. It never invokes the advertised agent operation or another tool.
+
+For a Mail endpoint protected by Keycloak, obtain the access token from the
+realm's OIDC endpoint instead of copying it from LibreChat's browser tools.
+Enable **Direct access grants** for the client in Keycloak. Populate the
+environment variables below using your local secret-handling method, then pass
+them as CLI arguments:
+
+```powershell
+python -m scripts.keycloak_token `
+  --issuer-url $env:KEYCLOAK_ISSUER_URL `
+  --client-id $env:KEYCLOAK_CLIENT_ID `
+  --username "$env:KEYCLOAK_USERNAME" `
+  --password "$env:KEYCLOAK_PASSWORD" `
+  --client-secret "$env:KEYCLOAK_CLIENT_SECRET"
+```
+
+`--client-secret` is optional for a public client; omit that argument when the
+client has no secret. Add `--scope "$env:KEYCLOAK_SCOPE"` when requesting
+additional scopes; `--scope` and `--timeout` are optional. Configure the
+client's scopes and audience mapper in Keycloak to control the token audience.
+The command prints a `Bearer <access-token>` line followed by decoded claims
+when the token is a three-part JWT. The claims are unverified display data: the
+tool does not verify signatures or decrypt encrypted tokens, and the MCP server
+still validates the token. For an opaque or encrypted token, the access token
+is still printed and the tool explains that claims are unavailable.
+
+The next step uses the displayed bearer value with the MCP inspector. Copy it
+into the local authorization variable using your local secret-handling method,
+then run:
+
+```powershell
+python -m scripts.inspect_mcp `
+  --url https://127.0.0.1:8123/mcp `
+  --header Authorization=MAIL_MCP_INSPECT_AUTHORIZATION
+```
+
+Using environment-variable references keeps literal credentials out of the
+command text and shell history. Once expanded, argument values may still be
+visible to local process inspection tools. Treat the terminal output and the
+Bearer token as credentials. Direct Access Grants also cannot complete
+interactive MFA or account required-action flows.
+
+The Mail host configuration uses JWT. The Mail example above shows its HTTPS
+endpoint and bearer-header name.
+
+Wiki's checked-in host configuration uses an API key:
+
+```powershell
+$env:WIKI_AGENT_HTTP_API_KEY = "<wiki-api-key>"
+python -m scripts.inspect_mcp `
+  --url https://127.0.0.1:8124/mcp `
+  --header X-API-Key=WIKI_AGENT_HTTP_API_KEY
+```
+
+The header option contains only the header name and environment-variable name;
+the secret value is read from the process environment and is not printed. The
+development environment installed by `python -m scripts.install` includes the
+MCP client and HTTP dependencies. HTTPS certificates must be trusted by that
+Python environment; the inspector does not disable certificate verification.
+Replace the URLs with the host's externally reachable `/mcp` URL when
+inspecting a deployment.
+
 ## Adding a server dialect
 
 1. Implement the relevant tool port with strict input and output mapping.

@@ -94,6 +94,7 @@ def jwt_wiki_deployment(monkeypatch, tmp_path):
     monkeypatch.setenv("WIKI_MCP_USER_ACCOUNT", "diana@example.com")
     monkeypatch.setenv("WIKI_MCP_USER_SECRET", "owner-fixture-token")
     monkeypatch.setenv("WIKI_MCP_READ_ONLY", "true")
+    monkeypatch.setenv("WIKI_AGENT_HTTP_MCP_RESOURCE_URL", "https://wiki.example.test/mcp")
     monkeypatch.setenv("OPENAI_API_KEY", "mock-key")
     monkeypatch.setenv("OPENAI_CHAT_MODEL", "gpt-4o-mini")
     monkeypatch.delenv("WIKI_AGENT_HTTP_API_KEY", raising=False)
@@ -115,6 +116,7 @@ def jwt_wiki_deployment(monkeypatch, tmp_path):
             "jwks_url": f"{ISSUER}/keys",
         },
     }
+    document["http"].setdefault("mcp", {})["resource_url"] = "${WIKI_AGENT_HTTP_MCP_RESOURCE_URL}"
     # The legacy header-credential scenario applies to the HTTP MCP binding; the
     # bound server itself still answers through the mocked dialect below.
     document["mcp_server"] = "mcp-atlassian-http"

@@ -15,7 +15,7 @@ turn.
 
 ## What runs the HTTP surface
 
-Routes, OpenAI request shapes, JWT validation and discovery come from
+Routes, OpenAI request shapes, MCP Streamable HTTP, JWT validation and discovery come from
 [`ygo74-agent-runtime`](https://github.com/ygo74/ai-enterprise-agent-runtime). We
 do not reimplement them.
 
@@ -29,7 +29,7 @@ audience and optional claim paths in the manifest. Send bearer tokens in
 
 | Owned by the runtime library | Owned here |
 |---|---|
-| `POST /v1/chat/completions`, `GET /v1/models` | Which caller a request is attributed to |
+| `POST /v1/chat/completions`, `GET /v1/models`, MCP at `/mcp` | Which caller a request is attributed to |
 | OpenAI payload normalisation | Which conversation it continues |
 | JWT / API-key authentication | What happens to a gated operation |
 | Discovery and access policy | Isolation and eviction of conversation state |
@@ -72,9 +72,106 @@ the checked-in subject is `diana`, matching the sample mock user. When using
 mock mode, keep this subject aligned with `WIKI_AGENT_USER_ID`. The manifest
 deliberately does not invent an e-mail address.
 
+The same authenticated host exposes MCP Streamable HTTP at
+`http://127.0.0.1:8124/mcp`, or `https://127.0.0.1:8124/mcp` when TLS is
+enabled. It registers one conversational tool. The operation name and
+description default to `name` and `description` in
+`config/agents/wiki/agent.yaml` (currently `wiki-agent`); optional
+`mcp_agent_operation_name` and `mcp_agent_description` keys override them
+independently. To preserve the former `invoke_agent` name for an existing
+client, set `mcp_agent_operation_name: invoke_agent`. The tool schema requires
+`message` and accepts an optional `conversation_id`, which defaults to
+`default`.
+
+Configure the MCP client with this endpoint and the same authentication policy
+as the rest of the HTTP host; the checked-in configuration uses an API key in
+the `X-API-Key` header. The MCP client initializes the Streamable HTTP session
+and manages its session headers. After initialization, list the operation and
+its schema:
+
+```json
+{"jsonrpc": "2.0", "id": 1, "method": "tools/list"}
+```
+
+The response contains `result.tools`, including the operation `name`, its
+`description`, and `inputSchema`. By default, Wiki advertises the agent
+description from the manifest; an explicit `mcp_agent_description` replaces
+it. Use the advertised name when invoking the tool. For example, with no name
+override the name is `wiki-agent`:
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "result": {
+    "tools": [
+      {
+        "name": "wiki-agent",
+        "description": "<description from agent.yaml or its MCP override>",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "message": {"title": "Message", "type": "string"},
+            "conversation_id": {
+              "default": "default",
+              "title": "Conversation Id",
+              "type": "string"
+            }
+          },
+          "required": ["message"]
+        }
+      }
+    ]
+  }
+}
+```
+
+This shows the relevant fields; the server returns the complete schema and
+description. If a name override is configured, use that returned name instead
+of `wiki-agent`.
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 2,
+  "method": "tools/call",
+  "params": {
+    "name": "<operation-name-from-tools-list>",
+    "arguments": {
+      "message": "Summarize the Apollo project documentation.",
+      "conversation_id": "apollo-review"
+    }
+  }
+}
+```
+
+The MCP client sends this call within the initialized session and with the same
+authentication. Reuse `conversation_id` on a later call to continue that
+conversation. If it is omitted, the endpoint uses `default`. The response
+includes structured agent output and the conversation ID. This API-key
+deployment uses the subject configured in the manifest and does not require an
+email claim. With JWT mode, the verified subject remains the cache and
+authorization identity; the MCP tool accepts no subject, email, or role
+arguments.
+
 The launcher loads the selected file before starting Uvicorn and keeps its path
 available to reload workers. A path explicitly provided with `--env-file` must
 exist.
+
+To serve HTTPS directly, supply both Uvicorn TLS files to the launcher:
+
+```powershell
+.\.venvs\wiki-agent\Scripts\python.exe -m ai_agent_lab.wiki.adapters.http.server `
+  --env-file .env_wiki_agent_http --port 8124 `
+  --ssl-certfile C:\secrets\wiki-fullchain.pem `
+  --ssl-keyfile C:\secrets\wiki-private-key.pem
+```
+
+The certificate file should include the server certificate and required
+intermediate certificates. Keep the private key outside the repository and
+make it readable only by the service account. The flags are a pair; omitting
+both leaves the service on HTTP. TLS is configured on the Uvicorn listener,
+not in the agent manifest.
 
 ```powershell
 curl -Method POST http://127.0.0.1:8124/v1/chat/completions `
@@ -181,6 +278,10 @@ and reply assembly. The Wiki factory and LangGraph session adapter retain the
 subject-derived `thread_id` and framework state translation. Against a real
 Confluence it matters that eviction closes sessions rather than leaving them
 looking active after the caller has gone.
+
+MCP and OpenAI requests share this process-local cache. When running multiple
+workers or replicas, use session affinity so a conversation continues on the
+process that owns it.
 
 > Each conversation gets its own `InMemorySaver`. That is right for a
 > proof of concept - one runtime per conversation, closed on eviction - but a

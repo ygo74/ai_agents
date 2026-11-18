@@ -39,7 +39,7 @@ skills:
   - add_comment
   - delete_page
 http:
-  endpoints: [chat_completions]
+  endpoints: [chat_completions, mcp]
   security:
     mode: api_key
     api_key:

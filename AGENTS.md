@@ -80,5 +80,25 @@ these records are for developers and agents, not user documentation.
 - Existing documentation, code-review, and image-version skills remain under
   `.agents/skills/` and are used when requested or included in approved scope.
 
+## Request routing and branch tracking
+
+For each affected repository, check the working tree, current branch, and live
+`origin` state before deciding whether to start or continue development work.
+Refresh remote refs successfully; do not treat a stale local `origin/*` ref as
+proof that a branch still exists remotely. Apply the branch rules in
+[`WORKFLOW.md`](WORKFLOW.md) and
+[`development-workflow`](.agents/skills/development-workflow/SKILL.md).
+Keep one canonical request record in the primary repository. When continuing
+an existing remote branch, update its existing SPEC and PLAN rather than
+creating a new tracking folder. Use the branch, Issue identifier, request
+scope, and active TASKS/JOURNAL to identify the record. If it remains
+ambiguous, stop and ask instead of creating a duplicate.
+
+Requests limited to user documentation, contributor documentation, or global
+specification consolidation use their relevant skills directly and do not
+create or update development SPEC/PLAN artifacts. They still follow the branch
+selection rules. Requests that include implementation changes use the complete
+SPEC, PLAN, TASKS, and implementation workflow.
+
 Copilot instruction files may route to these repository rules; they must not
 define a competing workflow.

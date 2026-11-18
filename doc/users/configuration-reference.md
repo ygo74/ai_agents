@@ -19,13 +19,29 @@ for setup, examples, and error behavior.
 ```text
 config/
   agents/mail/
-    agent.yaml          identity, ordered capabilities, and optional HTTP hosting
+    agent.yaml          identity, MCP operation metadata, capabilities, and HTTP hosting
     AGENT.md            system instructions
   skills/mail/<tool>/
     skill.yaml          identity, security posture, MCP server and tools allowed
     SKILL.md            reasoning instructions (capabilities driven by a model)
   mcp/gmail-http.yaml   runtime connection settings and Mail tool binding
 ```
+
+## Hosted MCP operation metadata
+
+An agent served through MCP exposes one conversational tool. Its default name
+and description come from the `name` and `description` fields in the agent's
+`agent.yaml`. Set either optional top-level key to override that value:
+
+```yaml
+mcp_agent_operation_name: mail_assistant
+mcp_agent_description: Use for mailbox searches, summaries, and replies.
+```
+
+The overrides are independent. MCP clients should list tools and call the
+advertised operation name; set `mcp_agent_operation_name: invoke_agent` when
+an existing client needs to retain that name. Internal agent capabilities
+remain behind this single conversational tool.
 
 ## Application logging
 
@@ -97,7 +113,9 @@ package ships Draft 2020-12 schemas as
 `urn:ygo74:agent-runtime:skill-manifest:1`. The input models in
 `ygo74.agent_runtime.domains.configuration.manifest_inputs` generate these
 schemas and validate the same field sets when the runtime loads YAML. Unknown
-fields and invalid enum values are rejected.
+fields and invalid enum values are rejected. The optional
+`mcp_agent_operation_name` and `mcp_agent_description` keys customize the
+hosted MCP tool and default to the agent's `name` and `description`.
 
 The `http` section declares invocation routes, exactly one authentication mode,
 and optional rate limits. Keep secret values in the process environment and

@@ -1,0 +1,12 @@
+# Implementation Tasks
+
+- [x] RUNTIME-001 Add failing manifest input, loader, and schema tests for optional MCP operation metadata; completion: both fields accept valid values, default to absent, and reject blank values; depends on: none.
+- [x] RUNTIME-002 Add failing endpoint and hosting tests for descriptor-derived defaults and independent metadata overrides; completion: MCP tool listings expose expected names/descriptions while existing arguments and caller context remain unchanged; depends on: RUNTIME-001.
+- [x] RUNTIME-003 Implement typed manifest fields, loader mapping, schema entries, and optional hosting pass-through; completion: RUNTIME-001 and RUNTIME-002 pass with operation metadata kept outside discovery identity; depends on: RUNTIME-001, RUNTIME-002.
+- [x] RUNTIME-004 Update runtime manifest/MCP documentation and runnable MCP hosting example; completion: defaults, override keys, and the client-visible tool name are documented; depends on: RUNTIME-003.
+- [x] AGENTS-001 Add failing Mail/Wiki MCP contract assertions for tool names/descriptions and advertised-name invocation; completion: tests demonstrate the manifest-derived metadata for both endpoints; depends on: RUNTIME-003.
+- [x] AGENTS-002 Pass optional overrides from both loaded manifests through their native agent definitions; completion: Mail and Wiki MCP surfaces use defaults or independent YAML overrides; depends on: AGENTS-001.
+- [x] AGENTS-003 Update configuration, hosted-MCP documentation, and test helpers; completion: users can discover/use configured names and retain `invoke_agent` via override; depends on: AGENTS-002.
+- [ ] RUNTIME-005 Run runtime focused and repository quality checks; completion: report actual results and address in-scope failures; depends on: RUNTIME-004. Focused tests (23) and Ruff pass; the full pytest run stalled without a final report and was interrupted.
+- [ ] AGENTS-004 Run delivered-manifest, focused MCP, Ruff, and pytest checks; completion: report actual results and address in-scope failures; depends on: AGENTS-003. Delivered manifest schema validation (32), focused MCP tests (4), Ruff, and mypy pass; the full pytest run reached the unmodified MCP stdio connection test `test_concurrent_callers_get_the_same_session`, reported `FAILED` after its 30-second timeout, and then stalled during shutdown.
+- [ ] COORD-001 Review separate repository diffs and update this journal for user review; completion: no untracked implementation changes remain outside the canonical record; depends on: RUNTIME-005, AGENTS-004.

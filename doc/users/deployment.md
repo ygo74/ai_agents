@@ -123,6 +123,61 @@ Without the header the same call answers `401`. That is the gate working.
 
 ---
 
+## Serving an agent directly over HTTPS
+
+The Mail and Wiki images can terminate TLS in Uvicorn. Mount the certificate
+chain and private key as read-only files, then pass Uvicorn's standard TLS
+options through the container command. This example publishes the Mail listener
+on port 443 while Uvicorn listens on its existing container port:
+
+```yaml
+services:
+  mail-agent:
+    image: ghcr.io/ygo74/mail-agent:latest
+    command:
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8123"
+      - --ssl-certfile
+      - /run/tls/mail-fullchain.pem
+      - --ssl-keyfile
+      - /run/tls/mail-private-key.pem
+    environment:
+      MAIL_AGENT_HTTP_MCP_RESOURCE_URL: https://mail.example.test/mcp
+    ports:
+      - "443:8123"
+    volumes:
+      - type: bind
+        source: ${MAIL_TLS_CERTIFICATE:?set a certificate path outside the build context}
+        target: /run/tls/mail-fullchain.pem
+        read_only: true
+      - type: bind
+        source: ${MAIL_TLS_PRIVATE_KEY:?set a private-key path outside the build context}
+        target: /run/tls/mail-private-key.pem
+        read_only: true
+```
+
+Use the same setup for Wiki with its image and port. The private key must be
+readable by the image's non-root service user (UID 10001 for both agents); use a
+protected secret mount with suitable permissions. Do not put certificate or
+private-key files in the Docker build context, image, or repository. The
+operator remains responsible for certificate names, validity, and renewal.
+
+The `resource_url` setting only advertises the MCP resource URL in OAuth
+metadata; it does not activate TLS. Set Mail's JWT-protected MCP URL to the
+externally reachable HTTPS address ending in `/mcp`, as in the example. The
+agent images' local health checks accept either HTTP or HTTPS on their loopback
+listener; the HTTPS probe skips certificate-name validation only for that local
+liveness check. External clients must validate the server certificate
+normally. The standalone Gmail MCP server keeps its existing HTTP health check.
+
+For local Python runs, the equivalent options are `--ssl-certfile` and
+`--ssl-keyfile` on the Mail or Wiki HTTP launcher; see the [Mail](mail-agent-http.md)
+and [Wiki](wiki-agent-http.md) HTTP guides.
+
+---
+
 ## The full deployment
 
 Three containers on one internal network. The agents are reachable from outside;

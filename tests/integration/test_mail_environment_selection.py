@@ -128,7 +128,11 @@ def test_http_launcher_preserves_selected_file_for_reload(tmp_path, monkeypatch)
 def test_http_factory_uses_selected_file_not_default(tmp_path, monkeypatch):
     (tmp_path / ".env").write_text("MAIL_AGENT_HTTP_OIDC_ISSUER=https://wrong.invalid\n", encoding="utf-8")
     selected = tmp_path / "http.env"
-    selected.write_text("MAIL_AGENT_HTTP_API_KEY=fixture-key\n", encoding="utf-8")
+    selected.write_text(
+        "MAIL_AGENT_HTTP_API_KEY=fixture-key\n"
+        "MAIL_AGENT_HTTP_MCP_RESOURCE_URL=https://mail.example.test/mcp\n",
+        encoding="utf-8",
+    )
     monkeypatch.setattr(
         service.MailAgentApplicationFactory,
         "build_chat_client",

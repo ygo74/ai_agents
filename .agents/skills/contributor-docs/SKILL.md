@@ -5,6 +5,14 @@ description: Create or update simple-English Markdown technical documentation fo
 
 # Contributor Documentation
 
+When the request is limited to contributor documentation, use this skill
+directly after the repository branch is selected by
+[development-workflow](../development-workflow/SKILL.md). Do not create or
+update a development request SPEC or PLAN for this documentation-only request.
+If contributor documentation is part of an implementation request, keep it
+within the approved scope; updating these guides does not by itself require
+amending that request's SPEC or PLAN.
+
 Write technical documentation for people who modify or maintain this repository.
 Keep the prose in simple English for a team that works in a French-speaking
 environment. Keep source identifiers, API names, and code examples unchanged.

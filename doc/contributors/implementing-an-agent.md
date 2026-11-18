@@ -363,20 +363,15 @@ derives advertised security from those same authenticators, so discovery cannot
 advertise a scheme the service does not accept. The complete key and type
 reference is in [configuration](../users/configuration-reference.md#fixed-manifest-schemas).
 
-**Runtime prerequisite — not a guarantee of any published release.** This
-`http_settings=` construction of `WorkerSettings` (and the matching
-`HostingFactory.add_http_settings(...)`) requires the installed
-`ygo74-agent-runtime-agents` to actually carry the `http_settings` field and the
-code path that consumes it. The editable runtime source at commit `e097cac`
-was verified with both real service factories and the worker contract tests.
-A `ygo74-agent-runtime-agents` build that predates this contract raises
-`TypeError`/`ValueError` constructing `WorkerSettings`, not a graceful fallback.
-No version of this contract is pinned here against a specific published package
-release — check `WorkerSettings.__init__`'s accepted fields (or run the
-[worker contract tests](../../tests/contract/test_worker_settings_http_contract.py),
-which exercise the installed library directly) against whatever is actually
-resolved by [the core dependencies](../../agents/core/pyproject.toml)'s
-`ygo74-agent-runtime-agents>=0.8.2,<2` range.
+**Runtime prerequisite — release 0.9.0 or later.** The agent distributions
+require `ygo74-agent-runtime-agents>=0.9.0,<2`, including the released
+`WorkerSettings.http_settings` contract, `HostingFactory.add_http_settings(...)`,
+and agent MCP endpoint metadata. The Quality workflow builds the runtime from
+tag `V0.9.0` to check against this minimum released API. The
+[worker contract tests](../../tests/contract/test_worker_settings_http_contract.py)
+exercise the installed library directly; the
+[core dependencies](../../agents/core/pyproject.toml) declare the same minimum.
+
 When working against an **editable** checkout of the runtime (as during local
 runtime development), the field being missing usually means the checkout is
 behind its own remote branch rather than a code defect in this repository -
