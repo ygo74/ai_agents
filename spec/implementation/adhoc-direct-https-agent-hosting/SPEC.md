@@ -9,9 +9,9 @@
   container images, deployment guides, and their CI workflow.
 - Secondary dependency: `ai-enterprise-agent-runtime` supplies the runtime
   contracts consumed by `ai_agents`. No runtime source changes are currently
-  planned. The CI workflow still uses `V0.8.2`; the user asked to defer any
-  workflow update until the runtime feature is merged and a compatible version
-  is published.
+  planned. The user originally deferred CI alignment until a compatible runtime
+  release. On 2026-11-18, the user confirmed release `0.9.0` and authorized
+  updating this repository, committing, pushing, and verifying CI.
 - No Issue is associated with this ad hoc request.
 
 ## Objective and current context
@@ -25,11 +25,11 @@ Before this request, the launchers exposed host, port, and reload options but no
 TLS certificate options. The container images bound plain HTTP, and their local
 health checks used HTTP.
 
-The delivery checks exposed a CI version mismatch: `.github/workflows/quality.yml`
-checks out runtime release `V0.8.2`, while the Mail manifest on this branch uses
+The original delivery checks exposed a CI version mismatch: the Quality workflow
+checked out runtime release `V0.8.2`, while the Mail manifest on this branch uses
 MCP endpoint fields supported by runtime commit
-`98c7fad26cfc8f258d57f85d511de63a22f802d8`. The user asked to leave CI unchanged
-until that runtime work is merged and a compatible version is published. The
+`98c7fad26cfc8f258d57f85d511de63a22f802d8`. Runtime release `0.9.0` now supplies
+that contract, so dependencies and the CI checkout must use the released API. The
 Wiki real-stdio MCP test timed out inside the restricted local runner but passed
 outside that isolation; no product or test-harness change is indicated.
 
@@ -48,6 +48,10 @@ In scope:
 - Update affected JWT test fixtures to provide the MCP resource URL required by
   the compatible runtime contract; keep test behavior and runtime production
   code unchanged.
+- Raise every direct runtime dependency minimum to `0.9.0`, preserving extras
+  and existing upper bounds. Use runtime tag `V0.9.0` in the Quality workflow,
+  align the contributor prerequisite, and verify local quality gates and the
+  GitHub Actions quality and image builds for the pushed commit.
 
 Out of scope:
 
@@ -57,8 +61,6 @@ Out of scope:
   launcher and deployment lifecycle.
 - Changes to authentication, OAuth metadata, agent routes, or runtime source
   APIs.
-- Changes to `.github/workflows/quality.yml`; revisit CI runtime alignment after
-  the runtime feature is merged and a compatible version is published.
 - Publishing images, packages, or releases.
 
 ## Expected user behavior
@@ -121,10 +123,11 @@ Out of scope:
    does not enable TLS.
 7. Existing HTTP startup and health-check behavior remains unchanged when TLS
    options are omitted.
-8. The complete pytest suite passes against the compatible runtime source,
+8. The complete pytest suite passes against the published runtime `0.9.0`,
    including the Mail manifest scenario and Wiki MCP stdio protocol tests.
-9. The CI version mismatch is recorded for follow-up after a compatible runtime
-   release; this request does not change the workflow.
+9. All direct runtime dependency floors are `0.9.0`, the Quality workflow uses
+   tag `V0.9.0`, and the CI quality gate and PR image builds pass for the pushed
+   commit. Commit and push are explicitly authorized by the user.
 
 ## Validation impact
 
@@ -145,6 +148,5 @@ performance budget is required.
   certificate verification.
 - The service still needs to bind a reachable interface and publish the chosen
   port; enabling HTTPS alone does not change container networking or firewalls.
-- The current CI job uses runtime `V0.8.2`, which predates the MCP endpoint
-  manifest fields on this branch. Per the user's direction, update CI only after
-  the runtime change is merged and a compatible version is published.
+- The published runtime and the release tag must both resolve to `0.9.0` during
+  validation; do not substitute a local feature checkout for the released API.

@@ -21,9 +21,8 @@
   `deploy/README.md`. Completion: an operator can configure the service without
   a reverse proxy, understands that `resource_url` does not enable TLS, and is
   told how to protect mounted key files. Depends on: A-002, A-003.
-- [x] A-005 — Defer CI runtime alignment as requested. Keep the workflow on
-  `V0.8.2` until the runtime feature is merged and a compatible version is
-  published; record this follow-up in the SPEC and PLAN.
+- [x] A-005 — Originally defer CI runtime alignment until a compatible release.
+  The recorded follow-up is now implemented by A-008 for runtime `0.9.0`.
 - [x] A-006 — Set the manifest-referenced Mail or Wiki MCP resource URL in the
   affected JWT test fixtures. Completion: the 7 fixture failures against the
   compatible runtime source pass without changing production behavior. Depends
@@ -34,3 +33,11 @@
   stdio-backed tests in a process-capable environment. Completion: all required
   local checks pass and their results are recorded. Depends on: A-002, A-003,
   A-004, and A-006.
+- [x] A-008 — Align all direct runtime requirements and the Quality checkout
+  with release `0.9.0`; update the contributor prerequisite. Preserve existing
+  extras and upper bounds. Depends on: published `V0.9.0` and the user's
+  2026-11-18 authorization.
+- [ ] A-009 — Install the published runtime `0.9.0`, refresh the development
+  environment, run Ruff, mypy, and full pytest, then commit and push the scoped
+  change. Verify the pushed commit's Quality and PR image-build results and
+  record actual outcomes. Depends on: A-008.

@@ -15,6 +15,25 @@
 
 ## Progress
 
+- 2026-11-18: The user confirmed runtime release `0.9.0` and explicitly
+  requested updating dependencies and CI, committing, pushing, and verifying
+  the build. Refreshed origin: `feature/37-mcp-agent-endpoints` remains live,
+  synchronized, and initially clean. Verified the published `V0.9.0` tag at
+  `da201c01dbe69c695214e9e952d93b5c9494b260`. Amended this existing SPEC and
+  PLAN to close the previously deferred release alignment with A-008/A-009.
+- 2026-11-18: A-008 completed: all seven distributions' direct runtime
+  requirements now start at `0.9.0`, the Quality checkout uses `V0.9.0`, and
+  the contributor prerequisite names the released contract. Installed the five
+  runtime packages from PyPI at exactly `0.9.0`, then successfully refreshed
+  the development environment with `python -m scripts.install --env dev`.
+  `pip check` found no broken requirements. Ruff passed; mypy passed for 246
+  source files without runtime-source path overrides. Full pytest passed in a
+  process-capable environment against the published runtime: 2559 passed,
+  872 skipped, and 27 existing endpoint-registration deprecation warnings in
+  141.02 seconds. The XML report is outside the repository at
+  `/tmp/ai-agents-runtime090-test-results.xml`. The complete diff passes
+  `git -c core.whitespace=cr-at-eol diff --check`; delivery and exact-commit CI
+  verification follow in A-009.
 - 2026-11-11: Inspected Mail and Wiki Uvicorn launchers, Docker image startup and
   health checks, user deployment documentation, repository quality gates, and
   the current system specification.

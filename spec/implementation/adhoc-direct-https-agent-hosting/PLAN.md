@@ -2,11 +2,12 @@
 
 ## SPEC approval status
 
-The user approved the HTTPS scope and has now explicitly deferred CI changes
-until the runtime feature is merged and a compatible version is published.
-Work is owned by `ai_agents` on `feature/37-mcp-agent-endpoints`; the runtime
-repository and CI workflow remain unchanged. The user has authorized commit
-and push after the required local quality gates pass.
+The user approved the HTTPS scope and originally deferred CI alignment until a
+compatible runtime release. On 2026-11-18, the user confirmed runtime `0.9.0`
+and explicitly requested the dependency update, commit, push, and CI verification.
+Work continues in `ai_agents` on `feature/37-mcp-agent-endpoints`; no runtime
+source changes are needed. This release follow-up uses the existing tracking
+record and the concrete version and delivery actions authorized by the user.
 
 ## Existing architecture and reuse analysis
 
@@ -35,12 +36,11 @@ and push after the required local quality gates pass.
 - Do not introduce a shared TLS settings model, environment configuration, or
   runtime API: the two launchers have a small, identical argument boundary and
   Uvicorn already owns TLS loading and lifecycle.
-- `.github/workflows/quality.yml` currently checks out runtime release
-  `V0.8.2`, which predates MCP endpoint manifest fields already used by the Mail
-  scenario. The runtime feature branch contains the matching contract at
-  `98c7fad26cfc8f258d57f85d511de63a22f802d8`. Per the user's direction, leave
-  the workflow unchanged until the runtime feature is merged and a compatible
-  version is published; record this as a follow-up.
+- The original Quality workflow checkout of `V0.8.2` predates the Mail MCP
+  manifest contract. Runtime tag `V0.9.0` now supplies the released API. Keep
+  the existing installer and source-build quality workflow, update its release
+  tag, and raise all direct runtime dependency floors to `0.9.0`. Preserve
+  extras, upper bounds, distribution boundaries, and third-party versions.
 - The real-stdio MCP test times out under the restricted local runner because
   its child process cannot complete the handshake there. The exact focused test
   passes outside that isolation. Do not change application or test code for
@@ -69,8 +69,10 @@ and push after the required local quality gates pass.
    `tests/integration/test_mail_environment_selection.py`, and
    `tests/security/test_wiki_http_credential_ownership.py`: provide the
    manifest's configured MCP resource URL when constructing JWT services.
-5. No manifest/schema, agent behavior, authentication, MCP protocol, runtime
-   source package, CI workflow, dependency, or published artifact changes.
+5. Runtime requirements in the five agent distributions and two MCP protocol
+   distributions: raise minimums to `0.9.0`. Update the Quality workflow's
+   release checkout and the contributor runtime prerequisite. No manifest,
+   agent behavior, authentication, runtime source, or published artifact changes.
 
 ## Ordered steps and dependencies
 
@@ -130,14 +132,12 @@ and push after the required local quality gates pass.
   manifest to activate TLS.
 - Depends on: A-002 and A-003.
 
-### A-005 — Defer CI runtime alignment
+### A-005 — Original CI deferral and released-runtime follow-up
 
-- Leave `.github/workflows/quality.yml` unchanged as requested. Record that its
-  runtime `V0.8.2` checkout predates the Mail manifest contract on this branch.
-- Revisit CI after the runtime feature is merged and a compatible version is
-  published.
-- Completion: the deferred CI follow-up and its prerequisite are recorded.
-- Depends on: user direction; no implementation change in this task.
+- The original task recorded the deferred `V0.8.2` mismatch. Its prerequisite
+  is now satisfied by runtime `0.9.0` and the user's explicit update request.
+- A-008 raises dependency floors and changes the checkout to `V0.9.0`;
+  A-009 validates and delivers the follow-up.
 
 ### A-006 — Complete MCP resource URL test configuration
 
@@ -162,6 +162,24 @@ and push after the required local quality gates pass.
 - Record actual commands and results in `JOURNAL.md`.
 - Depends on: A-002, A-003, A-004, and A-006.
 
+### A-008 — Align with runtime release 0.9.0
+
+- Raise all direct runtime dependency floors in agent and MCP protocol
+  distributions to `0.9.0`, preserving extras and existing upper bounds.
+- Select `V0.9.0` in the existing Quality checkout and update its step labels.
+- Replace the contributor prerequisite tied to feature-source validation with
+  the released `0.9.0` contract.
+- Depends on: the published release and the user's explicit update request.
+
+### A-009 — Validate and deliver release alignment
+
+- Install the published runtime packages at exactly `0.9.0`, refresh the local
+  development distributions, and run Ruff, mypy, and the complete pytest suite.
+- Record local evidence, review the complete diff, then commit and push to the
+  existing origin branch. Verify Quality and Images for that commit, correcting
+  failures if needed and recording their outcomes.
+- Depends on: A-008.
+
 ## Test-first validation
 
 Start with the focused failing launcher and health-check tests, implement only
@@ -180,9 +198,13 @@ The repository CI quality gates are:
 Also run the focused test files directly before the full suite. Report only
 checks that actually complete and pass.
 
-The local gate uses the runtime feature source because the published `V0.8.2`
-package predates this branch's Mail MCP endpoint manifest fields. The CI workflow
-will remain unchanged until the user-requested runtime merge and release.
+The release follow-up installs the five runtime distributions from PyPI at
+exactly `0.9.0`, then refreshes the editable local distributions using
+`python -m scripts.install --env dev`. Run Ruff, mypy, and the full pytest suite
+against these published packages, without a feature-source `PYTHONPATH` override.
+CI retains its existing source-build check using release tag `V0.9.0`. After
+push, inspect the exact commit's Quality and Images workflow results; failures
+must be diagnosed and corrected before claiming completion.
 
 ## Security and deployment impact
 
@@ -215,15 +237,14 @@ will remain unchanged until the user-requested runtime merge and release.
 - Startup readiness remains observable through Docker health checks. The
   health-check script's sequential probe time is bounded below the configured
   Docker timeout.
-- HTTP remains the default when certificate options are omitted. No runtime
-  source, dependency, runtime manifest, or language-parity change is required.
-- CI still references runtime `V0.8.2`, which predates this branch's endpoint
-  manifest contract. It remains unchanged by user direction; align it with a
-  published runtime version after the runtime feature is merged and released.
+- HTTP remains the default when certificate options are omitted. The release
+  follow-up changes dependency floors and CI release selection, with no runtime
+  source, manifest, or language-parity change.
 
 ## Documentation and examples
 
-Update only the user and deployment pages in A-004. Keep request tracking under
+Update the user and deployment pages in A-004 and the contributor runtime
+prerequisite in A-008. Keep request tracking under
 `spec/implementation/`; do not consolidate the repository specification or
 update unrelated contributor documentation as part of this request.
 
