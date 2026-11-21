@@ -26,10 +26,12 @@ from ygo74.agent_runtime.domains.configuration.manifests import (
     SkillManifestLoader,
 )
 from ygo74.agent_runtime.domains.mcp.binding import McpTransport
+from ygo74.agent_runtime.domains.mcp.configuration import McpServerConfigurationLoader
 from ygo74.agent_runtime.domains.security.floor import SecurityFloorViolationError
 from ygo74.agent_runtime.domains.security.operations import OperationType, RiskLevel
 from ygo74.agent_runtime.domains.security.permissions import PermissionRegistry, UnknownPermissionError
 
+from ai_agent_lab.credit.infrastructure.configuration.settings import CreditCapability
 from ai_agent_lab.mail.application.operations import MailToolCatalog
 from ai_agent_lab.mail.domain.operation_names import MailToolName
 from ai_agent_lab.mail.domain.permissions import MailPermission
@@ -363,8 +365,20 @@ class TestEveryDeliveredBindingLoads:
     checks.
     """
 
+    CREDIT_BINDINGS = ("edgartools",)
     MAIL_BINDINGS = ("local", "gmail", "gmail-api", "gmail-http")
     WIKI_BINDINGS = ("wiki-local", "mcp-atlassian", "mcp-atlassian-http", "mcp-atlassian-service")
+
+    @pytest.mark.parametrize("name", CREDIT_BINDINGS)
+    def test_a_delivered_credit_binding_loads(self, name):
+        """Validate the restricted Credit tool contract using the runtime loader."""
+        configuration = McpServerConfigurationLoader(CreditCapability).load(
+            delivered().require("mcp", f"{name}.yaml")
+        )
+        binding = configuration.binding
+        assert binding.capabilities == frozenset((CreditCapability.IDENTIFY_COMPANY,))
+        assert dict(binding.tools) == {"edgar_search": "edgar_search", "edgar_company": "edgar_company"}
+        assert_addressable(binding)
 
     @pytest.mark.parametrize("name", MAIL_BINDINGS)
     def test_a_delivered_mail_binding_loads(self, name):
@@ -393,4 +407,4 @@ class TestEveryDeliveredBindingLoads:
     def test_every_delivered_binding_is_covered(self):
         delivered_files = {path.stem for path in (REPOSITORY_ROOT / "config" / "mcp").glob("*.yaml")}
 
-        assert delivered_files == set(self.MAIL_BINDINGS) | set(self.WIKI_BINDINGS)
+        assert delivered_files == set(self.MAIL_BINDINGS) | set(self.WIKI_BINDINGS) | set(self.CREDIT_BINDINGS)

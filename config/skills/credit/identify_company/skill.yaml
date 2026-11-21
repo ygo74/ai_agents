@@ -1,0 +1,11 @@
+tool_name: identify_company
+implementation: credit.identify
+description: Identify an SEC issuer by name, ticker or CIK. Ambiguous results require an analyst-selected CIK. Read only; no credit decisions.
+operation:
+  type: READ
+  risk: LOW
+  permission: credit:identify
+  confirmation_required: false
+mcp_tools:
+  - edgar_search
+  - edgar_company

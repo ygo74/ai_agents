@@ -1,6 +1,6 @@
 # Configuration of the repository tooling. Deliberately not a distribution.
 #
-# The code lives in ten distributions under `agents/` and `mcp-servers/`, each
+# The code lives in eleven distributions under `agents/` and `mcp-servers/`, each
 # with its own pyproject. This file only carries the settings that must be the
 # same everywhere: the linter, the type checker and the test runner.
 #
@@ -26,6 +26,7 @@ src = [
     "agents/maf/src",
     "agents/mail/src",
     "agents/wiki/src",
+    "agents/credit/src",
     "mcp-servers/protocol/src",
     "mcp-servers/gmail/src",
     "mcp-servers/reference/src",
@@ -92,6 +93,7 @@ mypy_path = [
     "agents/maf/src",
     "agents/mail/src",
     "agents/wiki/src",
+    "agents/credit/src",
     "mcp-servers/protocol/src",
     "mcp-servers/gmail/src",
     "mcp-servers/reference/src",
@@ -104,6 +106,7 @@ packages = [
     "ai_agent_lab.maf",
     "ai_agent_lab.mail",
     "ai_agent_lab.wiki",
+    "ai_agent_lab.credit",
     "mail_mcp.protocol",
     "mail_mcp.gmail",
     "mail_mcp.reference",

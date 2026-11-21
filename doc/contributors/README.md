@@ -14,6 +14,7 @@ For the request lifecycle, role selection, and approval gates, see the
 - [Architecture and distributions](architecture.md)
 - [Framework adapters](framework-adapters.md)
 - [Shared core services and model providers](core-services.md)
+- [Corporate Credit Analyst](credit-agent.md)
 - [Mail agent](mail-agent.md)
 - [Wiki agent](wiki-agent.md)
 - [Conversations and approvals](conversations-approvals.md)

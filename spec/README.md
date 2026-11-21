@@ -10,12 +10,12 @@ under this directory.
 
 AI Agent Lab develops and compares enterprise agents while keeping their
 functional capabilities, security decisions, scenarios, and MCP contracts
-independent of the agent framework. The Mail agent uses Microsoft Agent
+independent of the agent framework. The Mail and Corporate Credit agents use Microsoft Agent
 Framework; the Wiki agent uses LangChain/LangGraph. A new framework integration
 is an adapter and composition change, not a second implementation of the
 agent's business behavior.
 
-This repository contains the Mail and Wiki applications, their MCP clients and
+This repository contains the Mail, Wiki and Corporate Credit applications, their MCP clients and
 server distributions, delivered configuration, datasets, and tests. It does not
 own the shared technical agent runtime. Common configuration loading, manifest
 schemas, runtime contracts, security primitives, user-context construction,
@@ -120,7 +120,7 @@ the Mail and Wiki composition roots interchangeable.
 
 | Component | Responsibility | Owner |
 |---|---|---|
-| `ai_agent_lab.mail`, `ai_agent_lab.wiki` | Agent-specific models, skills, capability policies, tool ports, composition roots, and conversation factories | This repository |
+| `ai_agent_lab.mail`, `ai_agent_lab.wiki`, `ai_agent_lab.credit` | Agent-specific models, skills, capability policies, tool ports, composition roots, and conversation factories | This repository |
 | `ai_agent_lab.maf`, `ai_agent_lab.langgraph` | Framework adapters and framework-specific session-state handling | This repository |
 | `ai_agent_lab.core` | Shared chat-provider choices and Azure credential provider only | This repository |
 | `mail_mcp.*`, `wiki_mcp.*` | Concrete MCP tool contracts and dialect adapters, plus MCP server implementations | This repository |
@@ -201,6 +201,7 @@ runtime APIs.
 
 - [Architecture and dependency boundaries](architecture/architecture.md)
 - [Agent and framework design](architecture/agent-design.md)
+- [Corporate Credit Analyst identification](agents/credit-agent.md)
 - [Mail agent behavior and safety rules](agents/mail-agent.md)
 - [Wiki agent behavior and safety rules](agents/wiki-agent.md)
 - [Mail HTTP and conversation integration](../doc/users/mail-agent-http.md)

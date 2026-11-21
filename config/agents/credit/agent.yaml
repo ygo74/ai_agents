@@ -1,0 +1,5 @@
+name: corporate-credit-analyst
+description: Assist a credit analyst with SEC-sourced issuer identification; no credit decisions.
+mcp_server: edgartools
+skills:
+  - identify_company

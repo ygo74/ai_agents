@@ -10,6 +10,7 @@ references in this directory.
   agent with the delivered local dataset
 - [Wiki Agent](wiki-agent.md): grounded answers, access restrictions, drafts,
   writes, and confirmation
+- [Corporate Credit Analyst](credit-agent.md): SEC issuer identification and local MCP setup
 - [Mail Agent](mail-agent.md): mailbox tasks, mock data, HTTP calls, and
   confirmation
 - [MCP servers](mcp-servers.md): local, third-party, and HTTP server choices
