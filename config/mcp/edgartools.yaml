@@ -1,0 +1,11 @@
+# Install the official server into a SEPARATE environment and set this executable path.
+server: edgartools
+transport: stdio
+command: edgartools-mcp
+args: [--transport, stdio]
+dialect: edgartools-6.3
+capabilities: [identify_company]
+tools:
+  edgar_search: edgar_search
+  edgar_company: edgar_company
+request_timeout_seconds: 30

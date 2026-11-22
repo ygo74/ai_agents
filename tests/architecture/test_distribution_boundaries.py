@@ -1,6 +1,6 @@
 """Executable enforcement of the boundaries between distributions.
 
-The repository ships ten distributions across three namespaces. Nothing in the
+The repository ships eleven distributions across three namespaces. Nothing in the
 import statements stops one from reaching into another, so these tests do: they
 fail the build when a distribution imports something it must not know about.
 
@@ -42,6 +42,7 @@ DISTRIBUTIONS: dict[str, Path] = {
     "ai_agent_lab.langgraph": AGENTS / "langgraph" / "src",
     "ai_agent_lab.mail": AGENTS / "mail" / "src",
     "ai_agent_lab.wiki": AGENTS / "wiki" / "src",
+    "ai_agent_lab.credit": AGENTS / "credit" / "src",
     "mail_mcp.protocol": SERVERS / "protocol" / "src",
     "mail_mcp.gmail": SERVERS / "gmail" / "src",
     "mail_mcp.reference": SERVERS / "reference" / "src",
@@ -62,6 +63,7 @@ ALLOWED_DISTRIBUTION_IMPORTS: dict[str, frozenset[str]] = {
     "ai_agent_lab.langgraph": frozenset({"ai_agent_lab.core"}),
     "ai_agent_lab.mail": frozenset({"ai_agent_lab.core", "ai_agent_lab.maf", "mail_mcp.protocol"}),
     "ai_agent_lab.wiki": frozenset({"ai_agent_lab.core", "ai_agent_lab.langgraph", "wiki_mcp.protocol"}),
+    "ai_agent_lab.credit": frozenset({"ai_agent_lab.core", "ai_agent_lab.maf"}),
     "mail_mcp.protocol": frozenset(),
     "mail_mcp.gmail": frozenset({"mail_mcp.protocol"}),
     "mail_mcp.reference": frozenset({"mail_mcp.protocol"}),
@@ -102,6 +104,17 @@ ALLOWED_RUNTIME_IMPORTS: dict[str, tuple[str, ...]] = {
         "ygo74.agent_runtime.domains.security",
         "ygo74.agent_runtime.domains.sessions",
     ),
+    "ai_agent_lab.credit": (
+        "ygo74.agent_runtime.domains.auth",
+        "ygo74.agent_runtime.domains.discovery",
+        "ygo74.agent_runtime.domains.endpoints",
+        "ygo74.agent_runtime.domains.sessions",
+        "ygo74.agent_runtime.domains.configuration",
+        "ygo74.agent_runtime.domains.contracts",
+        "ygo74.agent_runtime.domains.humanapproval",
+        "ygo74.agent_runtime.domains.mcp",
+        "ygo74.agent_runtime.domains.security",
+    ),
     "ai_agent_lab.wiki": (
         "ygo74.agent_runtime.domains.auth",
         "ygo74.agent_runtime.domains.configuration",
@@ -123,6 +136,7 @@ ALLOWED_RUNTIME_IMPORTS: dict[str, tuple[str, ...]] = {
 AGENT_DISTRIBUTIONS: dict[str, str] = {
     "ai_agent_lab.mail": "ai_agent_lab.maf",
     "ai_agent_lab.wiki": "ai_agent_lab.langgraph",
+    "ai_agent_lab.credit": "ai_agent_lab.maf",
 }
 
 # The framework adapters, and the third-party root each is allowed to import.
@@ -142,6 +156,7 @@ WIKI_LAYERS = MAIL_LAYERS
 AGENT_LAYERS = {
     "ai_agent_lab.mail": MAIL_LAYERS,
     "ai_agent_lab.wiki": WIKI_LAYERS,
+    "ai_agent_lab.credit": MAIL_LAYERS,
 }
 MAIL_REMOVED_APPLICATION_MODULES = frozenset(
     f"ai_agent_lab.mail.application.{name}"
@@ -179,6 +194,7 @@ ENTERPRISE_SDK_ROOTS = frozenset(
 LAYERS_WITHOUT_FRAMEWORKS = {
     "ai_agent_lab.mail": frozenset({"domain", "application", "infrastructure"}),
     "ai_agent_lab.wiki": frozenset({"domain", "application", "infrastructure"}),
+    "ai_agent_lab.credit": frozenset({"domain", "application", "infrastructure"}),
 }
 
 # Agent layers that must not name a transport or a vendor SDK. `mcp` is excluded:
@@ -186,6 +202,7 @@ LAYERS_WITHOUT_FRAMEWORKS = {
 LAYERS_WITHOUT_SDKS = {
     "ai_agent_lab.mail": frozenset({"domain", "application"}),
     "ai_agent_lab.wiki": frozenset({"domain", "application"}),
+    "ai_agent_lab.credit": frozenset({"domain", "application"}),
 }
 
 # `ygo74-agent-runtime` is a foundation dependency now that it owns the security
@@ -721,9 +738,7 @@ def _run_mail_import_probe(code: str) -> None:
 @pytest.mark.security
 @pytest.mark.parametrize("layer", ["domain", "application"])
 def test_mail_inner_layer_imports_without_framework_or_web_stack(layer: str):
-    names = [
-        module.dotted_name for module in _of(MAIL) if module.agent_layer == layer
-    ]
+    names = [module.dotted_name for module in _of(MAIL) if module.agent_layer == layer]
     _run_mail_import_probe(
         textwrap.dedent(
             f"""

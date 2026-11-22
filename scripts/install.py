@@ -52,6 +52,7 @@ MAF = Path("agents/maf")
 LANGGRAPH = Path("agents/langgraph")
 MAIL = Path("agents/mail")
 WIKI = Path("agents/wiki")
+CREDIT = Path("agents/credit")
 MAIL_PROTOCOL = Path("mcp-servers/protocol")
 MAIL_REFERENCE = Path("mcp-servers/reference")
 GMAIL = Path("mcp-servers/gmail")
@@ -64,6 +65,7 @@ EXTRAS = {
     LANGGRAPH: "azure",
     MAIL: "maf,native,http",
     WIKI: "langgraph,native,http",
+    CREDIT: "maf,http",
     # `serving` is the tool surface; `http` is serving it over a port, which brings
     # the runtime's MCP hosting with it. The development environment installs both
     # because the suite exercises the HTTP surface of the mail server.
@@ -116,6 +118,7 @@ ENVIRONMENTS: dict[str, Environment] = {
             LANGGRAPH,
             MAIL,
             WIKI,
+            CREDIT,
             MAIL_REFERENCE,
             WIKI_REFERENCE,
             GMAIL,
@@ -129,6 +132,13 @@ ENVIRONMENTS: dict[str, Environment] = {
         distributions=(MAIL_PROTOCOL, CORE, MAF, MAIL, MAIL_REFERENCE),
         notes=("No LangChain package enters this environment.",),
         runtime_adapters=("agentframework",),
+    ),
+    "credit-agent": Environment(
+        name="credit-agent",
+        description="Corporate Credit Analyst on Microsoft Agent Framework.",
+        distributions=(CORE, MAF, CREDIT),
+        runtime_adapters=("agentframework",),
+        notes=("Install edgartools[ai]==6.3.0 in a separate server environment.",),
     ),
     "wiki-agent": Environment(
         name="wiki-agent",
@@ -231,9 +241,7 @@ def _runtime_distributions(checkout: Path, environment: Environment) -> list[Pat
         return [resolved]
 
     expected = ", ".join(required)
-    raise SystemExit(
-        f"no installable Python project under {resolved}: expected {RUNTIME_PACKAGES}/{{{expected}}}"
-    )
+    raise SystemExit(f"no installable Python project under {resolved}: expected {RUNTIME_PACKAGES}/{{{expected}}}")
 
 
 def _print_environments() -> None:

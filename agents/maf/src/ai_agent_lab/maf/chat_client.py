@@ -61,6 +61,16 @@ class MafChatClientFactory:
     environment, or exchanges an Entra ID credential for a token itself.
     """
 
+    @staticmethod
+    async def close(client: SupportsChatGetResponse) -> None:
+        """Release the provider transport of a client created by this factory.
+
+        Args:
+            client: Factory-owned OpenAI/Azure client; injected clients retain their owner.
+        """
+        if isinstance(client, OpenAIChatClient):
+            await client.client.close()
+
     def openai(self, *, model: str = "") -> SupportsChatGetResponse:
         """Build the direct OpenAI client, which resolves its own key."""
         if not model:

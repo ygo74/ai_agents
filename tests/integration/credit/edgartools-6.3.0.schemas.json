@@ -1,0 +1,94 @@
+{
+  "server": {
+    "name": "edgartools",
+    "title": null,
+    "version": "6.3.0",
+    "websiteUrl": null,
+    "icons": null
+  },
+  "tools": {
+    "edgar_company": {
+      "type": "object",
+      "properties": {
+        "identifier": {
+          "type": "string",
+          "description": "Company ticker (AAPL), CIK (320193), or name (Apple Inc)"
+        },
+        "include": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "profile",
+              "financials",
+              "filings",
+              "ownership"
+            ]
+          },
+          "description": "Data to include. Default: profile, financials, filings",
+          "default": [
+            "profile",
+            "financials",
+            "filings"
+          ]
+        },
+        "periods": {
+          "type": "integer",
+          "description": "Number of financial periods (default 4)",
+          "default": 4
+        },
+        "period": {
+          "type": "string",
+          "description": "Period type: 'annual', 'quarterly', or 'ttm' (trailing twelve months)",
+          "enum": [
+            "annual",
+            "quarterly",
+            "ttm"
+          ],
+          "default": "annual"
+        },
+        "annual": {
+          "type": "boolean",
+          "description": "Deprecated. Use 'period' instead. Annual (true) or quarterly (false) financials",
+          "default": true
+        }
+      },
+      "required": [
+        "identifier"
+      ]
+    },
+    "edgar_search": {
+      "type": "object",
+      "properties": {
+        "query": {
+          "type": "string",
+          "description": "Search term for company name or description"
+        },
+        "search_type": {
+          "type": "string",
+          "enum": [
+            "companies",
+            "filings",
+            "all"
+          ],
+          "description": "What to search: companies, filings, or all",
+          "default": "all"
+        },
+        "identifier": {
+          "type": "string",
+          "description": "Limit filing search to specific company (ticker/CIK)"
+        },
+        "form": {
+          "type": "string",
+          "description": "Filter filings by form type (10-K, 10-Q, 8-K, DEF 14A, 13F-HR, etc.)"
+        },
+        "limit": {
+          "type": "integer",
+          "description": "Maximum results per category (default 20)",
+          "default": 20
+        }
+      },
+      "required": []
+    }
+  }
+}

@@ -1,0 +1,8 @@
+# Environment references here are resolved only for model routing and process configuration.
+model_provider: openai
+model: ''
+azure_endpoint: ''
+azure_api_version: ''
+search_limit: 50
+max_attempts: 2
+retry_delay: 1
