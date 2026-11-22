@@ -13,7 +13,9 @@ dependencies = [
 ]
 [project.optional-dependencies]
 maf = ["ai-agent-lab-maf"]
+http = ["ai-agent-lab-maf", "ygo74-agent-runtime-agents[http]>=0.9.0,<2"]
 [project.scripts]
 credit-agent = "ai_agent_lab.credit.adapters.cli.entrypoint:main"
+credit-agent-http = "ai_agent_lab.credit.adapters.http.server:main"
 [tool.hatch.build.targets.wheel]
 packages = ["src/ai_agent_lab"]

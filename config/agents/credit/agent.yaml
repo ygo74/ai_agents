@@ -3,3 +3,12 @@ description: Assist a credit analyst with SEC-sourced issuer identification; no 
 mcp_server: edgartools
 skills:
   - identify_company
+http:
+  endpoints: [chat_completions, responses]
+  security:
+    mode: api_key
+    api_key:
+      value: ${CREDIT_AGENT_HTTP_API_KEY}
+      header_name: X-API-Key
+      user:
+        subject: local-analyst

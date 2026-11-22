@@ -65,3 +65,33 @@
   comme la découverte initiale. Rapport final : /tmp/issue14-full-test-results.xml,
   exclu du commit. Données de contact et secrets absents des fichiers à publier.
 - Commit limité à l'issue 14 préparé pour publication sur la branche de travail.
+
+## Complément HTTP demandé après création de la PR #15
+
+- Correction utilisateur : exposition aux clients HTTP manquante. Poursuite de
+  la branche distante existante après actualisation d'origin ; SPEC et PLAN
+  complétés dans le même dossier de suivi, sans nouvelle issue ni branche.
+- Réutilisation examinée : compositions Mail/Wiki, manifeste HTTP, worker,
+  découverte, cache et session MAF publics du runtime 0.9.0. Aucune modification
+  du runtime et aucun accès SEC direct ajouté.
+- TDD : test initial échouant sur l'absence de bootstrap.service ; routes réelles
+  testées ensuite avec modèle et port EDGAR simulés. Chat/Responses normaux et
+  flux, OpenAI SDK, refus avant construction, isolation JWT et fermeture testés.
+- API key issue de l'environnement par défaut ; JWT/OIDC configurable. Le sujet
+  vérifié reçoit seulement credit:identify. Pas de commande d'approbation valide
+  pour cette capacité en lecture ; cache borné géré par le runtime.
+- Lanceur credit-agent-http, extra HTTP installé dans l'environnement Credit,
+  fichier d'environnement/configuration préservé au reload et paire TLS.
+- Fermeture explicite du transport modèle créé par l'application à son arrêt ;
+  client injecté laissé à son propriétaire. Vérification sans appel modèle réel.
+- Contrôle ciblé : 1529 tests réussis, 915 filtres ignorés (avant le dernier test
+  de fermeture du transport modèle). Ruff complet réussi ; mypy complet,
+  273 fichiers sans erreur. Suite complète en cours, rapport hors dépôt.
+- Documentation utilisateur HTTP/OpenAI/LibreChat et architecture mises à jour.
+  Les contrôles HTTP sont simulés côté modèle/SEC ; aucun nouveau contrôle SEC
+  ou modèle réel revendiqué.
+- Validation finale Python 3.12 : Ruff complet réussi ; mypy complet réussi
+  (273 fichiers) ; 2677 tests réussis, 915 filtres ignorés, 27 avertissements
+  existants, 205,97 secondes. XML : /tmp/issue14-http-test-results.xml.
+- Wheel Credit construit avec succès, métadonnées et nouvelle commande HTTP
+  vérifiées. Les outils de build manquants ont été téléchargés après autorisation.

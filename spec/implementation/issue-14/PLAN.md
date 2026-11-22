@@ -146,3 +146,24 @@ modèle et l'identité SEC ne sont pas encore connues ; fournir les exemples
 configurables et demander uniquement les éléments nécessaires au contrôle réel.
 Aucune migration Mail/Wiki, infrastructure de persistance, modification de
 runtime, analyse financière, fusion Git ou publication implicite.
+
+## Complément HTTP demandé après création de la PR #15
+
+Réutiliser `ManagedAgentWorker`, `AgentHttpSettingsBuilder`, discovery et
+`AgentFrameworkSession` du runtime, comme Mail/Wiki. Aucun routeur ou format
+OpenAI à réimplémenter. Charger le manifeste sans MCP/modèle au démarrage puis
+composer une application et une session par sujet vérifié/conversation. Le
+registre et l'adaptateur MAF existants conservent les règles métier et permissions.
+Refuser les commandes d'approbation sans ticket : cette capacité est en lecture.
+
+Ajouter un lanceur `credit-agent-http` (port 8125), configuration API-key avec
+clé issue de l'environnement, JWT/OIDC configurable et limites de cache via
+le runtime. Préserver les fichiers d'environnement/configuration avec reload
+et accepter une paire TLS. L'extra `[http]` est installé dans l'environnement
+Credit ; les couches métier restent indépendantes du transport/framework.
+
+Tester d'abord les routes réelles avec modèle/MCP simulés : OpenAI SDK,
+Chat/Responses normaux et en flux, refus avant construction, continuité,
+isolation JWT, fermeture en échec/arrêt et options TLS. Ajouter les exemples
+clients et limites du cache ; relancer les contrôles Python complets avant
+commit/push dans la PR existante, sans fusion.

@@ -7,3 +7,6 @@
 - [x] CREDIT-005 Composer runtime/MAF, configuration et CLI ; tests d'intégration de composition.
 - [x] CREDIT-006 Intégrer installation, qualité et règles d'architecture ; contrôles appropriés verts.
 - [x] CREDIT-007 Documenter installation/exemples et réaliser le contrôle SEC réel si prérequis disponibles.
+- [x] CREDIT-008 Ajouter tests HTTP échouants puis composition runtime/MAF, authentification et lanceur.
+- [x] CREDIT-009 Documenter appels HTTP/OpenAI, configuration et limites de conversations.
+- [x] CREDIT-010 Vérifier isolation/fermeture, contrôles complets et mise à jour de la PR #15.

@@ -105,6 +105,10 @@ ALLOWED_RUNTIME_IMPORTS: dict[str, tuple[str, ...]] = {
         "ygo74.agent_runtime.domains.sessions",
     ),
     "ai_agent_lab.credit": (
+        "ygo74.agent_runtime.domains.auth",
+        "ygo74.agent_runtime.domains.discovery",
+        "ygo74.agent_runtime.domains.endpoints",
+        "ygo74.agent_runtime.domains.sessions",
         "ygo74.agent_runtime.domains.configuration",
         "ygo74.agent_runtime.domains.contracts",
         "ygo74.agent_runtime.domains.humanapproval",

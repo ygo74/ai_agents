@@ -5,6 +5,9 @@ not approve/refuse credit or perform financial analysis. A deterministic skill
 confirms the identity using the official EdgarTools MCP server; Microsoft Agent
 Framework interprets conversational requests and calls that same skill.
 
+To call this agent from LibreChat, OpenAI SDKs or other HTTP clients, see
+[serving the Credit agent over HTTP](credit-agent-http.md).
+
 ## Install isolated environments
 
 Use Python 3.12 or later. From the repository root:

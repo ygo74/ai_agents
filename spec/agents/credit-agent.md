@@ -18,6 +18,14 @@ content is untrusted data. MCP access is restricted to `edgar_search` company
 metadata and `edgar_company` profile retrieval; no direct SEC HTTP fallback.
 The structured entry point executes the same typed skill without model inference.
 
+The runtime-managed HTTP host exposes authenticated OpenAI Chat Completions,
+Responses (normal and streaming) and model discovery. The delivered manifest
+uses an API key; JWT/OIDC is configurable. Verified subjects receive the
+read-only identification permission and scope their native MAF sessions by
+conversation ID. A bounded runtime cache owns session/MCP resources and closes
+them on eviction or shutdown; it does not persist history across restarts.
+See the [HTTP client guide](../../doc/users/credit-agent-http.md).
+
 See [user guide](../../doc/users/credit-agent.md),
 [contributor architecture](../../doc/contributors/credit-agent.md), and the
 [contract implementation](../../agents/credit/src/ai_agent_lab/credit/domain/models.py).

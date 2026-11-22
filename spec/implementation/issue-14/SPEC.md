@@ -15,6 +15,10 @@ effectivement Microsoft Agent Framework et `ai-enterprise-agent-runtime`, pour
 identifier un émetteur dans EDGAR via un serveur MCP local `edgartools`.
 L'agent assiste l'analyste et ne prend aucune décision de crédit.
 
+Complément demandé par l'utilisateur après création de la PR #15 : exposer
+également l'agent aux clients HTTP, selon la surface OpenAI existante du dépôt.
+Ce complément poursuit la même issue et la même branche.
+
 Hors périmètre : analyse financière, ratios, téléchargement/analyse des
 formulaires SEC, note de crédit complète, interface graphique, hébergement
 Foundry et provisionnement Azure. Aucun accès HTTP direct à EDGAR en secours.
@@ -102,6 +106,13 @@ préjuge pas des authentifications du modèle ou du MCP.
 - Contrôle réel séparé des tests, identifiant un émetteur avec sources SEC ;
   prérequis et résultat consignés, sans déclarer réussi un contrôle non exécuté.
 - Exemples nom, ticker, CIK et résolution d'ambiguïté ; aucune décision de crédit.
+- HTTP : démarrage documenté, modèle découvrable et appels Chat Completions/
+  Responses normaux et en flux via les API du runtime ; authentification
+  obligatoire, identité issue du transport et conversations isolées par sujet.
+- Client OpenAI vérifié avec modèle/MCP simulés ; refus avant construction sans
+  authentification, fermeture des ressources après échec et arrêt du service.
+- Cache de conversation borné et local au processus ; limites et absence de
+  persistance après redémarrage documentées. Aucun état de candidats ajouté.
 
 ## Risques et décisions ouvertes
 

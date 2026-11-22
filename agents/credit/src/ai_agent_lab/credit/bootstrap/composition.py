@@ -8,6 +8,7 @@ from ygo74.agent_runtime.domains.configuration.directory import ConfigurationDir
 from ygo74.agent_runtime.domains.configuration.environment import EnvironmentFile
 from ygo74.agent_runtime.domains.configuration.manifests import AgentManifestLoader, SkillManifestLoader
 from ygo74.agent_runtime.domains.contracts.invocation_context import AgentInvocationContext, AgentInvocationContextScope
+from ygo74.agent_runtime.domains.contracts.manifests import AgentManifest
 from ygo74.agent_runtime.domains.humanapproval.confirmation import (
     ConfiguredConfirmationPolicy,
     InMemoryConfirmationPreferenceStore,
@@ -26,16 +27,34 @@ from ai_agent_lab.credit.infrastructure.configuration.settings import CreditCapa
 from ai_agent_lab.credit.infrastructure.mcp.client import EdgarMcpAdapter, McpGateway, RuntimeSessionProvider
 
 
+def load_manifest(directory: ConfigurationDirectory) -> AgentManifest:
+    """Load Credit's manifest with its fixed read permission and security floor.
+
+    Args:
+        directory: Operator-selected delivered configuration directory.
+    """
+    loader = SkillManifestLoader(PermissionRegistry((IDENTIFY_PERMISSION,)), SecurityFloor(()))
+    return AgentManifestLoader(directory, loader).load("credit")
+
+
 class CreditApplication:
     """One local execution scope; no candidate or model session persistence."""
 
-    def __init__(self, config: Path | None = None) -> None:
-        """Load trusted configuration and construct lazy connections without SEC calls."""
-        EnvironmentFile().load()
+    def __init__(
+        self, config: Path | None = None, *, user: UserContext | None = None, load_environment: bool = True
+    ) -> None:
+        """Compose lazy dependencies for the supplied caller; CLI defaults to a local user.
+
+        Args:
+            config: Delivered configuration directory.
+            user: Trusted caller context supplied by the HTTP composition root.
+            load_environment: Load .env for CLI; HTTP has already loaded its selected file.
+        """
+        if load_environment:
+            EnvironmentFile().load()
         directory = ConfigurationDirectory(config) if config else ConfigurationDirectory.resolve()
         floor = SecurityFloor(())
-        manifests = SkillManifestLoader(PermissionRegistry((IDENTIFY_PERMISSION,)), floor)
-        self.manifest = AgentManifestLoader(directory, manifests).load("credit")
+        self.manifest = load_manifest(directory)
         self.settings = CreditSettings.load(directory.require("agents", "credit", "settings.yaml"))
         configured = McpServerConfigurationLoader(CreditCapability).load(directory.require("mcp", "edgartools.yaml"))
         binding = configured.binding
@@ -82,10 +101,11 @@ class CreditApplication:
         )
         self.skill = IdentificationSkill(EdgarMcpAdapter(self.gateway, search_limit=self.settings.search_limit))
         self.registry = build_registry(self.manifest, self.skill)
-        self.user = UserContext(
+        self.user = user if user is not None else UserContext(
             user_id="local-analyst", session_id="local", permissions=frozenset((IDENTIFY_PERMISSION,))
         )
         self.policy = ConfiguredConfirmationPolicy(InMemoryConfirmationPreferenceStore(), floor)
+        self._owned_model_client: Any = None
 
     async def identify(self, payload: dict[str, object], correlation: str) -> IdentificationResult:
         """Execute structured identification under runtime correlation without a model."""
@@ -109,6 +129,7 @@ class CreditApplication:
                 )
             else:
                 client = factory.openai(model=self.settings.model)
+            self._owned_model_client = client
         return create_registered_agent(
             client=client,
             name=self.manifest.name,
@@ -121,4 +142,11 @@ class CreditApplication:
 
     async def aclose(self) -> None:
         """Release runtime MCP resources regardless of execution success."""
-        await self.gateway.aclose()
+        try:
+            await self.gateway.aclose()
+        finally:
+            if self._owned_model_client is not None:
+                from ai_agent_lab.maf.chat_client import MafChatClientFactory
+
+                client, self._owned_model_client = self._owned_model_client, None
+                await MafChatClientFactory.close(client)

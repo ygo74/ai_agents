@@ -11,6 +11,7 @@ import pytest
 LAUNCHERS = (
     ("ai_agent_lab.mail.adapters.http.server", "MailEnvironmentFile"),
     ("ai_agent_lab.wiki.adapters.http.server", "WikiEnvironmentFile"),
+    ("ai_agent_lab.credit.adapters.http.server", "CreditEnvironmentFile"),
 )
 
 

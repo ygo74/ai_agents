@@ -65,7 +65,7 @@ EXTRAS = {
     LANGGRAPH: "azure",
     MAIL: "maf,native,http",
     WIKI: "langgraph,native,http",
-    CREDIT: "maf",
+    CREDIT: "maf,http",
     # `serving` is the tool surface; `http` is serving it over a port, which brings
     # the runtime's MCP hosting with it. The development environment installs both
     # because the suite exercises the HTTP surface of the mail server.

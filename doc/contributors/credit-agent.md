@@ -19,12 +19,23 @@ native MAF from an injected registry and never imports a credit domain.
 Configuration lives under `config/agents/credit`, `config/skills/credit` and
 `config/mcp/edgartools.yaml`. The delivered capability is a read operation with
 `credit:identify` permission. The registry refuses other implementations, write
-operations or a different MCP allowlist. This is a local operator CLI, not an
-HTTP authentication surface. Selected CIK membership is rechecked against a
-fresh search; no retained application state or production persistence is needed.
+operations or a different MCP allowlist. Selected CIK membership is rechecked
+against a fresh search; candidate lists are not persisted by the application.
+
+`bootstrap/service.py` composes the runtime `ManagedAgentWorker` from the
+manifest's HTTP configuration. `bootstrap/conversation.py` creates a
+`CreditApplication` with a verified caller and its read permission, and uses
+the public runtime `AgentFrameworkSession` for normal and streamed execution.
+Authentication precedes application construction. The runtime partitions the
+bounded process-local cache by subject and conversation, closes MCP scopes on
+eviction/shutdown, and redacts transport failures. A failed native construction
+closes its application immediately. No Credit approval tickets are issued.
+This cache has no restart persistence; deployment limits and client examples
+are documented in the [HTTP guide](../users/credit-agent-http.md).
 
 Tests cover deterministic identity policy, wire errors, bounded retries,
-permission-scoped native MAF tool invocation with a scripted model, configuration,
+permission-scoped native MAF tool invocation with a scripted model, authenticated
+HTTP/SDK calls and streaming, JWT caller isolation, resource cleanup, configuration,
 safe logs and repository architecture. The checked schema fixture was obtained
 from the installed official server using MCP `list_tools`. No model or SEC
 network is needed for reproducible tests. Install development dependencies with
